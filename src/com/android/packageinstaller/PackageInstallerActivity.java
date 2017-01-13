@@ -370,7 +370,7 @@ public class PackageInstallerActivity extends Activity implements OnCancelListen
             // apps, but this may include apps with just data, and if it is just
             // data we still want to count it as "installed".
             mAppInfo = mPm.getApplicationInfo(pkgName,
-                    PackageManager.GET_UNINSTALLED_PACKAGES);
+                    PackageManager.MATCH_UNINSTALLED_PACKAGES);
             if ((mAppInfo.flags&ApplicationInfo.FLAG_INSTALLED) == 0) {
                 mAppInfo = null;
             }
@@ -477,6 +477,7 @@ public class PackageInstallerActivity extends Activity implements OnCancelListen
         final boolean requestFromUnknownSource = isInstallRequestFromUnknownSource(getIntent());
         if (!requestFromUnknownSource) {
             initiateInstall();
+            return;
         }
 
         // If the admin prohibits it, or we're running in a managed profile, just show error
@@ -525,7 +526,7 @@ public class PackageInstallerActivity extends Activity implements OnCancelListen
                 try {
                     mPkgInfo = mPm.getPackageInfo(packageUri.getSchemeSpecificPart(),
                             PackageManager.GET_PERMISSIONS
-                                    | PackageManager.GET_UNINSTALLED_PACKAGES);
+                                    | PackageManager.MATCH_UNINSTALLED_PACKAGES);
                 } catch (NameNotFoundException e) {
                 }
                 if (mPkgInfo == null) {
