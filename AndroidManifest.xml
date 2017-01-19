@@ -122,7 +122,8 @@
         <activity android:name=".permission.ui.GrantPermissionsActivity"
                 android:configChanges="orientation|keyboardHidden|screenSize"
                 android:excludeFromRecents="true"
-                android:theme="@style/GrantPermissions">
+                android:theme="@style/GrantPermissions"
+                android:visibleToEphemeral="true">
             <intent-filter android:priority="1">
                 <action android:name="android.content.pm.action.REQUEST_PERMISSIONS" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -161,7 +162,6 @@
             android:permission="android.permission.GRANT_RUNTIME_PERMISSIONS">
             <intent-filter android:priority="1">
                 <action android:name="android.intent.action.GET_PERMISSIONS_COUNT" />
-                <action android:name="android.intent.action.GET_PERMISSIONS_PACKAGES" />
             </intent-filter>
         </receiver>
 
@@ -172,7 +172,7 @@
 
         <service android:name=".permission.service.RuntimePermissionPresenterServiceImpl"
                  android:permission="android.permission.BIND_RUNTIME_PERMISSION_PRESENTER_SERVICE">
-            <intent-filter>
+            <intent-filter android:priority="1">
                 <action android:name="android.permissionpresenterservice.RuntimePermissionPresenterService"/>
             </intent-filter>
         </service>
