@@ -195,7 +195,7 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         mPackageInfo = packageInfo;
         mAppSupportsRuntimePermissions = packageInfo.applicationInfo
                 .targetSdkVersion > Build.VERSION_CODES.LOLLIPOP_MR1;
-        mIsEphemeralApp = packageInfo.applicationInfo.isEphemeralApp();
+        mIsEphemeralApp = packageInfo.applicationInfo.isInstantApp();
         mAppOps = context.getSystemService(AppOpsManager.class);
         mActivityManager = context.getSystemService(ActivityManager.class);
         mDeclaringPackage = declaringPackage;
@@ -464,12 +464,14 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                                 mUserHandle);
                     }
                 } else {
-                    if (!permission.isUserSet()) {
+                    if (!permission.isUserSet() || permission.isUserFixed()) {
                         permission.setUserSet(true);
+                        permission.setUserFixed(false);
                         // Take a note that the user already chose once.
                         mPackageManager.updatePermissionFlags(permission.getName(),
                                 mPackageInfo.packageName,
-                                PackageManager.FLAG_PERMISSION_USER_SET,
+                                PackageManager.FLAG_PERMISSION_USER_SET
+                                        | PackageManager.FLAG_PERMISSION_USER_FIXED,
                                 PackageManager.FLAG_PERMISSION_USER_SET,
                                 mUserHandle);
                     }

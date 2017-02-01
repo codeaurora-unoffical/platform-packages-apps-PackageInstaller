@@ -43,17 +43,32 @@ public class InstallStart extends Activity {
 
         Intent intent = getIntent();
         String callingPackage = getCallingPackage();
+
+        // If the activity was started via a PackageInstaller session, we retrieve the calling
+        // package from that session
+        int sessionId = intent.getIntExtra(PackageInstaller.EXTRA_SESSION_ID, -1);
+        if (sessionId != -1) {
+            PackageInstaller packageInstaller = getPackageManager().getPackageInstaller();
+            callingPackage = packageInstaller.getSessionInfo(sessionId).getInstallerPackageName();
+        }
+
         ApplicationInfo sourceInfo = getSourceInfo(callingPackage);
         int originatingUid = getOriginatingUid(sourceInfo);
 
         Intent nextActivity = new Intent(intent);
         nextActivity.setFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT);
+        nextActivity.putExtras(intent.getExtras());
 
         // The the installation source as the nextActivity thinks this activity is the source, hence
         // set the originating UID and sourceInfo explicitly
         nextActivity.putExtra(PackageInstallerActivity.EXTRA_CALLING_PACKAGE, callingPackage);
         nextActivity.putExtra(PackageInstallerActivity.EXTRA_ORIGINAL_SOURCE_INFO, sourceInfo);
         nextActivity.putExtra(Intent.EXTRA_ORIGINATING_UID, originatingUid);
+
+        // STOPSHIP(http://b/34599122): Remove this special casing once GmsCore is updated
+        if ("com.google.android.gms".equals(callingPackage)) {
+            nextActivity.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+        }
 
         if (PackageInstaller.ACTION_CONFIRM_PERMISSIONS.equals(intent.getAction())) {
             nextActivity.setClass(this, PackageInstallerActivity.class);

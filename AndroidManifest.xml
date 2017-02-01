@@ -24,6 +24,8 @@
 
     <uses-permission android:name="com.google.android.permission.INSTALL_WEARABLE_PACKAGES" />
 
+    <uses-permission android:name="android.permission.ACCESS_INSTANT_APPS" />
+
     <application android:label="@string/app_name"
             android:allowBackup="false"
             android:theme="@style/DialogWhenLarge"
@@ -96,6 +98,17 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ClearApplicationUserDataDialogActivity"
+                  android:configChanges="orientation|keyboardHidden|screenSize"
+                  android:excludeFromRecents="true"
+                  android:theme="@style/AlertDialogActivity">
+            <intent-filter android:priority="1">
+                <action android:name="android.intent.action.CLEAR_PACKAGE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="package" />
+            </intent-filter>
+        </activity>
+
         <receiver android:name=".UninstallEventReceiver"
             android:permission="android.permission.INSTALL_PACKAGES"
             android:exported="true">
@@ -123,7 +136,7 @@
                 android:configChanges="orientation|keyboardHidden|screenSize"
                 android:excludeFromRecents="true"
                 android:theme="@style/GrantPermissions"
-                android:visibleToEphemeral="true">
+                android:visibleToInstantApps="true">
             <intent-filter android:priority="1">
                 <action android:name="android.content.pm.action.REQUEST_PERMISSIONS" />
                 <category android:name="android.intent.category.DEFAULT" />
