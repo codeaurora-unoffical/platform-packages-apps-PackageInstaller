@@ -19,10 +19,12 @@ package com.android.packageinstaller.permission.ui.wear;
 import android.Manifest;
 import android.app.Activity;
 import android.app.Fragment;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.UserHandle;
 import android.preference.Preference;
@@ -40,6 +42,7 @@ import com.android.packageinstaller.R;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.Permission;
+import com.android.packageinstaller.permission.utils.ArrayUtils;
 import com.android.packageinstaller.permission.utils.LocationUtils;
 import com.android.packageinstaller.permission.utils.SafetyNetLogger;
 import com.android.packageinstaller.permission.utils.Utils;
@@ -209,12 +212,106 @@ public final class AppPermissionsFragmentWear extends PreferenceFragment {
         pref.setOnPreferenceChangeListener((p, newVal) -> {
             if((Boolean) newVal) {
                 group.grantRuntimePermissions(false, new String[]{ perm.name });
+
+                if (Utils.areGroupPermissionsIndividuallyControlled(getContext(), group.getName())
+                        && group.doesSupportRuntimePermissions()) {
+                    // We are granting a permission from a group but since this is an
+                    // individual permission control other permissions in the group may
+                    // be revoked, hence we need to mark them user fixed to prevent the
+                    // app from requesting a non-granted permission and it being granted
+                    // because another permission in the group is granted. This applies
+                    // only to apps that support runtime permissions.
+                    String[] revokedPermissionsToFix = null;
+                    final int permissionCount = group.getPermissions().size();
+
+                    for (int i = 0; i < permissionCount; i++) {
+                        Permission current = group.getPermissions().get(i);
+                        if (!current.isGranted() && !current.isUserFixed()) {
+                            revokedPermissionsToFix = ArrayUtils.appendString(
+                                    revokedPermissionsToFix, current.getName());
+                        }
+                    }
+
+                    if (revokedPermissionsToFix != null) {
+                        // If some permissions were not granted then they should be fixed.
+                        group.revokeRuntimePermissions(true, revokedPermissionsToFix);
+                    }
+                }
             } else {
-                group.revokeRuntimePermissions(true, new String[]{ perm.name });
+                final Permission appPerm = getPermissionFromGroup(group, perm.name);
+                if (appPerm == null) {
+                    return false;
+                }
+
+                final boolean grantedByDefault = appPerm.isGrantedByDefault();
+                if (grantedByDefault
+                        || (!group.doesSupportRuntimePermissions() && !mHasConfirmedRevoke)) {
+                    showRevocationWarningDialog(
+                            (dialog, which) -> {
+                                revokePermissionInGroup(group, perm.name);
+                                pref.setChecked(false);
+                                if (!appPerm.isGrantedByDefault()) {
+                                    mHasConfirmedRevoke = true;
+                                }
+                            },
+                            grantedByDefault
+                                    ? R.string.system_warning
+                                    : R.string.old_sdk_deny_warning);
+                    return false;
+                } else {
+                    revokePermissionInGroup(group, perm.name);
+                }
             }
+
             return true;
         });
         return pref;
+    }
+
+    private void showRevocationWarningDialog(
+            DialogInterface.OnClickListener confirmListener,
+            int warningMessageId) {
+        new WearableDialogHelper.DialogBuilder(getContext())
+                .setNegativeIcon(R.drawable.confirm_button)
+                .setPositiveIcon(R.drawable.cancel_button)
+                .setNegativeButton(R.string.grant_dialog_button_deny_anyway, confirmListener)
+                .setPositiveButton(R.string.cancel, null)
+                .setMessage(warningMessageId)
+                .show();
+    }
+
+    private static Permission getPermissionFromGroup(AppPermissionGroup group, String permName) {
+        final int permissionCount = group.getPermissions().size();
+
+        for (int i = 0; i < permissionCount; i++) {
+            Permission currentPerm = group.getPermissions().get(i);
+            if(currentPerm.getName().equals(permName)) {
+                return currentPerm;
+            };
+        }
+
+        if ("user".equals(Build.TYPE)) {
+            Log.e(LOG_TAG, String.format("The impossible happens, permission %s is not in group %s.",
+                    permName, group.getName()));
+            return null;
+        } else {
+            // This is impossible, throw a fatal error in non-user build.
+            throw new IllegalArgumentException(
+                    String.format("Permission %s is not in group %s", permName, group.getName()));
+        }
+    }
+
+    private void revokePermissionInGroup(AppPermissionGroup group, String permName) {
+        group.revokeRuntimePermissions(true, new String[]{ permName });
+
+        if (Utils.areGroupPermissionsIndividuallyControlled(getContext(), group.getName())
+                && group.doesSupportRuntimePermissions()
+                && !group.areRuntimePermissionsGranted()) {
+            // If we just revoked the last permission we need to clear
+            // the user fixed state as now the app should be able to
+            // request them at runtime if supported.
+            group.revokeRuntimePermissions(false);
+        }
     }
 
     private SwitchPreference createSwitchPreferenceForGroup(AppPermissionGroup group) {
@@ -241,20 +338,16 @@ public final class AppPermissionsFragmentWear extends PreferenceFragment {
                     final boolean grantedByDefault = group.hasGrantedByDefaultPermission();
                     if (grantedByDefault
                             || (!group.doesSupportRuntimePermissions() && !mHasConfirmedRevoke)) {
-                        new WearableDialogHelper.DialogBuilder(getContext())
-                                .setNegativeIcon(R.drawable.confirm_button)
-                                .setPositiveIcon(R.drawable.cancel_button)
-                                .setNegativeButton(R.string.grant_dialog_button_deny_anyway,
-                                        (dialog, which) -> {
-                                            setPermission(group, pref, false);
-                                            if (!group.hasGrantedByDefaultPermission()) {
-                                                mHasConfirmedRevoke = true;
-                                            }
-                                        })
-                                .setPositiveButton(R.string.cancel, (dialog, which) -> {})
-                                .setMessage(grantedByDefault ?
-                                        R.string.system_warning : R.string.old_sdk_deny_warning)
-                                .show();
+                        showRevocationWarningDialog(
+                                (dialog, which) -> {
+                                    setPermission(group, pref, false);
+                                    if (!group.hasGrantedByDefaultPermission()) {
+                                        mHasConfirmedRevoke = true;
+                                    }
+                                },
+                                grantedByDefault
+                                        ? R.string.system_warning
+                                        : R.string.old_sdk_deny_warning);
                         return false;
                     } else {
                         setPermission(group, pref, false);
