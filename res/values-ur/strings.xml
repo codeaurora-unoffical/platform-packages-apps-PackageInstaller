@@ -42,11 +42,10 @@
     <string name="install_failed_msg" product="tv" msgid="3990457938384021566">"‏<xliff:g id="APP_NAME">%1$s</xliff:g> کو آپ کے TV پر انسٹال نہیں کیا جا سکا۔"</string>
     <string name="install_failed_msg" product="default" msgid="8554909560982962052">"<xliff:g id="APP_NAME">%1$s</xliff:g> کو آپ کے فون پر انسٹال نہیں کیا جا سکا۔"</string>
     <string name="launch" msgid="4826921505917605463">"کھولیں"</string>
-    <string name="unknown_apps_dlg_text" product="tablet" msgid="7504186369474734767">"سیکیورٹی کے مدنظر، آپ کا ٹیبلٹ نامعلوم مآخذ سے حاصل شدہ ایپس کی انسٹالیشن مسدود کرنے پر سیٹ ہے۔"</string>
-    <string name="unknown_apps_dlg_text" product="tv" msgid="7195713985140602351">"‏سیکیورٹی کیلئے، آپ کا TV نامعلوم مآخذ سے حاصل کردہ ایپس کا انسٹالیشن مسدود کرنے پر سیٹ ہے۔"</string>
-    <string name="unknown_apps_dlg_text" product="default" msgid="133213135679009316">"سیکیورٹی کے مدنظر، آپ کا فون نامعلوم مآخذ سے حاصل شدہ ایپس کی انسٹالیشن مسدود کرنے پر سیٹ ہے۔"</string>
-    <string name="unknown_apps_admin_dlg_text" msgid="1189146324736698462">"آپ کا منتظم نامعلوم ذرائع سے اخذ کردہ ایپس کو انسٹال کرنے کی اجازت نہیں دیتا ہے۔"</string>
-    <string name="unknown_apps_user_restriction_dlg_text" msgid="4792616731905336215">"خارجی ماخذات سے حاصل شدہ ایپس کا انسٹال کرنا اس صارف کے لیے ممنوع ہے"</string>
+    <!-- no translation found for unknown_apps_admin_dlg_text (7488386758312008790) -->
+    <skip />
+    <!-- no translation found for unknown_apps_user_restriction_dlg_text (5785226253054083336) -->
+    <skip />
     <string name="ok" msgid="3468756155452870475">"ٹھیک ہے"</string>
     <string name="settings" msgid="6743583734099755409">"ترتیبات"</string>
     <string name="manage_applications" msgid="4033876279091996596">"ایپس کا نظم کریں"</string>
@@ -76,12 +75,15 @@
     <string name="uninstall_done_app" msgid="4009780060350765946">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> ان انسٹال ہو گئی۔"</string>
     <string name="uninstall_failed" msgid="631122574306299512">"اَن انسٹال ناکام۔"</string>
     <string name="uninstall_failed_app" msgid="945277834056527022">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> کو ان انسٹال کرنا کامیاب نہیں ہوا۔"</string>
-    <string name="uninstall_failed_device_policy_manager" msgid="3493789239037852035">"اَن انسٹال نہیں کر سکتا کیونکہ یہ پیکیج ایک فعال آلے کا منتظم ہے۔"</string>
-    <string name="uninstall_failed_device_policy_manager_of_user" msgid="4466062391552204291">"اَن انسٹال نہیں کیا جا سکتا کیونکہ یہ پیکیج صارف <xliff:g id="USERNAME">%1$s</xliff:g> کیلئے فعال آلہ کا منتظم ہے۔"</string>
+    <!-- no translation found for uninstall_failed_device_policy_manager (2727361164694743362) -->
+    <skip />
+    <!-- no translation found for uninstall_failed_device_policy_manager_of_user (2161462242935805756) -->
+    <skip />
     <string name="uninstall_all_blocked_profile_owner" msgid="3544933038594382346">"یہ ایپ کچھ صارفین اور پروفائلوں کیلئے درکار ہے اور دیگر کیلئے ان انسٹال ہو گئی"</string>
     <string name="uninstall_blocked_profile_owner" msgid="6912141045528994954">"یہ ایپ آپ کے پروفائل کیلئے درکار ہے اور یہ ان انسٹال نہیں ہو سکتی۔"</string>
     <string name="uninstall_blocked_device_owner" msgid="7074175526413453063">"یہ ایپ آپ کے آلہ کے منتظم کو درکار ہے اور اسے اَن انسٹال نہیں کیا جا سکتا ہے۔"</string>
-    <string name="manage_device_administrators" msgid="891392489300312370">"آلہ کے منتظمین کا نظم کریں"</string>
+    <!-- no translation found for manage_device_administrators (118178632652346535) -->
+    <skip />
     <string name="manage_users" msgid="3125018886835668847">"صارفین کا نظم کریں"</string>
     <string name="uninstall_failed_msg" msgid="8969754702803951175">"<xliff:g id="APP_NAME">%1$s</xliff:g> کو اَن انسٹال نہیں کیا جا سکا۔"</string>
     <string name="Parse_error_dlg_text" msgid="7623286983621067011">"پیکیج کو پارس کرنے میں ایک دشواری پیش آگئی۔"</string>
@@ -139,6 +141,8 @@
     <string name="message_staging" msgid="6151794817691100003">"ایپ کی مرحلہ بندی ہو رہی ہے…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"نامعلوم"</string>
     <string name="clear_app_data_confirm_dialog" msgid="1454306783329915599">"کیا آپ واقعی <xliff:g id="PACKAGE">%1$s</xliff:g> کے لیے ڈیٹا صاف کرنا چاہتے ہیں؟"</string>
-    <string name="untrusted_external_source_warning" msgid="733048262092274222">"سیکیورٹی وجوہات کی بناء پر خارجی ماخذات سے ایپلیکیشن انسٹالز کو مسدود کردیا گيا ہے۔ براہ کرم اس ماخذ کے انسٹالز کو آن کرنے کے لیے خارجی ماخذات کی ترتیبات پر نظرثانی کریں۔"</string>
-    <string name="external_sources_settings" msgid="8162299254869992851">"خارجی ماخذات"</string>
+    <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"آپ کی سیکیوریٹی کیلئے، آپ کے ٹیبلیٹ کو اس ذریعے سے نامعلوم ایپس انسٹال کرنے کی اجازت نہیں ہے۔"</string>
+    <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"‏آپ کی سیکیوریٹی کیلئے، آپ کے TV کو اس ذریعے سے نامعلوم ایپس انسٹال کرنے کی اجازت نہیں ہے۔"</string>
+    <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"آپ کی سیکیوریٹی کیلئے، آپ کے فون کو اس ذریعے سے نامعلوم ایپس انسٹال کرنے کی اجازت نہیں ہے۔"</string>
+    <string name="external_sources_settings" msgid="8601453744517291632">"ترتیبات"</string>
 </resources>
