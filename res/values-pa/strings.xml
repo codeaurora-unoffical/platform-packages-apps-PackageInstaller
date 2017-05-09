@@ -24,6 +24,7 @@
     <string name="cancel" msgid="8360346460165114585">"ਰੱਦ ਕਰੋ"</string>
     <string name="unknown" msgid="4742479012767208045">"ਅਗਿਆਤ"</string>
     <string name="installing" msgid="8613631001631998372">"ਇੰਸਟੌਲ ਕਰ ਰਿਹਾ ਹੈ…"</string>
+    <string name="installing_app" msgid="4097935682329028894">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> ਨੂੰ ਸਥਾਪਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…"</string>
     <string name="install_done" msgid="3682715442154357097">"ਐਪ ਇੰਸਟੌਲ ਕੀਤਾ।"</string>
     <string name="install_confirm_question" msgid="7295206719219043890">"ਕੀ ਤੁਸੀਂ ਇਹ ਐਪਲੀਕੇਸ਼ਨ ਇੰਸਟੌਲ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ? ਇਹ ਇਸ ਤੱਕ ਪਹੁੰਚ ਪ੍ਰਾਪਤ ਕਰੇਗਾ:"</string>
     <string name="install_confirm_question_no_perms" msgid="5918305641302873520">"ਕੀ ਤੁਸੀਂ ਇਸ ਐਪਲੀਕੇਸ਼ਨ ਨੂੰ ਇੰਸਟੌਲ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ? ਇਸ ਲਈ ਕਿਸੇ ਖ਼ਾਸ ਪਹੁੰਚ ਦੀ ਲੋੜ ਨਹੀਂ ਹੈ।"</string>
@@ -67,6 +68,8 @@
     <string name="uninstall_application_text_user" msgid="8766882355635485733">"ਕੀ ਤੁਸੀਂ ਉਪਭੋਗਤਾ <xliff:g id="USERNAME">%1$s</xliff:g> ਲਈ ਇਸ ਐਪ ਨੂੰ ਅਣਇੰਸਟੌਲ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?"</string>
     <string name="uninstall_update_text" msgid="1394549691152728409">"ਕੀ ਇਸ ਐਪ ਨੂੰ ਫੈਕਟਰੀ ਸੰਸਕਰਣ ਨਾਲ ਬਦਲਣਾ ਹੈ? ਸਾਰਾ ਡੈਟਾ ਹਟਾ ਦਿੱਤਾ ਜਾਵੇਗਾ।"</string>
     <string name="uninstall_update_text_multiuser" msgid="2083665452990861991">"ਕੀ ਇਸ ਐਪ ਨੂੰ ਫੈਕਟਰੀ ਸੰਸਕਰਣ ਨਾਲ ਬਦਲਣਾ ਹੈ? ਸਾਰਾ ਡੈਟਾ ਹਟਾ ਦਿੱਤਾ ਜਾਵੇਗਾ। ਇਹ ਇਸ ਡੀਵਾਈਸ ਦੇ ਸਾਰੇ ਵਰਤੋਂਕਾਰਾਂ ਨੂੰ ਪ੍ਰਭਾਵਿਤ ਕਰੇਗਾ, ਜਿਸ ਵਿੱਚ ਕੰਮ ਪ੍ਰੋਫਾਈਲ ਵਾਲੇ ਵਰਤੋਂਕਾਰ ਵੀ ਸ਼ਾਮਲ ਹਨ।"</string>
+    <string name="uninstalling_notification_channel" msgid="5698369661583525583">"ਚੱਲ ਰਹੀਆਂ ਅਣਸਥਾਪਨਾਵਾਂ"</string>
+    <string name="uninstall_failure_notification_channel" msgid="8224276726364132314">"ਅਸਫਲ ਅਣਸਥਾਪਨਾਵਾਂ"</string>
     <string name="uninstalling" msgid="5556217435895938250">"ਅਣਇੰਸਟੌਲ ਕਰ  ਰਿਹਾ ਹੈ…"</string>
     <string name="uninstalling_app" msgid="2773617614877719294">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> ਨੂੰ ਅਣਸਥਾਪਤ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…"</string>
     <string name="uninstall_done" msgid="3792487853420281888">"ਅਣਇੰਸਟੌਲ ਪੂਰਾ ਹੋਇਆ।"</string>
@@ -139,5 +142,10 @@
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਤੁਹਾਡੇ ਟੈਬਲੈੱਟ ਨੂੰ ਇਸ ਸਰੋਤ ਤੋਂ ਅਗਿਆਤ ਐਪਾਂ ਸਥਾਪਿਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ।"</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਤੁਹਾਡੇ ਟੀਵੀ ਨੂੰ ਇਸ ਸਰੋਤ ਤੋਂ ਅਗਿਆਤ ਐਪਾਂ ਸਥਾਪਿਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ।"</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਤੁਹਾਡੇ ਫ਼ੋਨ ਨੂੰ ਇਸ ਸਰੋਤ ਤੋਂ ਅਗਿਆਤ ਐਪਾਂ ਸਥਾਪਿਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ।"</string>
+    <string name="anonymous_source_warning" product="default" msgid="7700263729981815614">"ਤੁਹਾਡਾ ਫ਼ੋਨ ਅਤੇ ਨਿੱਜੀ ਡੈਟਾ ਅਗਿਆਤ ਐਪਾਂ ਤੋਂ ਹਮਲੇ ਪ੍ਰਤੀ ਵਧੇਰੇ ਵਿੰਨਣਸ਼ੀਲ ਹਨ। ਇਹ ਐਪ ਸਥਾਪਤ ਕਰਕੇ, ਤੁਸੀਂ ਸਹਿਮਤੀ ਦਿੰਦੇ ਹੋ ਕਿ ਆਪਣੇ ਫ਼ੋਨ ਨੂੰ ਹੋਣ ਵਾਲੇ ਕਿਸੇ ਵੀ ਨੁਕਸਾਨ ਜਾਂ ਡੈਟੇ ਦੀ ਹਾਨੀ ਲਈ ਤੁਸੀਂ ਜ਼ਿੰਮੇਵਾਰ ਹੋ ਜੋ ਸ਼ਾਇਦ ਇਸ ਐਪ ਨੂੰ ਵਰਤਣ ਦੇ ਨਤੀਜੇ ਵਜੋਂ ਹੋ ਸਕਦਾ ਹੈ।"</string>
+    <string name="anonymous_source_warning" product="tablet" msgid="8854462805499848630">"ਤੁਹਾਡਾ ਟੈਬਲੈੱਟ ਅਤੇ ਨਿੱਜੀ ਡੈਟਾ ਅਗਿਆਤ ਐਪਾਂ ਤੋਂ ਹਮਲੇ ਪ੍ਰਤੀ ਵਧੇਰੇ ਵਿੰਨਣਸ਼ੀਲ ਹਨ। ਇਹ ਐਪ ਸਥਾਪਤ ਕਰਕੇ, ਤੁਸੀਂ ਸਹਿਮਤੀ ਦਿੰਦੇ ਹੋ ਕਿ ਆਪਣੇ ਟੈਬਲੈੱਟ ਨੂੰ ਹੋਣ ਵਾਲੇ ਕਿਸੇ ਵੀ ਨੁਕਸਾਨ ਜਾਂ ਡੈਟੇ ਦੀ ਹਾਨੀ ਲਈ ਤੁਸੀਂ ਜ਼ਿੰਮੇਵਾਰ ਹੋ ਜੋ ਸ਼ਾਇਦ ਇਸ ਐਪ ਨੂੰ ਵਰਤਣ ਦੇ ਨਤੀਜੇ ਵਜੋਂ ਹੋ ਸਕਦਾ ਹੈ।"</string>
+    <string name="anonymous_source_warning" product="tv" msgid="1291472686734385872">"ਤੁਹਾਡਾ ਟੀਵੀ ਅਤੇ ਨਿੱਜੀ ਡੈਟਾ ਅਗਿਆਤ ਐਪਾਂ ਤੋਂ ਹਮਲੇ ਪ੍ਰਤੀ ਵਧੇਰੇ ਵਿੰਨਣਸ਼ੀਲ ਹਨ। ਇਹ ਐਪ ਸਥਾਪਤ ਕਰਕੇ, ਤੁਸੀਂ ਸਹਿਮਤੀ ਦਿੰਦੇ ਹੋ ਕਿ ਆਪਣੇ ਟੀਵੀ ਨੂੰ ਹੋਣ ਵਾਲੇ ਕਿਸੇ ਵੀ ਨੁਕਸਾਨ ਜਾਂ ਡੈਟੇ ਦੀ ਹਾਨੀ ਲਈ ਤੁਸੀਂ ਜ਼ਿੰਮੇਵਾਰ ਹੋ ਜੋ ਸ਼ਾਇਦ ਇਸ ਐਪ ਨੂੰ ਵਰਤਣ ਦੇ ਨਤੀਜੇ ਵਜੋਂ ਹੋ ਸਕਦਾ ਹੈ।"</string>
+    <string name="anonymous_source_continue" msgid="2094381167954332292">"ਜਾਰੀ ਰੱਖੋ"</string>
     <string name="external_sources_settings" msgid="8601453744517291632">"ਸੈਟਿੰਗਾਂ"</string>
+    <string name="wear_app_channel" msgid="6200840123672949356">"ਵੀਅਰ ਐਪਾਂ ਨੂੰ ਸਥਾਪਤ/ਅਣਸਥਾਪਤ ਕਰਨਾ"</string>
 </resources>

@@ -24,6 +24,7 @@
     <string name="cancel" msgid="8360346460165114585">"Kanselleer"</string>
     <string name="unknown" msgid="4742479012767208045">"Onbekend"</string>
     <string name="installing" msgid="8613631001631998372">"Installeer tans…"</string>
+    <string name="installing_app" msgid="4097935682329028894">"Installeer tans <xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> …"</string>
     <string name="install_done" msgid="3682715442154357097">"Program geïnstalleer."</string>
     <string name="install_confirm_question" msgid="7295206719219043890">"Wil jy hierdie program installeer? Dit sal kan ingaan by:"</string>
     <string name="install_confirm_question_no_perms" msgid="5918305641302873520">"Wil jy hierdie program installeer? Dit vereis nie enige spesiale toegang nie."</string>
@@ -67,6 +68,8 @@
     <string name="uninstall_application_text_user" msgid="8766882355635485733">"Wil jy hierdie program vir die gebruiker <xliff:g id="USERNAME">%1$s</xliff:g> deïnstalleer?"</string>
     <string name="uninstall_update_text" msgid="1394549691152728409">"Vervang hierdie program met die fabriekweergawe? Alle data sal verwyder word."</string>
     <string name="uninstall_update_text_multiuser" msgid="2083665452990861991">"Vervang hierdie program met die fabriekweergawe? Alle data sal verwyder word. Dit beïnvloed alle gebruikers van hierdie toestel, insluitend dié met werkprofiele."</string>
+    <string name="uninstalling_notification_channel" msgid="5698369661583525583">"Voer tans deïnstallerings uit"</string>
+    <string name="uninstall_failure_notification_channel" msgid="8224276726364132314">"Mislukte installerings"</string>
     <string name="uninstalling" msgid="5556217435895938250">"Deïnstalleer tans…"</string>
     <string name="uninstalling_app" msgid="2773617614877719294">"Deïnstalleer tans <xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> …"</string>
     <string name="uninstall_done" msgid="3792487853420281888">"Deïnstallering klaar."</string>
@@ -139,5 +142,10 @@
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Jou tablet word vir jou veiligheid nie toegelaat om onbekende programme van hierdie bron af te installeer nie."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Jou TV word vir jou veiligheid nie toegelaat om onbekende programme van hierdie bron af te installeer nie."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Jou foon word vir jou veiligheid nie toegelaat om onbekende programme van hierdie bron af te installeer nie."</string>
+    <string name="anonymous_source_warning" product="default" msgid="7700263729981815614">"Jou foon en persoonlike data is meer kwesbaar vir aanvalle deur onbekende programme. Deur hierdie program te installeer, stem jy in dat jy verantwoordelik is vir enige skade aan jou foon of verlies van data wat uit sy gebruik kan spruit."</string>
+    <string name="anonymous_source_warning" product="tablet" msgid="8854462805499848630">"Jou tablet en persoonlike data is meer kwesbaar vir aanvalle deur onbekende programme. Deur hierdie program te installeer, stem jy in dat jy verantwoordelik is vir enige skade aan jou tablet of verlies van data wat uit sy gebruik kan spruit."</string>
+    <string name="anonymous_source_warning" product="tv" msgid="1291472686734385872">"Jou TV en persoonlike data is meer kwesbaar vir aanvalle deur onbekende programme. Deur hierdie program te installeer, stem jy in dat jy verantwoordelik is vir enige skade aan jou TV of verlies van data wat uit sy gebruik kan spruit."</string>
+    <string name="anonymous_source_continue" msgid="2094381167954332292">"Gaan voort"</string>
     <string name="external_sources_settings" msgid="8601453744517291632">"Instellings"</string>
+    <string name="wear_app_channel" msgid="6200840123672949356">"Installeer/deïnstalleer Wear-programme"</string>
 </resources>

@@ -24,6 +24,7 @@
     <string name="cancel" msgid="8360346460165114585">"キャンセル"</string>
     <string name="unknown" msgid="4742479012767208045">"不明"</string>
     <string name="installing" msgid="8613631001631998372">"インストール中..."</string>
+    <string name="installing_app" msgid="4097935682329028894">"「<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g>」をインストールしています…"</string>
     <string name="install_done" msgid="3682715442154357097">"アプリをインストールしました。"</string>
     <string name="install_confirm_question" msgid="7295206719219043890">"このアプリケーションをインストールしてもよろしいですか？このアプリケーションは下記にアクセスする場合があります:"</string>
     <string name="install_confirm_question_no_perms" msgid="5918305641302873520">"このアプリケーションをインストールしてもよろしいですか？このアプリケーションは特別なアクセス許可を必要としません。"</string>
@@ -67,6 +68,8 @@
     <string name="uninstall_application_text_user" msgid="8766882355635485733">"<xliff:g id="USERNAME">%1$s</xliff:g>さんのアプリをアンインストールしますか？"</string>
     <string name="uninstall_update_text" msgid="1394549691152728409">"このアプリを出荷時の状態に戻しますか？データがすべて削除されます。"</string>
     <string name="uninstall_update_text_multiuser" msgid="2083665452990861991">"このアプリを出荷時の状態に戻しますか？データがすべて削除されます。これは、仕事用プロファイルを設定しているユーザーも含めて、この端末を使用するすべてのユーザーが対象となります。"</string>
+    <string name="uninstalling_notification_channel" msgid="5698369661583525583">"実行中のアンインストール"</string>
+    <string name="uninstall_failure_notification_channel" msgid="8224276726364132314">"エラーになったアンインストール"</string>
     <string name="uninstalling" msgid="5556217435895938250">"アンインストール中..."</string>
     <string name="uninstalling_app" msgid="2773617614877719294">"「<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g>」をアンインストールしています…"</string>
     <string name="uninstall_done" msgid="3792487853420281888">"アンインストールが完了しました。"</string>
@@ -139,5 +142,10 @@
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"セキュリティ上の理由から、お使いのタブレットではこの提供元からの不明なアプリをインストールすることはできません。"</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"セキュリティ上の理由から、お使いのテレビではこの提供元からの不明なアプリをインストールすることはできません。"</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"セキュリティ上の理由から、お使いのスマートフォンではこの提供元からの不明なアプリをインストールすることはできません。"</string>
+    <string name="anonymous_source_warning" product="default" msgid="7700263729981815614">"不明なアプリをインストールするとスマートフォンや個人データが攻撃を受ける可能性が高くなります。このアプリをインストールすることにより、アプリの使用により生じる可能性があるスマートフォンへの損害やデータの損失について、ユーザーご自身が単独で責任を負うことに同意するものとします。"</string>
+    <string name="anonymous_source_warning" product="tablet" msgid="8854462805499848630">"不明なアプリをインストールするとタブレットや個人データが攻撃を受ける可能性が高くなります。このアプリをインストールすることにより、アプリの使用により生じる可能性があるタブレットへの損害やデータの損失について、ユーザーご自身が単独で責任を負うことに同意するものとします。"</string>
+    <string name="anonymous_source_warning" product="tv" msgid="1291472686734385872">"不明なアプリをインストールすると TV や個人データが攻撃を受ける可能性が高くなります。このアプリをインストールすることにより、アプリの使用により生じる可能性がある TV への損害やデータの損失について、ユーザーご自身が単独で責任を負うことに同意するものとします。"</string>
+    <string name="anonymous_source_continue" msgid="2094381167954332292">"続行"</string>
     <string name="external_sources_settings" msgid="8601453744517291632">"設定"</string>
+    <string name="wear_app_channel" msgid="6200840123672949356">"Wear アプリのインストールとアンインストール"</string>
 </resources>

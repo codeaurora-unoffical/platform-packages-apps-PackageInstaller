@@ -24,6 +24,7 @@
     <string name="cancel" msgid="8360346460165114585">"Cancelar"</string>
     <string name="unknown" msgid="4742479012767208045">"Desconhecido"</string>
     <string name="installing" msgid="8613631001631998372">"A instalar..."</string>
+    <string name="installing_app" msgid="4097935682329028894">"A instalar <xliff:g id="PACKAGE_LABEL">%1$s</xliff:g>…"</string>
     <string name="install_done" msgid="3682715442154357097">"Aplicação instalada."</string>
     <string name="install_confirm_question" msgid="7295206719219043890">"Pretende instalar esta aplicação? Terá acesso a:"</string>
     <string name="install_confirm_question_no_perms" msgid="5918305641302873520">"Pretende instalar esta aplicação? Não requer qualquer acesso especial."</string>
@@ -67,6 +68,8 @@
     <string name="uninstall_application_text_user" msgid="8766882355635485733">"Pretende desinstalar esta aplicação para o utilizador <xliff:g id="USERNAME">%1$s</xliff:g>?"</string>
     <string name="uninstall_update_text" msgid="1394549691152728409">"Pretende substituir esta aplicação pela versão de fábrica? Todos os dados são removidos."</string>
     <string name="uninstall_update_text_multiuser" msgid="2083665452990861991">"Pretende substituir esta aplicação pela versão de fábrica? Todos os dados são removidos. Esta ação afeta todos os utilizadores deste dispositivo, incluindo os que têm perfis de trabalho."</string>
+    <string name="uninstalling_notification_channel" msgid="5698369661583525583">"Desinstalações em execução"</string>
+    <string name="uninstall_failure_notification_channel" msgid="8224276726364132314">"Desinstalações com falha"</string>
     <string name="uninstalling" msgid="5556217435895938250">"A desinstalar..."</string>
     <string name="uninstalling_app" msgid="2773617614877719294">"A desinstalar a aplicação <xliff:g id="PACKAGE_LABEL">%1$s</xliff:g>…"</string>
     <string name="uninstall_done" msgid="3792487853420281888">"Desinstalação concluída."</string>
@@ -139,5 +142,10 @@
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Para sua segurança, o tablet não está autorizado a instalar aplicações desconhecidas a partir desta fonte."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Para sua segurança, a TV não está autorizada a instalar aplicações desconhecidas a partir desta fonte."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Para sua segurança, o telemóvel não está autorizado a instalar aplicações desconhecidas a partir desta fonte."</string>
+    <string name="anonymous_source_warning" product="default" msgid="7700263729981815614">"O seu telemóvel e os dados pessoais estão mais vulneráveis a ataques por parte de aplicações desconhecidas. Ao instalar esta aplicação, concorda que é responsável por quaisquer danos causados ao telemóvel ou pelas perdas de dados que possam resultar da utilização da mesma."</string>
+    <string name="anonymous_source_warning" product="tablet" msgid="8854462805499848630">"O seu tablet e os dados pessoais estão mais vulneráveis a ataques por parte de aplicações desconhecidas. Ao instalar esta aplicação, concorda que é responsável por quaisquer danos causados ao tablet ou pelas perdas de dados que possam resultar da utilização da mesma."</string>
+    <string name="anonymous_source_warning" product="tv" msgid="1291472686734385872">"A sua TV e os dados pessoais estão mais vulneráveis a ataques por parte de aplicações desconhecidas. Ao instalar esta aplicação, concorda que é responsável por quaisquer danos causados à TV ou pelas perdas de dados que possam resultar da utilização da mesma."</string>
+    <string name="anonymous_source_continue" msgid="2094381167954332292">"Continuar"</string>
     <string name="external_sources_settings" msgid="8601453744517291632">"Definições"</string>
+    <string name="wear_app_channel" msgid="6200840123672949356">"Instalar/desinstalar aplicações Wear"</string>
 </resources>

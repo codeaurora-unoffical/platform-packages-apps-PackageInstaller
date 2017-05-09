@@ -24,6 +24,7 @@
     <string name="cancel" msgid="8360346460165114585">"Zrušiť"</string>
     <string name="unknown" msgid="4742479012767208045">"Neznáme"</string>
     <string name="installing" msgid="8613631001631998372">"Inštaluje sa..."</string>
+    <string name="installing_app" msgid="4097935682329028894">"Inštaluje sa <xliff:g id="PACKAGE_LABEL">%1$s</xliff:g>…"</string>
     <string name="install_done" msgid="3682715442154357097">"Aplikácia bola nainštalovaná."</string>
     <string name="install_confirm_question" msgid="7295206719219043890">"Chcete nainštalovať túto aplikáciu? Získa nasledujúce povolenia:"</string>
     <string name="install_confirm_question_no_perms" msgid="5918305641302873520">"Chcete nainštalovať túto aplikáciu? Nevyžaduje žiadny zvláštny prístup."</string>
@@ -67,6 +68,8 @@
     <string name="uninstall_application_text_user" msgid="8766882355635485733">"Chcete túto aplikáciu odinštalovať pre používateľa <xliff:g id="USERNAME">%1$s</xliff:g>?"</string>
     <string name="uninstall_update_text" msgid="1394549691152728409">"Nahradiť túto aplikáciu továrenskou verziou? Všetky údaje sa odstránia."</string>
     <string name="uninstall_update_text_multiuser" msgid="2083665452990861991">"Nahradiť túto aplikáciu továrenskou verziou? Všetky údaje sa odstránia. Ovplyvní to všetkých používateľov tohto zariadenia vrátane tých s pracovnými profilmi."</string>
+    <string name="uninstalling_notification_channel" msgid="5698369661583525583">"Prebiehajúce odinštalácie"</string>
+    <string name="uninstall_failure_notification_channel" msgid="8224276726364132314">"Neúspešné odinštalácie"</string>
     <string name="uninstalling" msgid="5556217435895938250">"Prebieha odinštalovanie..."</string>
     <string name="uninstalling_app" msgid="2773617614877719294">"Prebieha odinštalovanie balíčka <xliff:g id="PACKAGE_LABEL">%1$s</xliff:g>…"</string>
     <string name="uninstall_done" msgid="3792487853420281888">"Odinštalovanie bolo dokončené."</string>
@@ -141,5 +144,10 @@
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Váš tablet nemôže z bezpečnostných dôvodov inštalovať neznáme aplikácie z tohto zdroja."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Váš televízor nemôže z bezpečnostných dôvodov inštalovať neznáme aplikácie z tohto zdroja."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Váš telefón nemôže z bezpečnostných dôvodov inštalovať neznáme aplikácie z tohto zdroja."</string>
+    <string name="anonymous_source_warning" product="default" msgid="7700263729981815614">"Váš telefón a osobné údaje sú náchylnejšie na útok z neznámych aplikácií. Inštalovaním tejto aplikácie súhlasíte, že zodpovedáte za akékoľvek poškodenie vášho telefónu či stratu údajov, ku ktorým môže dôjsť v dôsledku jej použitia."</string>
+    <string name="anonymous_source_warning" product="tablet" msgid="8854462805499848630">"Váš tablet a osobné údaje sú náchylnejšie na útok z neznámych aplikácií. Inštalovaním tejto aplikácie súhlasíte, že zodpovedáte za akékoľvek poškodenie vášho tabletu či stratu údajov, ku ktorým môže dôjsť v dôsledku jej použitia."</string>
+    <string name="anonymous_source_warning" product="tv" msgid="1291472686734385872">"Váš televízor a osobné údaje sú náchylnejšie na útok z neznámych aplikácií. Inštalovaním tejto aplikácie súhlasíte, že zodpovedáte za akékoľvek poškodenie vášho televízora či stratu údajov, ku ktorým môže dôjsť v dôsledku jej použitia."</string>
+    <string name="anonymous_source_continue" msgid="2094381167954332292">"Pokračovať"</string>
     <string name="external_sources_settings" msgid="8601453744517291632">"Nastavenia"</string>
+    <string name="wear_app_channel" msgid="6200840123672949356">"Inštalácia/odinštalácia aplikácií Wear"</string>
 </resources>
