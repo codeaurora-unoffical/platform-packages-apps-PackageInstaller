@@ -426,19 +426,20 @@ public final class AppPermissionsFragment extends SettingsWithHeader
                         })
                         .setPositiveButton(R.string.grant_dialog_button_deny_anyway,
                                 (DialogInterface dialog, int which) -> {
-                                    ((SwitchPreference) preference).setChecked(false);
-                                    if (preference instanceof MultiTargetSwitchPreference) {
-                                        updateSummaryForIndividuallyControlledPermissionGroup(
-                                                group, preference);
-                                    }
-                                    group.revokeRuntimePermissions(false);
-                                    if (AppPermissionGroup.isStrictOpEnable() && isPlatform) {
-                                        updateEveryPermissionPreference(group);
-                                    }
-                                    if (!grantedByDefault) {
-                                        mHasConfirmedRevoke = true;
-                                    }
-                                })
+                            ((SwitchPreference) preference).setChecked(false);
+                            group.revokeRuntimePermissions(false);
+                            if (Utils.areGroupPermissionsIndividuallyControlled(getContext(),
+                                    group.getName())) {
+                                updateSummaryForIndividuallyControlledPermissionGroup(
+                                        group, preference);
+                            }
+                            if (AppPermissionGroup.isStrictOpEnable() && isPlatform) {
+                                updateEveryPermissionPreference(group);
+                            }
+                            if (!grantedByDefault) {
+                                mHasConfirmedRevoke = true;
+                            }
+                        })
                         .show();
                 return false;
             } else {
@@ -465,9 +466,6 @@ public final class AppPermissionsFragment extends SettingsWithHeader
         final int permissionCount = permissions.size();
         for (int i = 0; i < permissionCount; i++) {
             Permission permission = permissions.get(i);
-            if (!Utils.isPermissionIndividuallyControlled(getContext(), permission.getName())) {
-                continue;
-            }
             if (group.doesSupportRuntimePermissions()
                     ? !permission.isGranted() : !permission.isAppOpAllowed()) {
                 revokedCount++;
