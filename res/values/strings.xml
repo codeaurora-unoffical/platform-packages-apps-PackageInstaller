@@ -24,6 +24,7 @@
     <string name="cancel">Cancel</string>
     <string name="unknown">Unknown</string>
     <string name="installing">Installing\u2026</string>
+    <string name="installing_app">Installing <xliff:g id="package_label">%1$s</xliff:g>\u2026</string>
     <string name="install_done">App installed.</string>
     <!-- Message for installing a new app that requires some permissions [CHAR LIMIT=NONE] -->
     <string name="install_confirm_question">Do you want to install this application?
@@ -333,10 +334,11 @@
     <!-- Help URL, application permissions [DO NOT TRANSLATE] -->
     <string name="help_app_permissions" translatable="false"></string>
 
-    <!-- Confirm dialog text to verify if the user really wants to clear data for the provided
-         package. -->
-    <string name="clear_app_data_confirm_dialog">Do you really want to clear the data for
-        <xliff:g id="package" example="com.google.vending">%1$s</xliff:g>?</string>
+    <!-- Warning shown when user input has been blocked due to another app overlaying screen
+         content. Since we don't know what the app is showing on top of the input target, we
+         can't verify user consent. [CHAR LIMIT=NONE] -->
+    <string name="window_obscured_warning">Because another app is displaying on top of these options,
+        Package Installer can\u2019t respond to your action.</string>
 
     <!-- Text to show in warning dialog on the tablet when the app source is not trusted [CHAR LIMIT=NONE] -->
     <string name="untrusted_external_source_warning" product="tablet">For your security, your tablet is not allowed to install unknown apps from this source.</string>
@@ -347,7 +349,37 @@
     <!-- Text to show in warning dialog on the phone when the app source is not trusted [CHAR LIMIT=NONE] -->
     <string name="untrusted_external_source_warning" product="default">For your security, your phone is not allowed to install unknown apps from this source.</string>
 
+    <!-- Text to show in warning dialog on the phone when the app source cannot be identified [CHAR LIMIT=NONE] -->
+    <string name="anonymous_source_warning" product="default">
+        Your phone and personal data are more vulnerable
+        to attack by unknown apps. By installing this app, you
+        agree that you are responsible for any damage to your
+        phone or loss of data that may result from its use.
+    </string>
+
+    <!-- Text to show in warning dialog on the tablet when the app source cannot be identified [CHAR LIMIT=NONE] -->
+    <string name="anonymous_source_warning" product="tablet">
+        Your tablet and personal data are more vulnerable
+        to attack by unknown apps. By installing this app, you
+        agree that you are responsible for any damage to your
+        tablet or loss of data that may result from its use.
+    </string>
+
+    <!-- Text to show in warning dialog on the tv when the app source cannot be identified [CHAR LIMIT=NONE] -->
+    <string name="anonymous_source_warning" product="tv">
+        Your TV and personal data are more vulnerable
+        to attack by unknown apps. By installing this app, you
+        agree that you are responsible for any damage to your
+        TV or loss of data that may result from its use.
+    </string>
+
+    <!-- Label for button to continue install of an app whose source cannot be identified [CHAR LIMIT=40] -->
+    <string name="anonymous_source_continue">Continue</string>
+
     <!-- Label for button to open manage external sources settings [CHAR LIMIT=45] -->
     <string name="external_sources_settings">Settings</string>
+
+    <!-- Label for the notification channel containing notifications for embedded app operations [CHAR LIMIT=40] -->
+    <string name="wear_app_channel">Installing/uninstalling wear apps</string>
 
 </resources>

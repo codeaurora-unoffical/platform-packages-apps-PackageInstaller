@@ -24,6 +24,7 @@
     <string name="cancel" msgid="8360346460165114585">"Annuleren"</string>
     <string name="unknown" msgid="4742479012767208045">"Onbekend"</string>
     <string name="installing" msgid="8613631001631998372">"Installeren..."</string>
+    <string name="installing_app" msgid="4097935682329028894">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> installeren…"</string>
     <string name="install_done" msgid="3682715442154357097">"App geïnstalleerd."</string>
     <string name="install_confirm_question" msgid="7295206719219043890">"Wil je deze app installeren? Deze krijgt toegang tot:"</string>
     <string name="install_confirm_question_no_perms" msgid="5918305641302873520">"Wil je deze app installeren? Hiervoor is geen speciale toegang vereist."</string>
@@ -67,6 +68,8 @@
     <string name="uninstall_application_text_user" msgid="8766882355635485733">"Wil je deze app verwijderen voor de gebruiker <xliff:g id="USERNAME">%1$s</xliff:g>?"</string>
     <string name="uninstall_update_text" msgid="1394549691152728409">"Deze app vervangen door de fabrieksversie? Alle gegevens worden verwijderd."</string>
     <string name="uninstall_update_text_multiuser" msgid="2083665452990861991">"Deze app vervangen door de fabrieksversie? Alle gegevens worden verwijderd. Dit geldt voor alle gebruikers van het apparaat, dus ook voor gebruikers met een werkprofiel."</string>
+    <string name="uninstalling_notification_channel" msgid="5698369661583525583">"Actieve verwijderingen"</string>
+    <string name="uninstall_failure_notification_channel" msgid="8224276726364132314">"Mislukte verwijderingen"</string>
     <string name="uninstalling" msgid="5556217435895938250">"Verwijderen..."</string>
     <string name="uninstalling_app" msgid="2773617614877719294">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> verwijderen…"</string>
     <string name="uninstall_done" msgid="3792487853420281888">"Verwijdering voltooid."</string>
@@ -92,7 +95,7 @@
     <string name="grant_dialog_button_more_info" msgid="2218220771432058426">"Meer informatie"</string>
     <string name="grant_dialog_button_deny_anyway" msgid="847960499284125250">"Toch weigeren"</string>
     <string name="current_permission_template" msgid="6378304249516652817">"<xliff:g id="CURRENT_PERMISSION_INDEX">%1$s</xliff:g> van <xliff:g id="PERMISSION_COUNT">%2$s</xliff:g>"</string>
-    <string name="permission_warning_template" msgid="7332275268559121742">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; het volgende toestaan: <xliff:g id="ACTION">%2$s</xliff:g>?"</string>
+    <string name="permission_warning_template" msgid="7332275268559121742">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; het volgende toestaan: <xliff:g id="ACTION">%2$s</xliff:g>."</string>
     <string name="permission_revoked_count" msgid="7386129423432613024">"<xliff:g id="COUNT">%1$d</xliff:g> uitgeschakeld"</string>
     <string name="permission_revoked_all" msgid="8595742638132863678">"alle rechten uitgeschakeld"</string>
     <string name="permission_revoked_none" msgid="2059511550181271342">"geen rechten uitgeschakeld"</string>
@@ -135,9 +138,14 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Huidige rechten"</string>
     <string name="message_staging" msgid="6151794817691100003">"App uitvoeren…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Onbekend"</string>
-    <string name="clear_app_data_confirm_dialog" msgid="1454306783329915599">"Wil je de gegevens voor <xliff:g id="PACKAGE">%1$s</xliff:g> echt wissen?"</string>
+    <string name="window_obscured_warning" msgid="897815544655204452">"Omdat een andere app deze opties afdekt, kan Pakket-installatie niet reageren op je actie."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Uit veiligheidsoverwegingen heeft je tablet geen toestemming om onbekende apps van deze bron te installeren."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Uit veiligheidsoverwegingen heeft je tv geen toestemming om onbekende apps van deze bron te installeren."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Uit veiligheidsoverwegingen heeft je telefoon geen toestemming om onbekende apps van deze bron te installeren."</string>
+    <string name="anonymous_source_warning" product="default" msgid="7700263729981815614">"Je telefoon en persoonlijke gegevens zijn kwetsbaarder voor aanvallen door onbekende apps. Als je deze app installeert, ga je ermee akkoord dat je verantwoordelijk bent voor eventuele schade aan je telefoon of gegevensverlies als gevolg van het gebruik van de app."</string>
+    <string name="anonymous_source_warning" product="tablet" msgid="8854462805499848630">"Je tablet en persoonlijke gegevens zijn kwetsbaarder voor aanvallen door onbekende apps. Als je deze app installeert, ga je ermee akkoord dat je verantwoordelijk bent voor eventuele schade aan je tablet of gegevensverlies als gevolg van het gebruik van de app."</string>
+    <string name="anonymous_source_warning" product="tv" msgid="1291472686734385872">"Je tv en persoonlijke gegevens zijn kwetsbaarder voor aanvallen door onbekende apps. Als je deze app installeert, ga je ermee akkoord dat je verantwoordelijk bent voor eventuele schade aan je tv of gegevensverlies als gevolg van het gebruik van de app."</string>
+    <string name="anonymous_source_continue" msgid="2094381167954332292">"Doorgaan"</string>
     <string name="external_sources_settings" msgid="8601453744517291632">"Instellingen"</string>
+    <string name="wear_app_channel" msgid="6200840123672949356">"Wear-apps installeren/verwijderen"</string>
 </resources>

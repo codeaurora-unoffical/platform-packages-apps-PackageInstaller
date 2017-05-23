@@ -24,6 +24,7 @@
     <string name="cancel" msgid="8360346460165114585">"Abbrechen"</string>
     <string name="unknown" msgid="4742479012767208045">"Unbekannt"</string>
     <string name="installing" msgid="8613631001631998372">"Wird installiert..."</string>
+    <string name="installing_app" msgid="4097935682329028894">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> wird installiert…"</string>
     <string name="install_done" msgid="3682715442154357097">"App wurde installiert."</string>
     <string name="install_confirm_question" msgid="7295206719219043890">"Möchtest du diese App installieren? Sie erhält dann folgende Berechtigungen:"</string>
     <string name="install_confirm_question_no_perms" msgid="5918305641302873520">"Möchtest du diese App installieren? Sie benötigt keinen besonderen Zugriff."</string>
@@ -67,6 +68,8 @@
     <string name="uninstall_application_text_user" msgid="8766882355635485733">"Möchtest du diese App für den Nutzer <xliff:g id="USERNAME">%1$s</xliff:g> deinstallieren?"</string>
     <string name="uninstall_update_text" msgid="1394549691152728409">"Diese App durch die Werksversion ersetzen? Alle Daten werden entfernt."</string>
     <string name="uninstall_update_text_multiuser" msgid="2083665452990861991">"Diese App durch die Werksversion ersetzen? Alle Daten werden entfernt. Dies betrifft alle Nutzer des Geräts, einschließlich Arbeitsprofilen."</string>
+    <string name="uninstalling_notification_channel" msgid="5698369661583525583">"Laufende Deinstallationen"</string>
+    <string name="uninstall_failure_notification_channel" msgid="8224276726364132314">"Fehlgeschlagene Deinstallationen"</string>
     <string name="uninstalling" msgid="5556217435895938250">"Wird deinstalliert..."</string>
     <string name="uninstalling_app" msgid="2773617614877719294">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> wird deinstalliert…"</string>
     <string name="uninstall_done" msgid="3792487853420281888">"Deinstallation abgeschlossen"</string>
@@ -135,9 +138,14 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Aktuelle Berechtigungen"</string>
     <string name="message_staging" msgid="6151794817691100003">"App wird vorbereitet…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Unbekannt"</string>
-    <string name="clear_app_data_confirm_dialog" msgid="1454306783329915599">"Möchtest du die Daten für <xliff:g id="PACKAGE">%1$s</xliff:g> löschen?"</string>
+    <string name="window_obscured_warning" msgid="897815544655204452">"Deine Aktion kann vom Paketinstallationsprogramm nicht bearbeitet werden, weil eine andere App über diesen Optionen angezeigt wird."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Aus Sicherheitsgründen kannst du auf dem Tablet keine unbekannten Apps aus dieser Quelle installieren."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Aus Sicherheitsgründen kannst du auf dem Fernseher keine unbekannten Apps aus dieser Quelle installieren."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Aus Sicherheitsgründen kannst du auf dem Smartphone keine unbekannten Apps aus dieser Quelle installieren."</string>
+    <string name="anonymous_source_warning" product="default" msgid="7700263729981815614">"Unbekannte Apps können gefährlich für dein Smartphone und deine personenbezogenen Daten sein. Indem du diese App installierst, erklärst du dich damit einverstanden, dass du die Verantwortung für alle Schäden an deinem Smartphone und jegliche Datenverluste trägst, die aus der Verwendung dieser App entstehen können."</string>
+    <string name="anonymous_source_warning" product="tablet" msgid="8854462805499848630">"Unbekannte Apps können gefährlich für dein Tablet und deine personenbezogenen Daten sein. Indem du diese App installierst, erklärst du dich damit einverstanden, dass du die Verantwortung für alle Schäden an deinem Tablet und jegliche Datenverluste trägst, die aus der Verwendung dieser App entstehen können."</string>
+    <string name="anonymous_source_warning" product="tv" msgid="1291472686734385872">"Unbekannte Apps können gefährlich für deinen Fernseher und deine personenbezogenen Daten sein. Indem du diese App installierst, erklärst du dich damit einverstanden, dass du die Verantwortung für alle Schäden an deinem Fernseher und jegliche Datenverluste trägst, die aus der Verwendung dieser App entstehen können."</string>
+    <string name="anonymous_source_continue" msgid="2094381167954332292">"Weiter"</string>
     <string name="external_sources_settings" msgid="8601453744517291632">"Einstellungen"</string>
+    <string name="wear_app_channel" msgid="6200840123672949356">"Wear-Apps installieren/deinstallieren"</string>
 </resources>

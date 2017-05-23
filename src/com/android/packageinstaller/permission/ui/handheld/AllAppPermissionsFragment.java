@@ -35,6 +35,7 @@ import android.preference.Preference;
 import android.preference.PreferenceCategory;
 import android.preference.PreferenceGroup;
 import android.provider.Settings;
+import android.util.IconDrawableFactory;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Switch;
@@ -124,7 +125,8 @@ public final class AllAppPermissionsFragment extends SettingsWithHeader {
             PackageInfo info = pm.getPackageInfo(pkg, PackageManager.GET_PERMISSIONS);
 
             ApplicationInfo appInfo = info.applicationInfo;
-            final Drawable icon = appInfo.loadIcon(pm);
+            final Drawable icon =
+                    IconDrawableFactory.newInstance(getContext()).getBadgedIcon(appInfo);
             final CharSequence label = appInfo.loadLabel(pm);
             Intent infoIntent = null;
             if (!getActivity().getIntent().getBooleanExtra(
@@ -314,20 +316,25 @@ public final class AllAppPermissionsFragment extends SettingsWithHeader {
                     // because another permission in the group is granted. This applies
                     // only to apps that support runtime permissions.
                     if (appPermissionGroup.doesSupportRuntimePermissions()) {
+                        int grantedCount = 0;
                         String[] revokedPermissionsToFix = null;
                         final int permissionCount = appPermissionGroup.getPermissions().size();
                         for (int i = 0; i < permissionCount; i++) {
                             Permission current = appPermissionGroup.getPermissions().get(i);
-                            if (!current.isGranted() && !current.isUserFixed()) {
-                                revokedPermissionsToFix = ArrayUtils.appendString(
-                                        revokedPermissionsToFix, current.getName());
+                            if (!current.isGranted()) {
+                                if (!current.isUserFixed()) {
+                                    revokedPermissionsToFix = ArrayUtils.appendString(
+                                            revokedPermissionsToFix, current.getName());
+                                }
+                            } else {
+                                grantedCount++;
                             }
                         }
                         if (revokedPermissionsToFix != null) {
                             // If some permissions were not granted then they should be fixed.
                             appPermissionGroup.revokeRuntimePermissions(true,
                                     revokedPermissionsToFix);
-                        } else {
+                        } else if (appPermissionGroup.getPermissions().size() == grantedCount) {
                             // If all permissions are granted then they should not be fixed.
                             appPermissionGroup.grantRuntimePermissions(false);
                         }
