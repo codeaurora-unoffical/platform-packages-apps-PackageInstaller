@@ -37,6 +37,7 @@ import com.android.packageinstaller.permission.ui.ButtonBarLayout;
 import com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler;
 import com.android.packageinstaller.permission.ui.ManagePermissionsActivity;
 import com.android.packageinstaller.permission.ui.ManualLayoutFrame;
+import com.android.packageinstaller.permission.model.AppPermissionGroup;
 
 public class GrantPermissionsViewHandlerImpl implements GrantPermissionsViewHandler,
         OnClickListener {
@@ -124,7 +125,11 @@ public class GrantPermissionsViewHandlerImpl implements GrantPermissionsViewHand
         mGroupIndex = groupIndex;
         mGroupIcon = icon;
         mGroupMessage = message;
-        mShowDonNotAsk = showDonNotAsk;
+        if (AppPermissionGroup.isStrictOpEnable()) {
+            mShowDonNotAsk = false;
+        } else {
+            mShowDonNotAsk = showDonNotAsk;
+        }
         mDoNotAskChecked = false;
         // If this is a second (or later) permission and the views exist, then animate.
         if (mIconView != null) {
@@ -351,7 +356,8 @@ public class GrantPermissionsViewHandlerImpl implements GrantPermissionsViewHand
                 if (mResultListener != null) {
                     view.clearAccessibilityFocus();
                     mResultListener.onPermissionGrantResult(mGroupName, false,
-                            mShowDonNotAsk && mDoNotAskCheckbox.isChecked());
+                            AppPermissionGroup.isStrictOpEnable() ? false : mShowDonNotAsk
+                                    && mDoNotAskCheckbox.isChecked());
                 }
                 break;
             case R.id.permission_more_info_button:

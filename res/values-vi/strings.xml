@@ -101,7 +101,7 @@
     <string name="permission_revoked_none" msgid="2059511550181271342">"không có quyền nào bị vô hiệu hóa"</string>
     <string name="grant_dialog_button_allow" msgid="4616529495342337095">"Cho phép"</string>
     <string name="app_permissions_breadcrumb" msgid="3390836200791539264">"Ứng dụng"</string>
-    <string name="app_permissions" msgid="3146758905824597178">"Giấy phép ứng dụng"</string>
+    <string name="app_permissions" msgid="3146758905824597178">"Quyền của ứng dụng"</string>
     <string name="never_ask_again" msgid="1089938738199748687">"Không hỏi lại"</string>
     <string name="no_permissions" msgid="3210542466245591574">"Không có quyền"</string>
     <string name="additional_permissions" msgid="6667573114240111763">"Quyền khác"</string>
@@ -138,7 +138,7 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Các quyền hiện tại"</string>
     <string name="message_staging" msgid="6151794817691100003">"Đang sắp xếp ứng dụng…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Không xác định"</string>
-    <string name="clear_app_data_confirm_dialog" msgid="1454306783329915599">"Bạn có thực sự muốn xóa dữ liệu cho <xliff:g id="PACKAGE">%1$s</xliff:g> không?"</string>
+    <string name="window_obscured_warning" msgid="897815544655204452">"Do một ứng dụng khác đang hiển thị ở phía trên các tùy chọn này nên Trình cài đặt gói không thể phản hồi với tác vụ của bạn."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Để bảo mật, máy tính bảng của bạn không được phép cài đặt các ứng dụng không xác định từ nguồn này."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Để bảo mật, TV của bạn không được phép cài đặt các ứng dụng không xác định từ nguồn này."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Để bảo mật, điện thoại của bạn không được phép cài đặt các ứng dụng không xác định từ nguồn này."</string>

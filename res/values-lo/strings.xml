@@ -114,7 +114,7 @@
     <string name="app_permissions_group_summary" msgid="4787239772223699263">"<xliff:g id="COUNT_0">%1$d</xliff:g> ໃນ <xliff:g id="COUNT_1">%2$d</xliff:g> ແອັບ​ໄດ້​ຮັບ​ອະ​ນຸ​ຍາດ​ແລ້ວ"</string>
     <string name="menu_show_system" msgid="6773743421743728921">"ສະແດງລະບົບ"</string>
     <string name="menu_hide_system" msgid="7595471742649432977">"ເຊື່ອງ​ລະ​ບົບ"</string>
-    <string name="permission_title" msgid="6495415273398916381">"<xliff:g id="PERMISSION">%1$s</xliff:g> ການອະນຸຍາດ"</string>
+    <string name="permission_title" msgid="6495415273398916381">"ການອະນຸຍາດ<xliff:g id="PERMISSION">%1$s</xliff:g>"</string>
     <string name="no_apps" msgid="1965493419005012569">"ບໍ່ມີແອັບ"</string>
     <string name="location_settings" msgid="1774875730854491297">"ການຕັ້ງຄ່າ​ທີ່​ຕັ້ງ"</string>
     <string name="location_warning" msgid="8778701356292735971">"<xliff:g id="APP_NAME">%1$s</xliff:g> ແມ່ນ​ຜູ້​ໃຫ້​ບໍ​ລິ​ການ​ເລື່ອງ​ການ​ບໍ​ລິ​ການ​ທີ່​ຕັ້ງ​ສຳ​ລັບ​ອຸ​ປະ​ກອນ​ນີ້. ການ​ເຂົ້າ​ເຖິງ​ທີ່​ຕັ້ງ​ແມ່ນ​ສາ​ມາດ​ດັດ​ແປງ​ໄດ້​ຈາກ​ການ​ຕັ້ງ​ຄ່າ​ທີ່​ຕັ້ງ."</string>
@@ -138,7 +138,7 @@
     <string name="current_permissions_category" msgid="998210994450606094">"ການ​ອະນຸຍາດ​ປັດຈຸ​ບັນ"</string>
     <string name="message_staging" msgid="6151794817691100003">"ກຳລັງຮຽງແອັບ…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"ບໍ່ຮູ້ຈັກ"</string>
-    <string name="clear_app_data_confirm_dialog" msgid="1454306783329915599">"ທ່ານຕ້ອງການລຶບລ້າງຂໍ້ມູນສຳລັບ <xliff:g id="PACKAGE">%1$s</xliff:g> ອອກແທ້ບໍ່?"</string>
+    <string name="window_obscured_warning" msgid="897815544655204452">"ເນື່ອງຈາກມີແອັບອື່ນກຳລັງສະແດງຜົນບັງຕົວເລືອກເຫຼົ່ານີ້ຢູ່, ຕິວຕິດຕັ້ງແພັກເກດຈຶ່ງບໍ່ສາມາດຕອບສະໜອງຄຳສັ່ງຂອງທ່ານໄດ້."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"ເພື່ອຄວາມປອດໄພຂອງທ່ານ, ແທັບເລັດຂອງທ່ານບໍ່ສາມາດຕິດຕັ້ງແອັບຈາກແຫລ່ງຂໍ້ມູນນີ້ໄດ້."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"ເພື່ອຄວາມປອດໄພຂອງທ່ານ, ໂທລະທັດຂອງທ່ານບໍ່ສາມາດຕິດຕັ້ງແອັບຈາກແຫລ່ງຂໍ້ມູນນີ້ໄດ້."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"ເພື່ອຄວາມປອດໄພຂອງທ່ານ, ໂທລະສັບຂອງທ່ານບໍ່ສາມາດຕິດຕັ້ງແອັບຈາກແຫລ່ງຂໍ້ມູນນີ້ໄດ້."</string>

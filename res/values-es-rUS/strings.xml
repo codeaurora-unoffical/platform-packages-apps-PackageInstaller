@@ -101,7 +101,7 @@
     <string name="permission_revoked_none" msgid="2059511550181271342">"ninguno inhabilitado"</string>
     <string name="grant_dialog_button_allow" msgid="4616529495342337095">"Permitir"</string>
     <string name="app_permissions_breadcrumb" msgid="3390836200791539264">"Aplicaciones"</string>
-    <string name="app_permissions" msgid="3146758905824597178">"Permisos de aplicaciones"</string>
+    <string name="app_permissions" msgid="3146758905824597178">"Permisos de apps"</string>
     <string name="never_ask_again" msgid="1089938738199748687">"No volver a preguntar"</string>
     <string name="no_permissions" msgid="3210542466245591574">"Sin permisos"</string>
     <string name="additional_permissions" msgid="6667573114240111763">"Permisos adicionales"</string>
@@ -138,7 +138,7 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Permisos actuales"</string>
     <string name="message_staging" msgid="6151794817691100003">"Preparando app…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Desconocido"</string>
-    <string name="clear_app_data_confirm_dialog" msgid="1454306783329915599">"¿Estás seguro de que quieres borrar los datos de <xliff:g id="PACKAGE">%1$s</xliff:g>?"</string>
+    <string name="window_obscured_warning" msgid="897815544655204452">"El Instalador de paquetes no puede procesar tu acción porque otra app se muestra sobre estas opciones."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Por tu seguridad, tu tablet no tiene permitido instalar apps desconocidas de esta fuente."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Por tu seguridad, tu TV no tiene permitido instalar apps desconocidas de esta fuente."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Por tu seguridad, tu teléfono no tiene permitido instalar apps desconocidas de esta fuente."</string>
