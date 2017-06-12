@@ -131,13 +131,15 @@ public class InstallStart extends Activity {
     private boolean declaresAppOpPermission(int uid, String permission) {
         try {
             final String[] packages = mIPackageManager.getAppOpPermissionPackages(permission);
-            for (String packageName : packages) {
-                try {
-                    if (uid == getPackageManager().getPackageUid(packageName, 0)) {
-                        return true;
+            if(packages != null){
+                for (String packageName : packages) {
+                    try {
+                        if (uid == getPackageManager().getPackageUid(packageName, 0)) {
+                            return true;
+                        }
+                    } catch (PackageManager.NameNotFoundException e) {
+                        // Ignore and try the next package
                     }
-                } catch (PackageManager.NameNotFoundException e) {
-                    // Ignore and try the next package
                 }
             }
         } catch (RemoteException rexc) {
