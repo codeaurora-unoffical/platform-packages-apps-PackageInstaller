@@ -118,7 +118,7 @@
                     style="@style/Widget.WearDiag.Button"/>
 
                 <Button
-                    android:id="@+id/vertical_button3"
+                    android:id="@+id/permission_deny_dont_ask_again_button"
                     style="@style/Widget.WearDiag.Button"/>
 
                 <!-- Adding padding to the bottom button causes rendering issues, so add

@@ -98,7 +98,7 @@ public abstract class ConfirmationViewHandler implements
 
         mVerticalButton1 = (Button) mRoot.findViewById(R.id.vertical_button1);
         mVerticalButton2 = (Button) mRoot.findViewById(R.id.vertical_button2);
-        mVerticalButton3 = (Button) mRoot.findViewById(R.id.vertical_button3);
+        mVerticalButton3 = (Button) mRoot.findViewById(R.id.permission_deny_dont_ask_again_button);
         mVerticalButton1.setOnClickListener(this);
         mVerticalButton2.setOnClickListener(this);
         mVerticalButton3.setOnClickListener(this);
@@ -217,7 +217,7 @@ public abstract class ConfirmationViewHandler implements
             case R.id.vertical_button2:
                 onButton2();
                 break;
-            case R.id.vertical_button3:
+            case R.id.permission_deny_dont_ask_again_button:
                 onButton3();
                 break;
         }
