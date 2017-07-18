@@ -21,7 +21,7 @@
     <string name="install" msgid="5896438203900042068">"Инсталиране"</string>
     <string name="done" msgid="3889387558374211719">"Готово"</string>
     <string name="security_settings_desc" msgid="2706691034244052604">"Да се разреши на това приложение следното:"</string>
-    <string name="cancel" msgid="8360346460165114585">"Отказ"</string>
+    <string name="cancel" msgid="8360346460165114585">"Назад"</string>
     <string name="unknown" msgid="4742479012767208045">"Неизвестно"</string>
     <string name="installing" msgid="8613631001631998372">"Инсталира се..."</string>
     <string name="installing_app" msgid="4097935682329028894">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> се инсталира…"</string>
@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Отваряне"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"Администраторът ви не разрешава инсталирането на приложения, получени от неизвестни източници"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Този потребител не може да инсталира неизвестни приложения"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Този потребител няма разрешение да инсталира приложения"</string>
     <string name="ok" msgid="3468756155452870475">"OK"</string>
     <string name="settings" msgid="6743583734099755409">"Настройки"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Управление на приложенията"</string>
