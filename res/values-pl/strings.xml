@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Otwórz"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"Twój administrator nie zezwala na instalowanie aplikacji pochodzących z nieznanych źródeł."</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Ten użytkownik nie może instalować nieznanych aplikacji"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Ten użytkownik nie może instalować aplikacji"</string>
     <string name="ok" msgid="3468756155452870475">"OK"</string>
     <string name="settings" msgid="6743583734099755409">"Ustawienia"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Zarządzaj aplikacjami"</string>
@@ -120,7 +121,7 @@
     <string name="no_apps" msgid="1965493419005012569">"Brak aplikacji"</string>
     <string name="location_settings" msgid="1774875730854491297">"Ustawienia lokalizacji"</string>
     <string name="location_warning" msgid="8778701356292735971">"<xliff:g id="APP_NAME">%1$s</xliff:g> jest dostawcą usług lokalizacyjnych dla tego urządzenia. Dostęp do danych lokalizacji można zmienić w ustawieniach lokalizacji."</string>
-    <string name="system_warning" msgid="7103819124542305179">"Jeśli odmówisz tych uprawnień, podstawowe funkcje urządzenia mogą nie działać prawidłowo."</string>
+    <string name="system_warning" msgid="7103819124542305179">"Jeśli nie przyznasz tych uprawnień, podstawowe funkcje urządzenia mogą nie działać prawidłowo."</string>
     <string name="permission_summary_enforced_by_policy" msgid="3418617316188986205">"Narzucone przez zasady"</string>
     <string name="loading" msgid="7811651799620593731">"Ładuję…"</string>
     <string name="all_permissions" msgid="5156669007784613042">"Wszystkie uprawnienia"</string>
@@ -140,7 +141,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Aktualne uprawnienia"</string>
     <string name="message_staging" msgid="6151794817691100003">"Przygotowuję aplikację…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Nieznana"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"Instalator pakietu nie reaguje na działania, ponieważ inna aplikacja jest wyświetlana nad tymi opcjami."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Ze względów bezpieczeństwa na Twoim tablecie nie można instalować nieznanych aplikacji z tego źródła."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Ze względów bezpieczeństwa na Twoim telewizorze nie można instalować nieznanych aplikacji z tego źródła."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Ze względów bezpieczeństwa na Twoim telefonie nie można instalować nieznanych aplikacji z tego źródła."</string>

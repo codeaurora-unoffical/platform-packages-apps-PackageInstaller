@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"ਖੋਲ੍ਹੋ"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"ਤੁਹਾਡਾ ਪ੍ਰਸ਼ਾਸਕ ਅਗਿਆਤ ਸਰੋਤਾਂ ਤੋਂ ਪ੍ਰਾਪਤ ਐਪਾਂ ਸਥਾਪਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਦਿੰਦਾ"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"ਇਸ ਵਰਤੋਂਕਾਰ ਵੱਲੋਂ ਅਗਿਆਤ ਐਪਾਂ ਨੂੰ ਸਥਾਪਤ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਦਾ"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"ਇਸ ਵਰਤੋਂਕਾਰ ਨੂੰ ਐਪਾਂ ਸਥਾਪਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ"</string>
     <string name="ok" msgid="3468756155452870475">"ਠੀਕ"</string>
     <string name="settings" msgid="6743583734099755409">"ਸੈਟਿੰਗਾਂ"</string>
     <string name="manage_applications" msgid="4033876279091996596">"ਐਪਸ ਵਿਵਸਥਿਤ ਕਰੋ"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"ਵਰਤਮਾਨ ਇਜਾਜ਼ਤਾਂ"</string>
     <string name="message_staging" msgid="6151794817691100003">"ਐਪ ਨੂੰ ਪੜਾਅਬੱਧ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"ਅਗਿਆਤ"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"ਕਿਉਂਕਿ ਇੱਕ ਹੋਰ ਐਪ ਇਹਨਾਂ ਵਿਕਲਪਾਂ ਉੱਤੇ ਪ੍ਰਦਰਸ਼ਿਤ ਹੋ ਰਹੀ ਹੈ, ਇਸ ਲਈ ਪੈਕੇਜ ਇੰਸਟਾਲਰ ਤੁਹਾਡੀ ਕਾਰਵਾਈ \'ਤੇ ਪ੍ਰਤਿਕਿਰਿਆ ਨਹੀਂ ਕਰ ਸਕਦਾ।"</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਤੁਹਾਡੇ ਟੈਬਲੈੱਟ ਨੂੰ ਇਸ ਸਰੋਤ ਤੋਂ ਅਗਿਆਤ ਐਪਾਂ ਸਥਾਪਿਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ।"</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਤੁਹਾਡੇ ਟੀਵੀ ਨੂੰ ਇਸ ਸਰੋਤ ਤੋਂ ਅਗਿਆਤ ਐਪਾਂ ਸਥਾਪਿਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ।"</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਤੁਹਾਡੇ ਫ਼ੋਨ ਨੂੰ ਇਸ ਸਰੋਤ ਤੋਂ ਅਗਿਆਤ ਐਪਾਂ ਸਥਾਪਿਤ ਕਰਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਹੈ।"</string>

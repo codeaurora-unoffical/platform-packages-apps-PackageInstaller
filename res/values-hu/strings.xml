@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Megnyitás"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"A rendszergazda nem engedélyezi az ismeretlen forrásokból származó alkalmazások telepítését"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Ez a felhasználó nem telepíthet ismeretlen alkalmazásokat"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Ez a felhasználó nem telepíthet alkalmazásokat"</string>
     <string name="ok" msgid="3468756155452870475">"OK"</string>
     <string name="settings" msgid="6743583734099755409">"Beállítások"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Alkalmazások kezelése"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Jelenlegi engedélyek"</string>
     <string name="message_staging" msgid="6151794817691100003">"Alkalmazás fokozatos közzététele…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Ismeretlen"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"Mivel egy másik alkalmazás jelenik meg a beállítások felett, a Csomagtelepítő nem tud válaszolni a műveletre."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Az Ön biztonsága érdekében táblagépe nem telepíthet ebből a forrásból származó ismeretlen alkalmazásokat."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Az Ön biztonsága érdekében tévéje nem telepíthet ebből a forrásból származó ismeretlen alkalmazásokat."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Az Ön biztonsága érdekében telefonja nem telepíthet ebből a forrásból származó ismeretlen alkalmazásokat."</string>

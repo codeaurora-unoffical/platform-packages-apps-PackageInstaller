@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Aç"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"Yöneticiniz, bilinmeyen kaynaklardan edinilen uygulamaların yüklenmesine izin vermiyor"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Bilinmeyen uygulamalar bu kullanıcı tarafından yüklenemez"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Bu kullanıcının uygulama yüklemesine izin verilmiyor"</string>
     <string name="ok" msgid="3468756155452870475">"Tamam"</string>
     <string name="settings" msgid="6743583734099755409">"Ayarlar"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Uygulamaları yönet"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Geçerli izinler"</string>
     <string name="message_staging" msgid="6151794817691100003">"Uygulama hazırlanıyor…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Bilinmiyor"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"Bu seçeneklerin üstünde başka bir uygulama görüntülendiğinden Paket Yükleyici, işleminize yanıt veremiyor."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Güvenlik nedeniyle tabletinizin bu kaynaktan bilinmeyen uygulamalar yüklemesine izin verilmez."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Güvenlik nedeniyle TV\'nizin bu kaynaktan bilinmeyen uygulamalar yüklemesine izin verilmez."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Güvenlik nedeniyle telefonunuzun bu kaynaktan bilinmeyen uygulamalar yüklemesine izin verilmez."</string>

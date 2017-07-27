@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Ачуу"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"Администраторуңуз белгисиз булактардан алынган колдонмолордун орнотулушуна жол бербейт"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Бул колдонуучу белгисиз колдонмолорду орното албайт"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Бул колдонуучу колдонмолорду орното албайт"</string>
     <string name="ok" msgid="3468756155452870475">"Жарайт"</string>
     <string name="settings" msgid="6743583734099755409">"Жөндөөлөр"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Колдонмолорду башкаруу"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Учурдагы уруксаттар"</string>
     <string name="message_staging" msgid="6151794817691100003">"Күтө туруңуз…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Белгисиз"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"Бул опциялардын үстүндө башка колдонмо көрсөтүлүп жаткандыктан, Топтомду орноткуч аракетиңизге жооп бере албайт."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Коопсуздукту сактоо максатында, планшетиңизге бул булактан колдонмолорду орнотууга уруксат жок."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Коопсуздукту сактоо максатында, сыналгыңызга бул булактан колдонмолорду орнотууга уруксат жок."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Коопсуздукту сактоо максатында, телефонуңузга бул булактан колдонмолорду орнотууга уруксат жок."</string>

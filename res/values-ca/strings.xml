@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Obre"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"L\'administrador no permet instal·lar aplicacions de fonts desconegudes"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Aquest usuari no pot instal·lar aplicacions desconegudes"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Aquest usuari no té permís per instal·lar aplicacions"</string>
     <string name="ok" msgid="3468756155452870475">"D\'acord"</string>
     <string name="settings" msgid="6743583734099755409">"Configuració"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Gestiona les aplicacions"</string>
@@ -57,7 +58,7 @@
     <string name="app_not_found_dlg_title" msgid="2692335460569505484">"No s\'ha trobat l\'aplicació"</string>
     <string name="app_not_found_dlg_text" msgid="6107465056055095930">"No s\'ha trobat l\'aplicació a la llista d\'aplicacions instal·lades."</string>
     <string name="user_is_not_allowed_dlg_title" msgid="118128026847201582">"Sense autorització"</string>
-    <string name="user_is_not_allowed_dlg_text" msgid="739716827677987545">"L\'usuari actual no està autoritzat a dur a terme aquesta desinstal·lació."</string>
+    <string name="user_is_not_allowed_dlg_text" msgid="739716827677987545">"L\'usuari actual no té permís per dur a terme aquesta desinstal·lació."</string>
     <string name="generic_error_dlg_title" msgid="2684806600635296961">"Error"</string>
     <string name="generic_error_dlg_text" msgid="4288738047825333954">"No s\'ha pogut desinstal·lar l\'aplicació."</string>
     <string name="uninstall_application_title" msgid="1860074100811653963">"Desinstal·la l\'aplicació"</string>
@@ -118,7 +119,7 @@
     <string name="no_apps" msgid="1965493419005012569">"Cap aplicació"</string>
     <string name="location_settings" msgid="1774875730854491297">"Configuració d\'ubicació"</string>
     <string name="location_warning" msgid="8778701356292735971">"<xliff:g id="APP_NAME">%1$s</xliff:g> és un proveïdor de serveis d\'ubicació per a aquest dispositiu. L\'accés a la ubicació es pot modificar des de la configuració d\'ubicació."</string>
-    <string name="system_warning" msgid="7103819124542305179">"Si no acceptes aquest permís, hi ha funcions bàsiques del dispositiu que poden deixar de funcionar com esperes."</string>
+    <string name="system_warning" msgid="7103819124542305179">"Si rebutges aquest permís, és possible que funcions bàsiques del dispositiu deixin de funcionar correctament."</string>
     <string name="permission_summary_enforced_by_policy" msgid="3418617316188986205">"Aplicat en funció de la política"</string>
     <string name="loading" msgid="7811651799620593731">"S\'està carregant..."</string>
     <string name="all_permissions" msgid="5156669007784613042">"Tots els permisos"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Permisos actuals"</string>
     <string name="message_staging" msgid="6151794817691100003">"S\'està preparant la instal·lació de l\'aplicació…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Desconegut"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"L\'aplicació Instal·lador de paquets no pot realitzar l\'acció perquè hi ha una altra aplicació que s\'està mostrant a sobre d\'aquestes opcions."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Per seguretat, la tauleta no pot instal·lar aplicacions desconegudes d\'aquesta font."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Per seguretat, el televisor no pot instal·lar aplicacions desconegudes d\'aquesta font."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Per seguretat, el telèfon no pot instal·lar aplicacions desconegudes d\'aquesta font."</string>

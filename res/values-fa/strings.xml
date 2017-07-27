@@ -16,7 +16,7 @@
 
 <resources xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="app_name" msgid="2738748390251381682">"نصب کننده بسته"</string>
+    <string name="app_name" msgid="2738748390251381682">"نصب‌کننده بسته"</string>
     <string name="next" msgid="3057143178373252333">"بعدی"</string>
     <string name="install" msgid="5896438203900042068">"نصب"</string>
     <string name="done" msgid="3889387558374211719">"تمام"</string>
@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"باز کردن"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"سرپرست سیستم شما اجازه نمی‌دهد برنامه‌های دریافت‌شده از منابع ناشناس را نصب کنید"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"این کاربر نمی‌تواند برنامه‌های ناشناس نصب کند"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"این کاربر مجاز به نصب برنامه‌ نیست"</string>
     <string name="ok" msgid="3468756155452870475">"تأیید"</string>
     <string name="settings" msgid="6743583734099755409">"تنظیمات"</string>
     <string name="manage_applications" msgid="4033876279091996596">"مدیریت برنامه‌ها"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"مجوزهای کنونی"</string>
     <string name="message_staging" msgid="6151794817691100003">"مرحله‌بندی برنامه…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"نامشخص"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"چون برنامه دیگری در بالای این گزینه‌ها نشان داده می‌شود، «نصب‌کننده بسته» نمی‌تواند به اقدام شما پاسخ دهد."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"برای امنیت شما، رایانه لوحی‌تان اجازه نمی‌دهد از این منبع برنامه‌های ناشناس نصب شوند."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"برای امنیت شما، تلویزیونتان اجازه نمی‌دهد از این منبع برنامه‌های ناشناس نصب شوند."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"برای امنیت شما، تلفنتان اجازه نمی‌دهد از این منبع برنامه‌های ناشناس نصب شوند."</string>

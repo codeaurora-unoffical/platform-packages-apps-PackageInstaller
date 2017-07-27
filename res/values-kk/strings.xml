@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Ашу"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"Әкімші белгісіз көздерден алынған қолданбаларды орнатуға рұқсат етпейді"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Бұл пайдаланушы белгісіз қолданбаларды орната алмайды"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Бұл пайдаланушының қолданбаларды орнату рұқсаты жоқ"</string>
     <string name="ok" msgid="3468756155452870475">"Жарайды"</string>
     <string name="settings" msgid="6743583734099755409">"Параметрлер"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Қолданбаларды басқару"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Ағымдағы рұқсаттар"</string>
     <string name="message_staging" msgid="6151794817691100003">"Қолданба реттелуде…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Белгісіз"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"Бұл опциялардың үстінен басқа қолданба көрсетілетіндіктен, пакет орнатқышы әрекетіңізге жауап бермейді."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Қауіпсіздікті сақтау үшін планшетке бұл дереккөзден белгісіз қолданбаларды орнатуға рұқсат берілмейді."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Қауіпсіздікті сақтау үшін теледидарға бұл дереккөзден белгісіз қолданбаларды орнатуға рұқсат берілмейді."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Қауіпсіздікті сақтау үшін телефонға бұл дереккөзден белгісіз қолданбаларды орнатуға рұқсат берілмейді."</string>

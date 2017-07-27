@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"打开"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"您的管理员不允许安装来源不明的应用"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"该用户无法安装未知应用"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"此用户不能安装应用"</string>
     <string name="ok" msgid="3468756155452870475">"确定"</string>
     <string name="settings" msgid="6743583734099755409">"设置"</string>
     <string name="manage_applications" msgid="4033876279091996596">"管理应用"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"当前权限"</string>
     <string name="message_staging" msgid="6151794817691100003">"正在准备安装应用…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"未知"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"由于另一个应用目前正显示在这些选项上，软件包安装程序无法回应您的操作。"</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"出于安全考虑，已禁止您的平板电脑安装来自此来源的未知应用。"</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"出于安全考虑，已禁止您的电视安装来自此来源的未知应用。"</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"出于安全考虑，已禁止您的手机安装来自此来源的未知应用。"</string>

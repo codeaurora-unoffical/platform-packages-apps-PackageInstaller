@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Abrir"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"Seu administrador não permite a instalação de apps transferidos por download de fontes desconhecidas"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Apps desconhecidos não podem ser instalados por este usuário"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"Este usuário não tem permissão para instalar apps"</string>
     <string name="ok" msgid="3468756155452870475">"OK"</string>
     <string name="settings" msgid="6743583734099755409">"Configurações"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Gerenciar apps"</string>
@@ -103,7 +104,7 @@
     <string name="app_permissions_breadcrumb" msgid="3390836200791539264">"Apps"</string>
     <string name="app_permissions" msgid="3146758905824597178">"Permissões do app"</string>
     <string name="never_ask_again" msgid="1089938738199748687">"Não perguntar novamente"</string>
-    <string name="no_permissions" msgid="3210542466245591574">"Sem permissão"</string>
+    <string name="no_permissions" msgid="3210542466245591574">"Sem permissões"</string>
     <string name="additional_permissions" msgid="6667573114240111763">"Permissões adicionais"</string>
     <plurals name="additional_permissions_more" formatted="false" msgid="945127158155064388">
       <item quantity="one">Mais <xliff:g id="COUNT_1">%1$d</xliff:g></item>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Permissões atuais"</string>
     <string name="message_staging" msgid="6151794817691100003">"Promovendo app…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Desconhecido"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"Como outro app está sendo exibido sobre essas opções, o instalador de pacotes não pode responder à sua ação."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"Para sua segurança, seu tablet não tem permissão para instalar apps desconhecidos dessa fonte."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"Para sua segurança, sua TV não tem permissão para instalar apps desconhecidos dessa fonte."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"Para sua segurança, seu smartphone não tem permissão para instalar apps desconhecidos dessa fonte."</string>

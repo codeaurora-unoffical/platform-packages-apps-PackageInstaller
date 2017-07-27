@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"Отвори"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"Вашиот администратор не дозволува инсталација на апликации добиени од непознати извори"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"Корисников не може да инсталира непознати апликации"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"На корисников не му е дозволено да инсталира апликации"</string>
     <string name="ok" msgid="3468756155452870475">"Во ред"</string>
     <string name="settings" msgid="6743583734099755409">"Поставки"</string>
     <string name="manage_applications" msgid="4033876279091996596">"Управувај со апликации"</string>
@@ -138,7 +139,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"Тековни дозволи"</string>
     <string name="message_staging" msgid="6151794817691100003">"Апликацијата се поставува…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"Непознато"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"„Инсталатерот на пакети“ не може да реагира на вашето дејство, бидејќи друга апликација се прикажува врз опцииве."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"За ваша безбедност, таблетот нема дозвола за инсталирање непознати апликации од изворов."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"За ваша безбедност, телевизорот нема дозвола за инсталирање непознати апликации од изворов."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"За ваша безбедност, телефонот нема дозвола за инсталирање непознати апликации од изворов."</string>

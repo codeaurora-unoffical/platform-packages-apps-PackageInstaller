@@ -45,6 +45,7 @@
     <string name="launch" msgid="4826921505917605463">"გახსნა"</string>
     <string name="unknown_apps_admin_dlg_text" msgid="7488386758312008790">"უცნობი წყაროებიდან ჩამოტვირთული აპების ინსტალაცია თქვენი ადმინისტრატორის მიერ ნებადართული არ არის"</string>
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"ამ მომხმარებელს უცნობი აპების ინსტალაცია არ შეუძლია"</string>
+    <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"ამ მომხმარებელს აპების დაინსტალირების უფლება არ აქვს"</string>
     <string name="ok" msgid="3468756155452870475">"კარგი"</string>
     <string name="settings" msgid="6743583734099755409">"პარამეტრები"</string>
     <string name="manage_applications" msgid="4033876279091996596">"აპების მართვა"</string>
@@ -139,7 +140,6 @@
     <string name="current_permissions_category" msgid="998210994450606094">"ამჟამინდელი ნებართვები"</string>
     <string name="message_staging" msgid="6151794817691100003">"მიმდინარეობს აპის შუალედური შენახვა…"</string>
     <string name="app_name_unknown" msgid="8931522764510159105">"უცნობი"</string>
-    <string name="window_obscured_warning" msgid="897815544655204452">"პაკეტის ინსტალატორი თქვენს მოქმედებაზე ვერ რეაგირებს, რადგან სხვა აპი გადაფარვითაა ნაჩვენები ამ ვარიანტებზე."</string>
     <string name="untrusted_external_source_warning" product="tablet" msgid="1483151219938173935">"თქვენივე უსაფრთხოებისთვის, ტაბლეტს ამ წყაროდან უცნობი აპების ინსტალაციის უფლება არ აქვს."</string>
     <string name="untrusted_external_source_warning" product="tv" msgid="5373768281884328560">"თქვენივე უსაფრთხოებისთვის, ტელევიზორს ამ წყაროდან უცნობი აპების ინსტალაციის უფლება არ აქვს."</string>
     <string name="untrusted_external_source_warning" product="default" msgid="2223486836232706553">"თქვენივე უსაფრთხოებისთვის, ტელეფონს ამ წყაროდან უცნობი აპების ინსტალაციის უფლება არ აქვს."</string>
