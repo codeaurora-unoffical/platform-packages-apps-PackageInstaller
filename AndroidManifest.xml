@@ -72,6 +72,7 @@
 
         <activity android:name=".InstallInstalling"
                 android:theme="@style/DialogWhenLargeNoAnimation"
+                android:configChanges="orientation|keyboardHidden|screenSize"
                 android:exported="false" />
 
         <receiver android:name=".InstallEventReceiver"
