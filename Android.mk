@@ -9,8 +9,7 @@ LOCAL_SRC_FILES := \
     $(call all-java-files-under, src)
 
 LOCAL_STATIC_ANDROID_LIBRARIES += \
-    $(ANDROID_SUPPORT_CAR_TARGETS) \
-    $(ANDROID_SUPPORT_DESIGN_TARGETS) \
+    android-support-car \
     android-support-transition \
     android-support-compat \
     android-support-media-compat \
@@ -24,7 +23,6 @@ LOCAL_STATIC_ANDROID_LIBRARIES += \
     android-support-v17-leanback \
     android-support-v17-preference-leanback \
     car-list \
-    car-stream-ui-lib \
     SettingsLib
 
 LOCAL_STATIC_JAVA_LIBRARIES := \
