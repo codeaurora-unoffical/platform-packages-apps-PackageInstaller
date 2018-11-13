@@ -17,6 +17,7 @@
 package com.android.packageinstaller.permission.ui;
 
 import static android.content.pm.PackageManager.PERMISSION_DENIED;
+import static android.view.WindowManager.LayoutParams.PRIVATE_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS;
 
 import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler.DENIED;
 import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler
@@ -26,16 +27,18 @@ import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHan
         .GRANTED_FOREGROUND_ONLY;
 import static com.android.packageinstaller.permission.utils.Utils.getRequestMessage;
 
+import android.app.Activity;
+import android.app.KeyguardManager;
 import android.app.admin.DevicePolicyManager;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
-import android.content.pm.PackageParser;
 import android.content.res.Resources;
 import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Bundle;
+import android.permission.PermissionManager;
 import android.text.Html;
 import android.text.Spanned;
 import android.util.ArrayMap;
@@ -47,23 +50,23 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-import com.android.internal.content.PackageMonitor;
-import com.android.internal.logging.nano.MetricsProto;
+import androidx.annotation.Nullable;
+
 import com.android.packageinstaller.DeviceUtils;
-import com.android.permissioncontroller.R;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.ui.auto.GrantPermissionsAutoViewHandler;
 import com.android.packageinstaller.permission.utils.ArrayUtils;
-import com.android.packageinstaller.permission.utils.EventLogger;
+import com.android.packageinstaller.permission.utils.PackageRemovalMonitor;
 import com.android.packageinstaller.permission.utils.SafetyNetLogger;
+import com.android.permissioncontroller.R;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class GrantPermissionsActivity extends OverlayTouchActivity
+public class GrantPermissionsActivity extends Activity
         implements GrantPermissionsViewHandler.ResultListener {
 
     private static final String LOG_TAG = "GrantPermissionsActivity";
@@ -78,8 +81,17 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
 
     boolean mResultSet;
 
-    private PackageManager.OnPermissionsChangedListener mPermissionChangeListener;
-    private PackageMonitor mPackageMonitor;
+    /**
+     * Listens for changes to the permission of the app the permissions are currently getting
+     * granted to. {@code null} when unregistered.
+     */
+    private @Nullable PackageManager.OnPermissionsChangedListener mPermissionChangeListener;
+
+    /**
+     * Listens for changes to the app the permissions are currently getting granted to. {@code null}
+     * when unregistered.
+     */
+    private @Nullable PackageRemovalMonitor mPackageRemovalMonitor;
 
     private String mCallingPackage;
 
@@ -160,19 +172,10 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
 
+        getWindow().addPrivateFlags(PRIVATE_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+
         // Cache this as this can only read on onCreate, not later.
         mCallingPackage = getCallingPackage();
-
-        mPackageMonitor = new PackageMonitor() {
-            @Override
-            public void onPackageRemoved(String packageName, int uid) {
-                if (mCallingPackage.equals(packageName)) {
-                    Log.w(LOG_TAG, mCallingPackage + " was uninstalled");
-
-                    finish();
-                }
-            }
-        };
 
         setFinishOnTouchOutside(false);
 
@@ -205,13 +208,6 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
         final int requestedPermCount = mRequestedPermissions.length;
 
         if (requestedPermCount == 0) {
-            setResultAndFinish();
-            return;
-        }
-
-        try {
-            mPermissionChangeListener = new PermissionChangeListener();
-        } catch (NameNotFoundException e) {
             setResultAndFinish();
             return;
         }
@@ -316,9 +312,11 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
             for (int permissionNum = 0; permissionNum < numRequestedPermissions; permissionNum++) {
                 String permission = mRequestedPermissions[permissionNum];
 
+                /* Replace by @SystemAPI logging
                 EventLogger.logPermission(
                         MetricsProto.MetricsEvent.ACTION_PERMISSION_REQUESTED, permission,
                         mAppPermissions.getPackageInfo().packageName);
+                 */
             }
         }
     }
@@ -380,11 +378,25 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
     protected void onStart() {
         super.onStart();
 
+        try {
+            mPermissionChangeListener = new PermissionChangeListener();
+        } catch (NameNotFoundException e) {
+            setResultAndFinish();
+            return;
+        }
         PackageManager pm = getPackageManager();
         pm.addOnPermissionsChangeListener(mPermissionChangeListener);
 
         // get notified when the package is removed
-        mPackageMonitor.register(this, getMainLooper(), false);
+        mPackageRemovalMonitor = new PackageRemovalMonitor(this, mCallingPackage) {
+            @Override
+            public void onPackageRemoved() {
+                Log.w(LOG_TAG, mCallingPackage + " was uninstalled");
+
+                finish();
+            }
+        };
+        mPackageRemovalMonitor.register();
 
         // check if the package was removed while this activity was not started
         try {
@@ -401,9 +413,15 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
     protected void onStop() {
         super.onStop();
 
-        mPackageMonitor.unregister();
+        if (mPackageRemovalMonitor != null) {
+            mPackageRemovalMonitor.unregister();
+            mPackageRemovalMonitor = null;
+        }
 
-        getPackageManager().removeOnPermissionsChangeListener(mPermissionChangeListener);
+        if (mPermissionChangeListener != null) {
+            getPackageManager().removeOnPermissionsChangeListener(mPermissionChangeListener);
+            mPermissionChangeListener = null;
+        }
     }
 
     @Override
@@ -504,20 +522,10 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
 
                 CharSequence appLabel = mAppPermissions.getAppLabel();
 
-                // Set the new grant view
-                // TODO: Use a real message for the action. We need group action APIs
-                Resources resources;
-                try {
-                    resources = getPackageManager().getResourcesForApplication(
-                            groupState.mGroup.getIconPkg());
-                } catch (NameNotFoundException e) {
-                    // Fallback to system.
-                    resources = Resources.getSystem();
-                }
-
                 Icon icon;
                 try {
-                    icon = Icon.createWithResource(resources, groupState.mGroup.getIconResId());
+                    icon = Icon.createWithResource(groupState.mGroup.getIconPkg(),
+                            groupState.mGroup.getIconResId());
                 } catch (Resources.NotFoundException e) {
                     Log.e(LOG_TAG, "Cannot load icon for group" + groupState.mGroup.getName(), e);
                     icon = null;
@@ -606,6 +614,35 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
         GroupState foregroundGroupState = getForegroundGroupState(name);
         GroupState backgroundGroupState = getBackgroundGroupState(name);
 
+        if (result == GRANTED_ALWAYS || result == GRANTED_FOREGROUND_ONLY
+                || result == DENIED_DO_NOT_ASK_AGAIN) {
+            KeyguardManager kgm = getSystemService(KeyguardManager.class);
+
+            if (kgm.isDeviceLocked()) {
+                kgm.requestDismissKeyguard(this, new KeyguardManager.KeyguardDismissCallback() {
+                            @Override
+                            public void onDismissError() {
+                                Log.e(LOG_TAG, "Cannot dismiss keyguard perm=" + name + " result="
+                                        + result);
+                            }
+
+                            @Override
+                            public void onDismissCancelled() {
+                                // do nothing (i.e. stay at the current permission group)
+                            }
+
+                            @Override
+                            public void onDismissSucceeded() {
+                                // Now the keyguard is dismissed, hence the device is not locked
+                                // anymore
+                                onPermissionGrantResult(name, result);
+                            }
+                        });
+
+                return;
+            }
+        }
+
         switch (result) {
             case GRANTED_ALWAYS :
                 if (foregroundGroupState != null) {
@@ -672,9 +709,11 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
                     String permission = mRequestedPermissions[i];
 
                     if (groupState.mGroup.hasPermission(permission)) {
+                        /* Replace by @SystemAPI logging
                         EventLogger.logPermission(
                                 MetricsProto.MetricsEvent.ACTION_PERMISSION_DENIED, permission,
                                 mAppPermissions.getPackageInfo().packageName);
+                         */
                     }
                 }
             }
@@ -767,10 +806,11 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
         // affected
         ArrayList<String> splitPerms = new ArrayList<>();
         splitPerms.add(permission);
-        for (PackageParser.SplitPermissionInfo splitPerm : PackageParser.SPLIT_PERMISSIONS) {
-            if (requestingAppTargetSDK < splitPerm.targetSdk
-                    && permission.equals(splitPerm.rootPerm)) {
-                Collections.addAll(splitPerms, splitPerm.newPerms);
+        for (PermissionManager.SplitPermissionInfo splitPerm
+                : getSystemService(PermissionManager.class).getSplitPermissions()) {
+            if (requestingAppTargetSDK < splitPerm.getTargetSdk()
+                    && permission.equals(splitPerm.getRootPermission())) {
+                Collections.addAll(splitPerms, splitPerm.getNewPermissions());
             }
         }
 

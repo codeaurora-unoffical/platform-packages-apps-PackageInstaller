@@ -16,23 +16,27 @@
 
 package com.android.packageinstaller.permission.ui.handheld;
 
+import static com.android.packageinstaller.permission.utils.Utils.DEFAULT_MAX_LABEL_SIZE_PX;
 import static com.android.packageinstaller.permission.utils.Utils.getRequestMessage;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
-import android.annotation.LayoutRes;
 import android.app.AlertDialog;
 import android.app.Dialog;
-import android.app.DialogFragment;
-import android.app.Fragment;
 import android.content.DialogInterface;
 import android.content.pm.PackageItemInfo;
 import android.os.Bundle;
-import android.preference.PreferenceScreen;
 import android.text.BidiFormatter;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.Switch;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.LayoutRes;
+import androidx.fragment.app.DialogFragment;
+import androidx.fragment.app.Fragment;
+import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceViewHolder;
 
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.Permission;
@@ -57,9 +61,10 @@ class PermissionPreference extends MultiTargetSwitchPreference {
     static final int CHANGE_BOTH = CHANGE_FOREGROUND | CHANGE_BACKGROUND;
 
     private final AppPermissionGroup mGroup;
-    private final Fragment mFragment;
+    private final PreferenceFragmentCompat mFragment;
     private final PermissionPreferenceChangeListener mCallBacks;
     private final @LayoutRes int mOriginalWidgetLayoutRes;
+    private final int mIconSize;
 
     /** Callbacks for the permission to the fragment showing a list of permissions */
     interface PermissionPreferenceChangeListener {
@@ -115,14 +120,15 @@ class PermissionPreference extends MultiTargetSwitchPreference {
         void onBackgroundAccessChosen(String key, int chosenItem);
     }
 
-    PermissionPreference(Fragment fragment, AppPermissionGroup group,
-            PermissionPreferenceChangeListener callbacks) {
-        super(fragment.getContext());
+    PermissionPreference(PreferenceFragmentCompat fragment, AppPermissionGroup group,
+            PermissionPreferenceChangeListener callbacks, int iconSize) {
+        super(fragment.getPreferenceManager().getContext());
 
         mFragment = fragment;
         mGroup = group;
         mCallBacks = callbacks;
         mOriginalWidgetLayoutRes = getWidgetLayoutResource();
+        mIconSize = iconSize;
 
         setPersistent(false);
         updateUi();
@@ -175,17 +181,17 @@ class PermissionPreference extends MultiTargetSwitchPreference {
      * @return The admin or {@code null} if there is no admin.
      */
     private EnforcedAdmin getAdmin() {
-        return RestrictedLockUtils.getProfileOrDeviceOwner(getContext(), mGroup.getUserId());
+        return RestrictedLockUtils.getProfileOrDeviceOwner(getContext(), mGroup.getUser());
     }
 
     @Override
-    public void performClick(PreferenceScreen preferenceScreen) {
+    public void performClick(View view) {
         EnforcedAdmin admin = getAdmin();
 
         if (isPolicyFullyFixed() && admin != null) {
             RestrictedLockUtils.sendShowAdminSupportDetailsIntent(getContext(), admin);
         } else {
-            super.performClick(preferenceScreen);
+            super.performClick(view);
         }
     }
 
@@ -426,10 +432,22 @@ class PermissionPreference extends MultiTargetSwitchPreference {
     private String getAppLabel() {
         return BidiFormatter.getInstance().unicodeWrap(
                 mGroup.getApp().applicationInfo.loadSafeLabel(getContext().getPackageManager(),
-                        PackageItemInfo.DEFAULT_MAX_LABEL_SIZE_PX,
+                        DEFAULT_MAX_LABEL_SIZE_PX,
                         PackageItemInfo.SAFE_LABEL_FLAG_TRIM
                                 | PackageItemInfo.SAFE_LABEL_FLAG_FIRST_LINE)
                         .toString());
+    }
+
+    @Override
+    public void onBindViewHolder(PreferenceViewHolder holder) {
+        if (mIconSize > 0) {
+            ImageView icon = ((ImageView) holder.findViewById(android.R.id.icon));
+
+            icon.setMaxWidth(mIconSize);
+            icon.setMaxHeight(mIconSize);
+        }
+
+        super.onBindViewHolder(holder);
     }
 
     /**
@@ -450,7 +468,7 @@ class PermissionPreference extends MultiTargetSwitchPreference {
      * @return If the request was processed.
      */
     private boolean requestChange(boolean requestGrant, @ChangeTarget int changeTarget) {
-        if (LocationUtils.isLocationGroupAndProvider(mGroup.getName(),
+        if (LocationUtils.isLocationGroupAndProvider(getContext(), mGroup.getName(),
                 mGroup.getApp().packageName)) {
             LocationUtils.showLocationDialog(getContext(), getAppLabel());
             return false;

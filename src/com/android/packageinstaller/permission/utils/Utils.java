@@ -17,7 +17,6 @@
 package com.android.packageinstaller.permission.utils;
 
 import android.Manifest;
-import android.annotation.StringRes;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -31,10 +30,12 @@ import android.util.ArraySet;
 import android.util.Log;
 import android.util.TypedValue;
 
-import com.android.permissioncontroller.R;
+import androidx.annotation.StringRes;
+
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.PermissionApps.PermissionApp;
+import com.android.permissioncontroller.R;
 
 import java.util.List;
 
@@ -43,6 +44,8 @@ public final class Utils {
     private static final String LOG_TAG = "Utils";
 
     public static final String OS_PKG = "android";
+
+    public static final float DEFAULT_MAX_LABEL_SIZE_PX = 500f;
 
     public static final String[] MODERN_PERMISSION_GROUPS = {
             Manifest.permission_group.CALENDAR,
@@ -91,7 +94,7 @@ public final class Utils {
      *
      * @return
      */
-    public static boolean shouldShowPermission(AppPermissionGroup group) {
+    public static boolean shouldShowPermission(Context context, AppPermissionGroup group) {
         boolean isSystemFixed = group.isSystemFixed();
         if (group.getBackgroundPermissions() != null) {
             // If the foreground mode is fixed to "enabled", the background mode might still be
@@ -103,7 +106,7 @@ public final class Utils {
 
         // We currently will not show permissions fixed by the system.
         // which is what the system does for system components.
-        if (isSystemFixed && !LocationUtils.isLocationGroupAndProvider(
+        if (isSystemFixed && !LocationUtils.isLocationGroupAndProvider(context,
                 group.getName(), group.getApp().packageName)) {
             return false;
         }
@@ -157,7 +160,8 @@ public final class Utils {
     }
 
     public static boolean isSystem(ApplicationInfo info, ArraySet<String> launcherPkgs) {
-        return info.isSystemApp() && (info.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
+        return ((info.flags & ApplicationInfo.FLAG_SYSTEM) != 0)
+                && (info.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
                 && !launcherPkgs.contains(info.packageName);
     }
 

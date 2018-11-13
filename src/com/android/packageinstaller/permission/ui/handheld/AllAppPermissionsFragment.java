@@ -31,18 +31,20 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.Preference;
-import android.preference.PreferenceCategory;
-import android.preference.PreferenceGroup;
+import android.os.UserHandle;
 import android.provider.Settings;
-import android.util.IconDrawableFactory;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Switch;
 
+import androidx.preference.Preference;
+import androidx.preference.PreferenceCategory;
+import androidx.preference.PreferenceGroup;
+
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.utils.ArrayUtils;
+import com.android.packageinstaller.permission.utils.IconDrawableFactory;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.permissioncontroller.R;
 
@@ -129,7 +131,8 @@ public final class AllAppPermissionsFragment extends SettingsWithHeader {
 
             ApplicationInfo appInfo = info.applicationInfo;
             final Drawable icon =
-                    IconDrawableFactory.newInstance(getContext()).getBadgedIcon(appInfo);
+                    IconDrawableFactory.getBadgedIcon(getContext(), appInfo,
+                            UserHandle.getUserHandleForUid(appInfo.uid));
             final CharSequence label = appInfo.loadLabel(pm);
             Intent infoIntent = null;
             if (!getActivity().getIntent().getBooleanExtra(
@@ -230,7 +233,7 @@ public final class AllAppPermissionsFragment extends SettingsWithHeader {
             ArrayList<Preference> prefs) {
         PreferenceGroup pref = (PreferenceGroup) findPreference(group.name);
         if (pref == null) {
-            pref = new PreferenceCategory(getContext());
+            pref = new PreferenceCategory(getPreferenceManager().getContext());
             pref.setKey(group.name);
             pref.setTitle(group.loadLabel(pm));
             prefs.add(pref);
@@ -242,14 +245,15 @@ public final class AllAppPermissionsFragment extends SettingsWithHeader {
     private Preference getPreference(PackageInfo packageInfo, PermissionInfo perm,
             PackageItemInfo group, PackageManager pm) {
         final Preference pref;
+        Context context = getPreferenceManager().getContext();
 
         // We allow individual permission control for some permissions if review enabled
         final boolean mutable = Utils.isPermissionIndividuallyControlled(getContext(), perm.name);
         if (mutable) {
-            pref = new MyMultiTargetSwitchPreference(getContext(), perm.name,
+            pref = new MyMultiTargetSwitchPreference(context, perm.name,
                     getPermissionForegroundGroup(packageInfo, perm.name));
         } else {
-            pref = new Preference(getContext());
+            pref = new Preference(context);
         }
 
         Drawable icon = null;
@@ -258,9 +262,9 @@ public final class AllAppPermissionsFragment extends SettingsWithHeader {
         } else if (group != null && group.icon != 0) {
             icon = group.loadIcon(pm);
         } else {
-            icon = getContext().getDrawable(R.drawable.ic_perm_device_info);
+            icon = context.getDrawable(R.drawable.ic_perm_device_info);
         }
-        pref.setIcon(Utils.applyTint(getContext(), icon, android.R.attr.colorControlNormal));
+        pref.setIcon(Utils.applyTint(context, icon, android.R.attr.colorControlNormal));
         pref.setTitle(perm.loadSafeLabel(pm, 20000, PackageItemInfo.SAFE_LABEL_FLAG_TRIM));
         pref.setSingleLineTitle(false);
         final CharSequence desc = perm.loadDescription(pm);
