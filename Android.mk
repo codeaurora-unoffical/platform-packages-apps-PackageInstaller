@@ -23,10 +23,13 @@ LOCAL_STATIC_ANDROID_LIBRARIES += \
     androidx.legacy_legacy-preference-v14 \
     androidx.leanback_leanback \
     androidx.leanback_leanback-preference \
+    androidx.lifecycle_lifecycle-extensions \
+    androidx.lifecycle_lifecycle-common-java8 \
     SettingsLibHelpUtils \
     SettingsLibRestrictedLockUtils \
     SettingsLibAppPreference \
-    SettingsLibSearchWidget
+    SettingsLibSearchWidget \
+    SettingsLibSettingsSpinner
 
 LOCAL_STATIC_JAVA_LIBRARIES := \
     androidx.annotation_annotation
