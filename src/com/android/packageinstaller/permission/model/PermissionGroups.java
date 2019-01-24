@@ -155,7 +155,7 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
             // Get the permissions in this group.
             final List<PermissionInfo> groupPermissions;
             try {
-                groupPermissions = packageManager.queryPermissionsByGroup(groupInfo.name, 0);
+                groupPermissions = Utils.getPermissionInfosForGroup(packageManager, groupInfo.name);
             } catch (PackageManager.NameNotFoundException e) {
                 continue;
             }
@@ -183,12 +183,12 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
 
             PermissionApps permApps = new PermissionApps(context, groupInfo.name, null,
                     pmCache);
-            permApps.refreshSync();
+            permApps.refreshSync(true);
 
             // Create the group and add to the list.
             PermissionGroup group = new PermissionGroup(groupInfo.name,
                     groupInfo.packageName, label, icon, permApps.getTotalCount(launcherPkgs),
-                    permApps.getGrantedCount(launcherPkgs));
+                    permApps.getGrantedCount(launcherPkgs), permApps);
             groups.add(group);
         }
 
@@ -237,13 +237,13 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
 
                 PermissionApps permApps = new PermissionApps(context, permissionInfo.name,
                         null, pmCache);
-                permApps.refreshSync();
+                permApps.refreshSync(true);
 
                 // Create the group and add to the list.
                 PermissionGroup group = new PermissionGroup(permissionInfo.name,
                         permissionInfo.packageName, label, icon,
                         permApps.getTotalCount(launcherPkgs),
-                        permApps.getGrantedCount(launcherPkgs));
+                        permApps.getGrantedCount(launcherPkgs), permApps);
                 groups.add(group);
             }
         }

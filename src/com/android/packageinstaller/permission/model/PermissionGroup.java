@@ -32,15 +32,17 @@ public final class PermissionGroup implements Comparable<PermissionGroup> {
     private final Drawable mIcon;
     private final int mTotal;
     private final int mGranted;
+    private final PermissionApps mPermApps;
 
     PermissionGroup(String name, String declaringPackage, CharSequence label, Drawable icon,
-            int total, int granted) {
+            int total, int granted, PermissionApps permApps) {
         mDeclaringPackage = declaringPackage;
         mName = name;
         mLabel = label;
         mIcon = icon;
         mTotal = total;
         mGranted = granted;
+        mPermApps = permApps;
     }
 
     public String getName() {
@@ -71,6 +73,13 @@ public final class PermissionGroup implements Comparable<PermissionGroup> {
      */
     public int getGranted() {
         return mGranted;
+    }
+
+    /**
+     * @return The PermissionApps object for this permission group.
+     */
+    public PermissionApps getPermissionApps() {
+        return mPermApps;
     }
 
     @Override

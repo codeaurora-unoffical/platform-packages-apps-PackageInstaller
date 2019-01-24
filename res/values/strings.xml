@@ -234,4 +234,109 @@
     <!-- Help URL, application permissions [DO NOT TRANSLATE] -->
     <string name="help_app_permissions" translatable="false"></string>
 
+    <!-- Title for permission usage [CHAR LIMIT=30] -->
+    <string name="permission_usage_title">Permissions usage</string>
+
+    <!-- Summary for showing a single permission access [CHAR LIMIT=60] -->
+    <string name="permission_usage_summary"><xliff:g id="perm" example="Location">%1$s</xliff:g> - <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Description for showing permission accesses with any permission [CHAR LIMIT=30] -->
+    <string name="permission_usage_any_permission">Any permission</string>
+
+    <!-- Description for showing permission accesses accessed any time [CHAR LIMIT=30] -->
+    <string name="permission_usage_any_time">Any time</string>
+
+    <!-- Description for showing permissions accessed in the last 7 days [CHAR LIMIT=30] -->
+    <string name="permission_usage_last_7_days">Last 7 days</string>
+
+    <!-- Description for showing permissions accessed in the last day [CHAR LIMIT=30] -->
+    <string name="permission_usage_last_day">Last 24 hours</string>
+
+    <!-- Description for showing permissions accessed in the last hour [CHAR LIMIT=30] -->
+    <string name="permission_usage_last_hour">Last 1 hour</string>
+
+    <!-- Description for showing permissions accessed in the last 15 minutes [CHAR LIMIT=30] -->
+    <string name="permission_usage_last_15_minutes">Last 15 minutes</string>
+
+    <!-- Label when no apps have used the requested permissions [CHAR LIMIT=30] -->
+    <string name="no_permission_usages">No permission usages</string>
+
+    <!-- Help URL, permission usage [DO NOT TRANSLATE] -->
+    <string name="help_permission_usage" translatable="false"></string>
+
+    <!-- Title for permission usage [CHAR LIMIT=30] -->
+    <string name="app_permission_usage_title">App permissions usage</string>
+
+    <!-- Summary for showing a single permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_usage_summary"><xliff:g id="time" example="2 hours">%1$s</xliff:g> ago</string>
+
+    <!-- Title for the dialog button to allow a permission grant when you cannot only allow in the foreground. [CHAR LIMIT=60] -->
+    <string name="app_permission_button_allow">Allow</string>
+
+    <!-- Title for the dialog button to allow a permission grant when you can also only allow in the foreground. [CHAR LIMIT=60] -->
+    <string name="app_permission_button_allow_always">Allow all the time</string>
+
+    <!-- Title for the dialog button to allow a permission grant only when the app is in the foreground. [CHAR LIMIT=60] -->
+    <string name="app_permission_button_allow_foreground">Allow only while the app is in use</string>
+
+    <!-- Title for the dialog button to deny a permission grant. [CHAR LIMIT=60] -->
+    <string name="app_permission_button_deny">Deny</string>
+
+    <!-- Title for app permission [CHAR LIMIT=30] -->
+    <string name="app_permission_title"><xliff:g id="perm" example="location">%1$s</xliff:g> permission</string>
+
+    <!-- Description for showing an app's permission [CHAR LIMIT=60] -->
+    <string name="app_permission_header"><xliff:g id="perm" example="location">%1$s</xliff:g> access for <xliff:g id="app" example="Maps">%2$s</xliff:g></string>
+
+    <!-- Summary for showing a single permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your <xliff:g id="perm" example="location">%2$s</xliff:g> <xliff:g id="time" example="2 hours">%3$s</xliff:g> ago.</string>
+
+    <!-- Summary for linking to the page that shows an app's use of permissions [CHAR LIMIT=none] -->
+    <string name="app_permission_footer_usage_link">View detailed permissions usage</string>
+
+    <!-- Time in days -->
+    <plurals name="days">
+        <item quantity="one">1 day</item>
+        <item quantity="other"><xliff:g id="number" example="7">%s</xliff:g> days</item>
+    </plurals>
+
+    <!-- Time in hours -->
+    <plurals name="hours">
+        <item quantity="one">1 hour</item>
+        <item quantity="other"><xliff:g id="number" example="7">%s</xliff:g> hours</item>
+    </plurals>
+
+    <!-- Time in minutes -->
+    <plurals name="minutes">
+        <item quantity="one">1 minute</item>
+        <item quantity="other"><xliff:g id="number" example="7">%s</xliff:g> minutes</item>
+    </plurals>
+
+    <!-- Time in seconds -->
+    <plurals name="seconds">
+        <item quantity="one">1 second</item>
+        <item quantity="other"><xliff:g id="number" example="7">%s</xliff:g> seconds</item>
+    </plurals>
+
+    <!-- Template for the message when an app requests a role and will be added to the role holding apps. [CHAR LIMIT=100] -->
+    <string name="role_request_message_add">Use
+        &lt;b><xliff:g id="app_name" example="Super Duper SMS">%1$s</xliff:g>&lt;/b> as your
+        <xliff:g id="role_name" example="SMS app">%2$s</xliff:g>?</string>
+
+    <!-- Template for the message when an app requests a role and will be replacing the current role holding app. [CHAR LIMIT=100] -->
+    <string name="role_request_message_replace">Use
+        &lt;b><xliff:g id="new_app_name" example="Super Duper SMS">%1$s</xliff:g>&lt;/b> instead of
+        &lt;b><xliff:g id="current_app_name" example="Messages">%1$s</xliff:g>&lt;/b> as your
+        <xliff:g id="role_name" example="SMS app">%2$s</xliff:g>?</string>
+
+    <!-- TODO: STOPSHIP: Migrate all default app titles from packages/apps/Settings/res/values/strings.xml . -->
+
+    <!-- Label for the dialer role. [CHAR LIMIT=30] -->
+    <string name="role_label_dialer">Phone app</string>
+
+    <!-- Label for the SMS role. [CHAR LIMIT=30] -->
+    <string name="role_label_sms">SMS app</string>
+
+    <!-- Label for the browser role. [CHAR LIMIT=30] -->
+    <string name="role_label_browser">Browser app</string>
 </resources>
