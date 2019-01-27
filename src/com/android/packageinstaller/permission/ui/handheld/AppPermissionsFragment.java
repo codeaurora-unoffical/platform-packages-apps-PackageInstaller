@@ -24,11 +24,8 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.UserHandle;
-import android.provider.Settings;
-import android.util.ArraySet;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -38,32 +35,34 @@ import android.widget.Toast;
 
 import androidx.fragment.app.Fragment;
 import androidx.preference.Preference;
+import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceScreen;
 
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.utils.IconDrawableFactory;
-import com.android.packageinstaller.permission.utils.SafetyNetLogger;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.permissioncontroller.R;
 import com.android.settingslib.HelpUtils;
+
+import java.text.Collator;
+import java.util.ArrayList;
 
 /**
  * Show and manage permission groups for an app.
  *
  * <p>Shows the list of permission groups the app has requested at one permission for.
  */
-public final class AppPermissionsFragment extends SettingsWithHeader
-        implements PermissionPreference.PermissionPreferenceChangeListener,
-        PermissionPreference.PermissionPreferenceOwnerFragment {
+public final class AppPermissionsFragment extends SettingsWithButtonHeader {
 
     private static final String LOG_TAG = "ManagePermsFragment";
 
     static final String EXTRA_HIDE_INFO_BUTTON = "hideInfoButton";
 
-    private ArraySet<AppPermissionGroup> mToggledGroups;
     private AppPermissions mAppPermissions;
     private PreferenceScreen mExtraScreen;
+
+    private Collator mCollator;
 
     private boolean mHasConfirmedRevoke;
 
@@ -97,12 +96,16 @@ public final class AppPermissionsFragment extends SettingsWithHeader
             return;
         }
 
+        addPreferencesFromResource(R.xml.allowed_denied);
+
         mAppPermissions = new AppPermissions(activity, packageInfo, true, new Runnable() {
             @Override
             public void run() {
                 getActivity().finish();
             }
         });
+        mCollator = Collator.getInstance(
+                getContext().getResources().getConfiguration().getLocales().get(0));
         updatePreferences();
     }
 
@@ -155,20 +158,13 @@ public final class AppPermissionsFragment extends SettingsWithHeader
                 .commit();
     }
 
-    private static void bindUi(SettingsWithHeader fragment, PackageInfo packageInfo) {
+    private static void bindUi(SettingsWithButtonHeader fragment, PackageInfo packageInfo) {
         Activity activity = fragment.getActivity();
-        PackageManager pm = activity.getPackageManager();
         ApplicationInfo appInfo = packageInfo.applicationInfo;
-        Intent infoIntent = null;
-        if (!activity.getIntent().getBooleanExtra(EXTRA_HIDE_INFO_BUTTON, false)) {
-            infoIntent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    .setData(Uri.fromParts("package", packageInfo.packageName, null));
-        }
 
         Drawable icon = IconDrawableFactory.getBadgedIcon(activity, appInfo,
                 UserHandle.getUserHandleForUid(appInfo.uid));
-        CharSequence label = appInfo.loadLabel(pm);
-        fragment.setHeader(icon, label, infoIntent);
+        fragment.setHeader(icon, Utils.getFullAppLabel(appInfo, activity));
 
         ActionBar ab = activity.getActionBar();
         if (ab != null) {
@@ -182,13 +178,11 @@ public final class AppPermissionsFragment extends SettingsWithHeader
             return;
         }
 
-        PreferenceScreen screen = getPreferenceScreen();
-        if (screen == null) {
-            screen = getPreferenceManager().createPreferenceScreen(context);
-            setPreferenceScreen(screen);
-        }
+        PreferenceCategory allowed = (PreferenceCategory) findPreference("allowed");
+        PreferenceCategory denied = (PreferenceCategory) findPreference("denied");
 
-        screen.removeAll();
+        allowed.removeAll();
+        denied.removeAll();
 
         if (mExtraScreen != null) {
             mExtraScreen.removeAll();
@@ -197,29 +191,52 @@ public final class AppPermissionsFragment extends SettingsWithHeader
         final Preference extraPerms = new Preference(context);
         extraPerms.setIcon(R.drawable.ic_toc);
         extraPerms.setTitle(R.string.additional_permissions);
+        boolean extraPermsAreAllowed = false;
 
-        for (AppPermissionGroup group : mAppPermissions.getPermissionGroups()) {
+        ArrayList<AppPermissionGroup> groups = new ArrayList<>(
+                mAppPermissions.getPermissionGroups());
+        groups.sort((x, y) -> mCollator.compare(x.getLabel(), y.getLabel()));
+        allowed.setOrderingAsAdded(true);
+        denied.setOrderingAsAdded(true);
+
+        for (int i = 0; i < groups.size(); i++) {
+            AppPermissionGroup group = groups.get(i);
             if (!Utils.shouldShowPermission(getContext(), group)) {
                 continue;
             }
 
             boolean isPlatform = group.getDeclaringPackage().equals(Utils.OS_PKG);
 
-            PermissionPreference preference = new PermissionPreference(this, group, this, 0);
+            PermissionControlPreference preference = new PermissionControlPreference(context,
+                    group);
             preference.setKey(group.getName());
             Drawable icon = Utils.loadDrawable(context.getPackageManager(),
                     group.getIconPkg(), group.getIconResId());
             preference.setIcon(Utils.applyTint(context, icon,
                     android.R.attr.colorControlNormal));
             preference.setTitle(group.getLabel());
+            String timeDiffStr = Utils.getUsageTimeDiffString(context, group);
+            // Ignore {READ,WRITE}_EXTERNAL_STORAGE since they're going away.
+            if (timeDiffStr != null && !group.getLabel().equals("Storage")) {
+                preference.setSummary(
+                        context.getString(R.string.app_permission_most_recent_summary,
+                                timeDiffStr));
+            } else {
+                preference.setGroupSummary(group);
+            }
 
             if (isPlatform) {
-                screen.addPreference(preference);
+                PreferenceCategory category =
+                        group.areRuntimePermissionsGranted() ? allowed : denied;
+                category.addPreference(preference);
             } else {
                 if (mExtraScreen == null) {
                     mExtraScreen = getPreferenceManager().createPreferenceScreen(context);
                 }
                 mExtraScreen.addPreference(preference);
+                if (group.areRuntimePermissionsGranted()) {
+                    extraPermsAreAllowed = true;
+                }
             }
         }
 
@@ -237,31 +254,22 @@ public final class AppPermissionsFragment extends SettingsWithHeader
             int count = mExtraScreen.getPreferenceCount();
             extraPerms.setSummary(getResources().getQuantityString(
                     R.plurals.additional_permissions_more, count, count));
-            screen.addPreference(extraPerms);
+            PreferenceCategory category = extraPermsAreAllowed ? allowed : denied;
+            category.addPreference(extraPerms);
+        }
+
+        if (allowed.getPreferenceCount() == 0) {
+            Preference empty = new Preference(context);
+            empty.setTitle(getString(R.string.no_permissions_allowed));
+            allowed.addPreference(empty);
+        }
+        if (denied.getPreferenceCount() == 0) {
+            Preference empty = new Preference(context);
+            empty.setTitle(getString(R.string.no_permissions_denied));
+            denied.addPreference(empty);
         }
 
         setLoading(false /* loading */, true /* animate */);
-    }
-
-    @Override
-    public void onPreferenceChanged(String key) {
-        if (mToggledGroups == null) {
-            mToggledGroups = new ArraySet<>();
-        }
-        mToggledGroups.add(mAppPermissions.getPermissionGroup(key));
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        logToggledGroups();
-    }
-
-    private void logToggledGroups() {
-        if (mToggledGroups != null) {
-            SafetyNetLogger.logPermissionsToggled(mToggledGroups);
-            mToggledGroups = null;
-        }
     }
 
     private static PackageInfo getPackageInfo(Activity activity, String packageName) {
@@ -274,36 +282,17 @@ public final class AppPermissionsFragment extends SettingsWithHeader
         }
     }
 
-    @Override
-    public boolean shouldConfirmDefaultPermissionRevoke() {
-        return !mHasConfirmedRevoke;
-    }
-
-    @Override
-    public void hasConfirmDefaultPermissionRevoke() {
-        mHasConfirmedRevoke = true;
-    }
-
-    @Override
-    public void onBackgroundAccessChosen(String key, int chosenItem) {
-        ((PermissionPreference) getPreferenceScreen().findPreference(key))
-                .onBackgroundAccessChosen(chosenItem);
-    }
-
-    @Override
-    public void onDenyAnyWay(String key, @PermissionPreference.ChangeTarget int changeTarget) {
-        ((PermissionPreference) getPreferenceScreen().findPreference(key)).onDenyAnyWay(
-                changeTarget);
-    }
-
-    public static class AdditionalPermissionsFragment extends SettingsWithHeader {
+    /**
+     * Class that shows additional permissions.
+     */
+    public static class AdditionalPermissionsFragment extends SettingsWithButtonHeader {
         AppPermissionsFragment mOuterFragment;
 
         @Override
         public void onCreate(Bundle savedInstanceState) {
             mOuterFragment = (AppPermissionsFragment) getTargetFragment();
             super.onCreate(savedInstanceState);
-            setHeader(mOuterFragment.mIcon, mOuterFragment.mLabel, mOuterFragment.mInfoIntent);
+            setHeader(mOuterFragment.mIcon, mOuterFragment.mLabel);
             setHasOptionsMenu(true);
             setPreferenceScreen(mOuterFragment.mExtraScreen);
         }

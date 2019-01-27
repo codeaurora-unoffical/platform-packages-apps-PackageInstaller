@@ -19,6 +19,8 @@ package com.android.packageinstaller.permission.model;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionInfo;
 
+import androidx.annotation.NonNull;
+
 import java.util.ArrayList;
 
 /**
@@ -27,6 +29,7 @@ import java.util.ArrayList;
  * @see AppPermissionGroup
  */
 public final class Permission {
+    private final @NonNull PermissionInfo mPermissionInfo;
     private final String mName;
     private final String mBackgroundPermissionName;
     private final String mAppOp;
@@ -39,16 +42,19 @@ public final class Permission {
     private Permission mBackgroundPermission;
     private ArrayList<Permission> mForegroundPermissions;
 
-    public Permission(String name, String backgroundPermissionName, boolean granted,
-            String appOp, boolean appOpAllowed, int flags, int protectionLevel) {
+    public Permission(String name, @NonNull PermissionInfo permissionInfo, boolean granted,
+            String appOp, boolean appOpAllowed, int flags) {
+        mPermissionInfo = permissionInfo;
         mName = name;
-        mBackgroundPermissionName = backgroundPermissionName;
+        mBackgroundPermissionName = permissionInfo.backgroundPermission;
         mGranted = granted;
         mAppOp = appOp;
         mAppOpAllowed = appOpAllowed;
         mFlags = flags;
-        mIsEphemeral = (protectionLevel & PermissionInfo.PROTECTION_FLAG_INSTANT) != 0;
-        mIsRuntimeOnly = (protectionLevel & PermissionInfo.PROTECTION_FLAG_RUNTIME_ONLY) != 0;
+        mIsEphemeral =
+                (permissionInfo.protectionLevel & PermissionInfo.PROTECTION_FLAG_INSTANT) != 0;
+        mIsRuntimeOnly =
+                (permissionInfo.protectionLevel & PermissionInfo.PROTECTION_FLAG_RUNTIME_ONLY) != 0;
     }
 
     /**
@@ -70,6 +76,10 @@ public final class Permission {
      */
     public void setBackgroundPermission(Permission backgroundPermission) {
         mBackgroundPermission = backgroundPermission;
+    }
+
+    public PermissionInfo getPermissionInfo() {
+        return mPermissionInfo;
     }
 
     public String getName() {
@@ -96,8 +106,28 @@ public final class Permission {
         return mAppOp != null || isBackgroundPermission();
     }
 
+    /**
+     * Check if the permission is granted.
+     *
+     * <p>This ignores the state of the app-op. I.e. for apps not handling runtime permissions, this
+     * always returns {@code true}.
+     *
+     * @return If the permission is granted
+     */
     public boolean isGranted() {
         return mGranted;
+    }
+
+    /**
+     * Check if the permission is granted, also considering the state of the app-op.
+     *
+     * <p>For the UI, check the grant state of the whole group via
+     * {@link AppPermissionGroup#areRuntimePermissionsGranted}.
+     *
+     * @return {@code true} if the permission (and the app-op) is granted.
+     */
+    public boolean isGrantedIncludingAppOp() {
+        return mGranted && (!affectsAppOp() || isAppOpAllowed()) && !isReviewRequired();
     }
 
     public boolean isReviewRequired() {

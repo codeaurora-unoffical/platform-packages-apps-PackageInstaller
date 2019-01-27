@@ -18,8 +18,7 @@ package com.android.packageinstaller.permission.ui;
 
 import static android.view.WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS;
 
-import static com.android.packageinstaller.permission.service.PermissionSearchIndexablesProvider
-        .verifyIntent;
+import static com.android.packageinstaller.permission.service.PermissionSearchIndexablesProvider.verifyIntent;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -67,7 +66,8 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                 verifyIntent(this, getIntent());
                 // fall through
             case Intent.ACTION_REVIEW_PERMISSION_USAGE:
-                androidXFragment = PermissionUsageFragment.newInstance();
+                permissionName = getIntent().getStringExtra(Intent.EXTRA_PERMISSION_NAME);
+                androidXFragment = PermissionUsageFragment.newInstance(permissionName);
                 break;
 
             case Intent.ACTION_MANAGE_APP_PERMISSIONS: {
@@ -129,23 +129,6 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                 }
                 androidXFragment = com.android.packageinstaller.permission.ui.handheld
                         .AppPermissionUsageFragment.newInstance(packageName);
-            } break;
-
-            case Intent.ACTION_MANAGE_APP_PERMISSION: {
-                String packageName = getIntent().getStringExtra(Intent.EXTRA_PACKAGE_NAME);
-                if (packageName == null) {
-                    Log.i(LOG_TAG, "Missing mandatory argument EXTRA_PACKAGE_NAME");
-                    finish();
-                    return;
-                }
-                permissionName = getIntent().getStringExtra(Intent.EXTRA_PERMISSION_NAME);
-                if (permissionName == null) {
-                    Log.i(LOG_TAG, "Missing mandatory argument EXTRA_PERMISSION_NAME");
-                    finish();
-                    return;
-                }
-                androidXFragment = com.android.packageinstaller.permission.ui.handheld
-                        .AppPermissionFragment.newInstance(packageName, permissionName);
             } break;
 
             default: {

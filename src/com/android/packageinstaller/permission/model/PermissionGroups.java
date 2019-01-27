@@ -19,6 +19,7 @@ package com.android.packageinstaller.permission.model;
 import static android.content.pm.PackageItemInfo.SAFE_LABEL_FLAG_FIRST_LINE;
 import static android.content.pm.PackageItemInfo.SAFE_LABEL_FLAG_TRIM;
 
+import android.Manifest;
 import android.app.LoaderManager;
 import android.app.LoaderManager.LoaderCallbacks;
 import android.content.AsyncTaskLoader;
@@ -53,15 +54,17 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
     private final ArrayList<PermissionGroup> mGroups = new ArrayList<>();
     private final Context mContext;
     private final PermissionsGroupsChangeCallback mCallback;
+    private final boolean mGetUiInfo;
 
     public interface PermissionsGroupsChangeCallback {
         public void onPermissionGroupsChanged();
     }
 
     public PermissionGroups(Context context, LoaderManager loaderManager,
-            PermissionsGroupsChangeCallback callback) {
+            PermissionsGroupsChangeCallback callback, boolean getUiInfo) {
         mContext = context;
         mCallback = callback;
+        mGetUiInfo = getUiInfo;
 
         // Don't update immediately as otherwise we can get a callback before this object is
         // initialized.
@@ -70,7 +73,7 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
 
     @Override
     public Loader<List<PermissionGroup>> onCreateLoader(int id, Bundle args) {
-        return new PermissionsLoader(mContext);
+        return new PermissionsLoader(mContext, mGetUiInfo);
     }
 
     @Override
@@ -131,14 +134,17 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
      *
      * @param context Context to use
      * @param isCanceled callback checked if the group resolution should be aborted
+     * @param getUiInfo If the UI info for apps should be updated
      *
      * @return the list of all groups int the system
      */
     public static @NonNull List<PermissionGroup> getAllPermissionGroups(@NonNull Context context,
-            @Nullable Supplier<Boolean> isCanceled) {
+            @Nullable Supplier<Boolean> isCanceled, boolean getUiInfo) {
         ArraySet<String> launcherPkgs = Utils.getLauncherPackages(context);
         PermissionApps.PmCache pmCache = new PermissionApps.PmCache(
                 context.getPackageManager());
+        PermissionApps.AppDataCache appDataCache = new PermissionApps.AppDataCache(
+                context.getPackageManager(), context);
 
         List<PermissionGroup> groups = new ArrayList<>();
         Set<String> seenPermissions = new ArraySet<>();
@@ -182,8 +188,8 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
             Drawable icon = loadItemInfoIcon(context, groupInfo);
 
             PermissionApps permApps = new PermissionApps(context, groupInfo.name, null,
-                    pmCache);
-            permApps.refreshSync(true);
+                    pmCache, appDataCache);
+            permApps.refreshSync(getUiInfo);
 
             // Create the group and add to the list.
             PermissionGroup group = new PermissionGroup(groupInfo.name,
@@ -236,8 +242,8 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
                 Drawable icon = loadItemInfoIcon(context, permissionInfo);
 
                 PermissionApps permApps = new PermissionApps(context, permissionInfo.name,
-                        null, pmCache);
-                permApps.refreshSync(true);
+                        null, pmCache, appDataCache);
+                permApps.refreshSync(getUiInfo);
 
                 // Create the group and add to the list.
                 PermissionGroup group = new PermissionGroup(permissionInfo.name,
@@ -248,15 +254,28 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
             }
         }
 
+        // Hide undefined group if no 3rd party permissions are in it
+        int numGroups = groups.size();
+        for (int i = 0; i < numGroups; i++) {
+            PermissionGroup group = groups.get(i);
+            if (group.getName().equals(Manifest.permission_group.UNDEFINED)
+                    && group.getTotal() == 0) {
+                groups.remove(i);
+                break;
+            }
+        }
+
         Collections.sort(groups);
         return groups;
     }
 
     private static final class PermissionsLoader extends AsyncTaskLoader<List<PermissionGroup>>
             implements PackageManager.OnPermissionsChangedListener {
+        private final boolean mGetUiInfo;
 
-        public PermissionsLoader(Context context) {
+        PermissionsLoader(Context context, boolean getUiInfo) {
             super(context);
+            mGetUiInfo = getUiInfo;
         }
 
         @Override
@@ -272,7 +291,8 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
 
         @Override
         public List<PermissionGroup> loadInBackground() {
-            return getAllPermissionGroups(getContext(), this::isLoadInBackgroundCanceled);
+            return getAllPermissionGroups(getContext(), this::isLoadInBackgroundCanceled,
+                    mGetUiInfo);
         }
 
         @Override

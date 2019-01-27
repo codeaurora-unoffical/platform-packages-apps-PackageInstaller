@@ -29,13 +29,17 @@ LOCAL_STATIC_ANDROID_LIBRARIES += \
     SettingsLibRestrictedLockUtils \
     SettingsLibAppPreference \
     SettingsLibSearchWidget \
-    SettingsLibSettingsSpinner
+    SettingsLibSettingsSpinner \
+    SettingsLibLayoutPreference \
+    SettingsLibActionButtonsPreference \
+    SettingsLibBarChartPreference
 
 LOCAL_STATIC_JAVA_LIBRARIES := \
     androidx.annotation_annotation
 
 LOCAL_PACKAGE_NAME := PermissionController
 LOCAL_SDK_VERSION := system_current
+LOCAL_MIN_SDK_VERSION := 28
 LOCAL_PRIVILEGED_MODULE := true
 LOCAL_CERTIFICATE := platform
 

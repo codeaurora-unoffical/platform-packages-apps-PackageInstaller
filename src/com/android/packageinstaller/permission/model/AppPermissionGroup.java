@@ -16,9 +16,20 @@
 
 package com.android.packageinstaller.permission.model;
 
+import static android.Manifest.permission.ACCESS_BACKGROUND_LOCATION;
+import static android.Manifest.permission.ACCESS_FINE_LOCATION;
+import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
+import static android.Manifest.permission.READ_MEDIA_AUDIO;
+import static android.Manifest.permission.READ_MEDIA_IMAGES;
+import static android.Manifest.permission.READ_MEDIA_VIDEO;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static android.app.AppOpsManager.MODE_ALLOWED;
 import static android.app.AppOpsManager.MODE_FOREGROUND;
 import static android.app.AppOpsManager.MODE_IGNORED;
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
+
+import static com.android.packageinstaller.permission.service.LocationAccessCheck
+        .checkLocationAccessSoon;
 
 import android.app.ActivityManager;
 import android.app.AppOpsManager;
@@ -28,12 +39,16 @@ import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PermissionGroupInfo;
 import android.content.pm.PermissionInfo;
+import android.content.pm.UsesPermissionInfo;
 import android.os.Build;
 import android.os.Process;
 import android.os.UserHandle;
+import android.os.storage.StorageManager;
 import android.provider.Settings;
 import android.util.ArrayMap;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
 import com.android.packageinstaller.permission.utils.ArrayUtils;
@@ -46,6 +61,7 @@ import java.lang.reflect.Method;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -109,6 +125,22 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
 
     public static AppPermissionGroup create(Context context, PackageInfo packageInfo,
             String permissionName, boolean delayChanges) {
+        return create(context, packageInfo, permissionName, Process.myUserHandle(), delayChanges);
+    }
+
+    /**
+     * Create the app permission group.
+     *
+     * @param context the {@code Context} to retrieve system services.
+     * @param packageInfo package information about the app.
+     * @param permissionName the name of the permission this object represents.
+     * @param userHandle the user who owns the app.
+     * @param delayChanges whether to delay changes until {@link #persistChanges} is called.
+     *
+     * @return the AppPermissionGroup.
+     */
+    public static AppPermissionGroup create(Context context, PackageInfo packageInfo,
+            String permissionName, UserHandle userHandle, boolean delayChanges) {
         PermissionInfo permissionInfo;
         try {
             permissionInfo = context.getPackageManager().getPermissionInfo(permissionName, 0);
@@ -144,7 +176,7 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         }
 
         return create(context, packageInfo, groupInfo, permissionInfos,
-                Process.myUserHandle(), delayChanges);
+                userHandle, delayChanges);
     }
 
     public static AppPermissionGroup create(Context context, PackageInfo packageInfo,
@@ -175,7 +207,8 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
 
         // Parse and create permissions reqested by the app
         ArrayMap<String, Permission> allPermissions = new ArrayMap<>();
-        final int permissionCount = packageInfo.requestedPermissions.length;
+        final int permissionCount = packageInfo.requestedPermissions == null ? 0
+                : packageInfo.requestedPermissions.length;
         String packageName = packageInfo.packageName;
         for (int i = 0; i < permissionCount; i++) {
             String requestedPermission = packageInfo.requestedPermissions[i];
@@ -211,17 +244,20 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
             final String appOp = PLATFORM_PACKAGE_NAME.equals(requestedPermissionInfo.packageName)
                     ? AppOpsManager.permissionToOp(requestedPermissionInfo.name) : null;
 
-            final boolean appOpAllowed = appOp != null
-                    && context.getSystemService(AppOpsManager.class).checkOpNoThrow(appOp,
-                    packageInfo.applicationInfo.uid, packageName)
-                    == MODE_ALLOWED;
+            final boolean appOpAllowed;
+            if (appOp == null) {
+                appOpAllowed = false;
+            } else {
+                int appOpsMode = context.getSystemService(AppOpsManager.class).unsafeCheckOpRaw(
+                        appOp, packageInfo.applicationInfo.uid, packageName);
+                appOpAllowed = appOpsMode == MODE_ALLOWED || appOpsMode == MODE_FOREGROUND;
+            }
 
             final int flags = context.getPackageManager().getPermissionFlags(
                     requestedPermission, packageName, userHandle);
 
-            Permission permission = new Permission(requestedPermission,
-                    requestedPermissionInfo.backgroundPermission, granted,
-                    appOp, appOpAllowed, flags, requestedPermissionInfo.protectionLevel);
+            Permission permission = new Permission(requestedPermission, requestedPermissionInfo,
+                    granted, appOp, appOpAllowed, flags);
 
             if (requestedPermissionInfo.backgroundPermission != null) {
                 group.mHasPermissionWithBackgroundMode = true;
@@ -360,6 +396,7 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                     appPermissionUsages.add(appPermissionUsage);
                 }
             }
+            appPermissionUsages.sort(Comparator.comparing(AppPermissionUsage::getTime).reversed());
             return appPermissionUsages;
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             return Collections.emptyList();
@@ -474,6 +511,12 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         return mLabel;
     }
 
+    /**
+     * Get a list of the permission usages by this app, sorted by last access time, with the most
+     * recent first.
+     *
+     * @return a sort list of this app's permission usages.
+     */
     public List<AppPermissionUsage> getAppPermissionUsage() {
         return mAppPermissionUsages;
     }
@@ -576,6 +619,17 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         return mPermissions.get(permission) != null;
     }
 
+    /**
+     * Return a permission if in this group.
+     *
+     * @param permissionName The name of the permission
+     *
+     * @return The permission
+     */
+    public @Nullable Permission getPermission(@NonNull String permissionName) {
+        return mPermissions.get(permissionName);
+    }
+
     public boolean areRuntimePermissionsGranted() {
         return areRuntimePermissionsGranted(null);
     }
@@ -584,6 +638,12 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         if (LocationUtils.isLocationGroupAndProvider(mContext, mName, mPackageInfo.packageName)) {
             return LocationUtils.isLocationEnabled(mContext);
         }
+        // The permission of the extra location controller package is determined by the status of
+        // the controller package itself.
+        if (LocationUtils.isLocationGroupAndControllerExtraPackage(
+                mContext, mName, mPackageInfo.packageName)) {
+            return LocationUtils.isLocationControllerExtraPackageEnabled(mContext);
+        }
         final int permissionCount = mPermissions.size();
         for (int i = 0; i < permissionCount; i++) {
             Permission permission = mPermissions.valueAt(i);
@@ -591,13 +651,7 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                     && !ArrayUtils.contains(filterPermissions, permission.getName())) {
                 continue;
             }
-            if (mAppSupportsRuntimePermissions) {
-                if (permission.isGranted()) {
-                    return true;
-                }
-            } else if (permission.isGranted()
-                    && (!permission.affectsAppOp() || permission.isAppOpAllowed())
-                    && !permission.isReviewRequired()) {
+            if (permission.isGrantedIncludingAppOp()) {
                 return true;
             }
         }
@@ -704,6 +758,8 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                 continue;
             }
 
+            boolean wasGranted = permission.isGrantedIncludingAppOp();
+
             if (mAppSupportsRuntimePermissions) {
                 // Do not touch permissions fixed by the system.
                 if (permission.isSystemFixed()) {
@@ -760,6 +816,35 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                 // reviewed it so clear the review flag on every grant.
                 if (permission.isReviewRequired()) {
                     permission.resetReviewRequired();
+                }
+            }
+
+            // If we newly grant background access to the fine location, double-guess the user some
+            // time later if this was really the right choice.
+            if (!wasGranted && permission.isGrantedIncludingAppOp()) {
+                if (permission.getName().equals(ACCESS_FINE_LOCATION)) {
+                    Permission bgPerm = permission.getBackgroundPermission();
+                    if (bgPerm != null) {
+                        if (bgPerm.isGrantedIncludingAppOp()) {
+                            checkLocationAccessSoon(mContext);
+                        }
+                    }
+                } else if (permission.getName().equals(ACCESS_BACKGROUND_LOCATION)) {
+                    ArrayList<Permission> fgPerms = permission.getForegroundPermissions();
+                    if (fgPerms != null) {
+                        int numFgPerms = fgPerms.size();
+                        for (int fgPermNum = 0; fgPermNum < numFgPerms; fgPermNum++) {
+                            Permission fgPerm = fgPerms.get(fgPermNum);
+
+                            if (fgPerm.getName().equals(ACCESS_FINE_LOCATION)) {
+                                if (fgPerm.isGrantedIncludingAppOp()) {
+                                    checkLocationAccessSoon(mContext);
+                                }
+
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1069,6 +1154,7 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
     void persistChanges(boolean mayKillBecauseOfAppOpsChange) {
         int numPermissions = mPermissions.size();
         boolean shouldKillApp = false;
+        boolean shouldUpdateStorage = false;
 
         for (int i = 0; i < numPermissions; i++) {
             Permission permission = mPermissions.valueAt(i);
@@ -1109,6 +1195,46 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                 // handle to state it shouldn't have, so we have to kill the app. This matches the
                 // revoke runtime permission behavior.
                 shouldKillApp = true;
+            }
+
+            switch (permission.getName()) {
+                case READ_MEDIA_AUDIO:
+                case READ_MEDIA_VIDEO:
+                case READ_MEDIA_IMAGES:
+                    shouldUpdateStorage = true;
+                    break;
+            }
+        }
+
+        // Starting in Q, the legacy "Storage" permission has been split into
+        // new strongly-typed runtime permissions. When older apps request
+        // the "Storage" permission, we already translate that into requests for
+        // the new split permissions, but those older apps may be confused if
+        // the legacy permission isn't actually granted. Thus, as a special
+        // case, whenever any of the new split permissions are granted to an
+        // app, we also grant them the legacy "Storage" permission.
+        if (StorageManager.hasIsolatedStorage() && shouldUpdateStorage) {
+            boolean audioGranted = mPackageManager.checkPermission(READ_MEDIA_AUDIO,
+                    mPackageInfo.packageName) == PERMISSION_GRANTED;
+            boolean videoGranted = mPackageManager.checkPermission(READ_MEDIA_VIDEO,
+                    mPackageInfo.packageName) == PERMISSION_GRANTED;
+            boolean imagesGranted = mPackageManager.checkPermission(READ_MEDIA_IMAGES,
+                    mPackageInfo.packageName) == PERMISSION_GRANTED;
+
+            if (!ArrayUtils.isEmpty(mPackageInfo.usesPermissions)) {
+                for (UsesPermissionInfo upi : mPackageInfo.usesPermissions) {
+                    final String permission = upi.getPermission();
+                    if (READ_EXTERNAL_STORAGE.equals(permission)
+                            || WRITE_EXTERNAL_STORAGE.equals(permission)) {
+                        if (audioGranted || videoGranted || imagesGranted) {
+                            mPackageManager.grantRuntimePermission(mPackageInfo.packageName,
+                                    permission, mUserHandle);
+                        } else {
+                            mPackageManager.revokeRuntimePermission(mPackageInfo.packageName,
+                                    permission, mUserHandle);
+                        }
+                    }
+                }
             }
         }
 

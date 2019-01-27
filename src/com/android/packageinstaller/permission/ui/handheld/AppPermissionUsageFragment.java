@@ -18,6 +18,7 @@ package com.android.packageinstaller.permission.ui.handheld;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
@@ -29,6 +30,7 @@ import android.os.UserHandle;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
@@ -56,9 +58,11 @@ import java.util.Set;
  * <p>Shows a list of app usage of permission groups, each of which links to
  * AppPermissionsFragment.
  */
-public class AppPermissionUsageFragment extends SettingsWithHeader {
+public class AppPermissionUsageFragment extends SettingsWithButtonHeader {
 
     private static final String LOG_TAG = "AppPermissionUsageFragment";
+
+    private @NonNull AppOpsManager mAppOpsManager;
 
     private @NonNull AppPermissions mAppPermissions;
 
@@ -102,6 +106,7 @@ public class AppPermissionUsageFragment extends SettingsWithHeader {
         }
         mAppPermissions = new AppPermissions(activity, packageInfo, false,
                 () -> getActivity().finish());
+        mAppOpsManager = (AppOpsManager) getContext().getSystemService(AppOpsManager.class);
         addPreferences();
     }
 
@@ -112,9 +117,17 @@ public class AppPermissionUsageFragment extends SettingsWithHeader {
             ApplicationInfo appInfo = mAppPermissions.getPackageInfo().applicationInfo;
             Drawable icon = IconDrawableFactory.getBadgedIcon(getActivity(), appInfo,
                     UserHandle.getUserHandleForUid(appInfo.uid));
-            CharSequence label = appInfo.loadLabel(getActivity().getPackageManager());
-            setHeader(icon, label, null);
+            setHeader(icon, Utils.getFullAppLabel(appInfo, getContext()));
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getActivity().finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private static PackageInfo getPackageInfo(@NonNull Activity activity,
@@ -144,6 +157,9 @@ public class AppPermissionUsageFragment extends SettingsWithHeader {
         // Find the permission usages we want to add.
         List<AppPermissionUsage> usages = new ArrayList<>();
         Map<AppPermissionUsage, AppPermissionGroup> usageToGroup = new ArrayMap<>();
+        Map<AppPermissionGroup, AppOpsManager.HistoricalPackageOps> groupToHistory =
+                new ArrayMap<>();
+        PackageInfo packageInfo = mAppPermissions.getPackageInfo();
         List<AppPermissionGroup> permissionGroups = mAppPermissions.getPermissionGroups();
         int numGroups = permissionGroups.size();
         for (int groupNum = 0; groupNum < numGroups; groupNum++) {
@@ -169,25 +185,51 @@ public class AppPermissionUsageFragment extends SettingsWithHeader {
                 usages.add(usage);
                 usageToGroup.put(usage, group);
             }
+
+            groupToHistory.put(group,
+                    Utils.getUsageForGroup(group, mAppOpsManager, 1000 * 60 * 60 * 24));
         }
 
         // Add the permission usages.
         usages.sort(Comparator.comparing(AppPermissionUsage::getTime).reversed());
         Set<String> addedEntries = new ArraySet<>();
         int numUsages = usages.size();
-        for (int i = 0; i < numUsages; i++) {
-            AppPermissionUsage usage = usages.get(i);
-            AppPermissionGroup group = usageToGroup.get(usage);
+        for (int usageNum = 0; usageNum < numUsages; usageNum++) {
+            AppPermissionUsage usage = usages.get(usageNum);
             // Filter out entries we've seen before.
             if (!addedEntries.add(usage.getPackageName() + "," + usage.getPermissionGroupName())) {
                 continue;
             }
 
+            AppPermissionGroup group = usageToGroup.get(usage);
+
+            AppOpsManager.HistoricalPackageOps history = groupToHistory.get(group);
+            long numAccesses = 0;
+            long totalDuration = 0;
+            for (int i = 0; i < history.getEntryCount(); i++) {
+                AppOpsManager.HistoricalOpEntry historyEntry = history.getEntryAt(i);
+                numAccesses += historyEntry.getForegroundAccessCount()
+                        + historyEntry.getBackgroundAccessCount();
+                totalDuration += historyEntry.getForegroundAccessDuration()
+                        + historyEntry.getBackgroundAccessDuration();
+            }
+
+            Preference pref = new PermissionControlPreference(context, group);
+            pref.setTitle(usage.getPermissionGroupLabel());
             long timeDiff = System.currentTimeMillis() - usage.getTime();
-            String timeDiffStr = Utils.getTimeDiffStr(context, timeDiff);
-            String summary = context.getString(R.string.app_permission_usage_summary, timeDiffStr);
-            Preference pref = new PermissionUsagePreference(context, usage,
-                    usage.getPermissionGroupLabel(), summary, group.getIconResId());
+            if (totalDuration == 0) {
+                pref.setSummary(
+                        context.getString(R.string.app_permission_usage_summary_no_duration,
+                                numAccesses, Utils.getTimeDiffStr(context, timeDiff)));
+            } else {
+                pref.setSummary(
+                        context.getString(R.string.app_permission_usage_summary, numAccesses,
+                                Utils.getTimeDiffStr(context, totalDuration),
+                                Utils.getTimeDiffStr(context, timeDiff)));
+            }
+            pref.setIcon(Utils.applyTint(context, group.getIconResId(),
+                    android.R.attr.colorControlNormal));
+            pref.setKey(usage.getPackageName() + "," + usage.getPermissionGroupName());
             screen.addPreference(pref);
         }
 

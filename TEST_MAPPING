@@ -5,11 +5,11 @@
             "options": [
                 {
                     "include-filter": "android.permission.cts.BackgroundPermissionsTest"
-                },
-                {
-                    "include-filter": "android.permission.cts.PermissionGroupChange"
                 }
             ]
+        },
+        {
+            "name": "CtsRoleTestCases"
         }
     ]
 }

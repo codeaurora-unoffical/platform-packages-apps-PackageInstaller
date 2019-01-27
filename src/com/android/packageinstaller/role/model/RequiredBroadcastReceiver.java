@@ -22,7 +22,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.os.Bundle;
-import android.util.ArrayMap;
+import android.os.UserHandle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -35,16 +35,16 @@ import java.util.List;
 public class RequiredBroadcastReceiver extends RequiredComponent {
 
     public RequiredBroadcastReceiver(@NonNull IntentFilterData intentFilterData,
-            @Nullable String permission, @NonNull ArrayMap<String, Object> metaData) {
+            @Nullable String permission, @NonNull List<RequiredMetaData> metaData) {
         super(intentFilterData, permission, metaData);
     }
 
     @NonNull
     @Override
-    protected List<ResolveInfo> queryIntentComponents(@NonNull Intent intent, int flags,
-            @NonNull Context context) {
+    protected List<ResolveInfo> queryIntentComponentsAsUser(@NonNull Intent intent, int flags,
+            @NonNull UserHandle user, @NonNull Context context) {
         PackageManager packageManager = context.getPackageManager();
-        return packageManager.queryBroadcastReceivers(intent, flags);
+        return packageManager.queryBroadcastReceiversAsUser(intent, flags, user);
     }
 
     @NonNull

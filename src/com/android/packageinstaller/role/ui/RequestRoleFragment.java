@@ -17,18 +17,20 @@
 package com.android.packageinstaller.role.ui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.role.RoleManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.os.Bundle;
+import android.os.Process;
 import android.text.Html;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProviders;
 
@@ -53,6 +55,7 @@ public class RequestRoleFragment extends DialogFragment {
 
     private RequestRoleViewModel mViewModel;
 
+    @Nullable
     private PackageRemovalMonitor mPackageRemovalMonitor;
 
     /**
@@ -65,12 +68,12 @@ public class RequestRoleFragment extends DialogFragment {
      */
     public static RequestRoleFragment newInstance(@NonNull String roleName,
             @NonNull String packageName) {
-        RequestRoleFragment instance = new RequestRoleFragment();
+        RequestRoleFragment fragment = new RequestRoleFragment();
         Bundle arguments = new Bundle();
         arguments.putString(RoleManager.EXTRA_REQUEST_ROLE_NAME, roleName);
         arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
-        instance.setArguments(arguments);
-        return instance;
+        fragment.setArguments(arguments);
+        return fragment;
     }
 
     @Override
@@ -122,11 +125,15 @@ public class RequestRoleFragment extends DialogFragment {
         }
         CharSequence message = Html.fromHtml(messageHtml, Html.FROM_HTML_MODE_LEGACY);
 
-        return new AlertDialog.Builder(context, getTheme())
+        AlertDialog dialog = new AlertDialog.Builder(context, getTheme())
                 .setMessage(message)
-                .setPositiveButton(android.R.string.ok, (dialog, which) -> addRoleHolder())
-                .setNegativeButton(android.R.string.cancel, (dialog, which) -> finish())
+                // Set the positive button listener later to avoid the automatic dismiss behavior.
+                .setPositiveButton(android.R.string.ok, null)
+                .setNegativeButton(android.R.string.cancel, null)
                 .create();
+        dialog.setOnShowListener(dialog2 -> dialog.getButton(Dialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> addRoleHolder()));
+        return dialog;
     }
 
     @Override
@@ -134,16 +141,25 @@ public class RequestRoleFragment extends DialogFragment {
         super.onActivityCreated(savedInstanceState);
 
         mViewModel = ViewModelProviders.of(this).get(RequestRoleViewModel.class);
-        mViewModel.getLiveData().observe(this, this::onRequestRoleStateChanged);
+        mViewModel.getLiveData().observe(this, this::onAddRoleHolderStateChanged);
     }
 
     @Override
     public void onStart() {
         super.onStart();
 
-        mPackageRemovalMonitor = new PackageRemovalMonitor(requireContext(), mPackageName) {
+        Context context = requireContext();
+        if (PackageUtils.getApplicationInfo(mPackageName, context) == null) {
+            Log.w(LOG_TAG, "Unknown application: " + mPackageName);
+            finish();
+            return;
+        }
+
+        mPackageRemovalMonitor = new PackageRemovalMonitor(context, mPackageName) {
             @Override
             protected void onPackageRemoved() {
+                Log.w(LOG_TAG, "Application is uninstalled, role: " + mRoleName + ", package: "
+                        + mPackageName);
                 finish();
             }
         };
@@ -154,32 +170,46 @@ public class RequestRoleFragment extends DialogFragment {
     public void onStop() {
         super.onStop();
 
-        mPackageRemovalMonitor.unregister();
-        mPackageRemovalMonitor = null;
+        if (mPackageRemovalMonitor != null) {
+            mPackageRemovalMonitor.unregister();
+            mPackageRemovalMonitor = null;
+        }
     }
 
-    private void onRequestRoleStateChanged(int state) {
+    @Override
+    public void onDismiss(@NonNull DialogInterface dialog) {
+        super.onDismiss(dialog);
+
+        Log.i(LOG_TAG, "Dialog dismissed, role: " + mRoleName + ", package: "
+                + mPackageName);
+        if (getActivity() != null) {
+            finish();
+        }
+    }
+
+    private void onAddRoleHolderStateChanged(int state) {
         AlertDialog dialog = (AlertDialog) getDialog();
         switch (state) {
-            case RequestRoleLiveData.STATE_IDLE:
+            case AddRoleHolderStateLiveData.STATE_IDLE:
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
                 dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(true);
                 break;
-            case RequestRoleLiveData.STATE_ADDING:
+            case AddRoleHolderStateLiveData.STATE_ADDING:
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
                 dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(false);
                 break;
-            case RequestRoleLiveData.STATE_SUCCESS:
+            case AddRoleHolderStateLiveData.STATE_SUCCESS:
                 setResultOkAndFinish();
                 break;
-            case RequestRoleLiveData.STATE_FAILURE:
+            case AddRoleHolderStateLiveData.STATE_FAILURE:
                 finish();
                 break;
         }
     }
 
     private void addRoleHolder() {
-        mViewModel.getLiveData().addRoleHolder(mRoleName, mPackageName, requireContext());
+        mViewModel.getLiveData().addRoleHolderAsUser(mRoleName, mPackageName,
+                Process.myUserHandle(), requireContext());
     }
 
     private void setResultOkAndFinish() {

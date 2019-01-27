@@ -17,13 +17,17 @@
 package com.android.packageinstaller.role.model;
 
 import android.app.ActivityManager;
+import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
+import android.os.Process;
+import android.os.UserHandle;
 import android.util.ArrayMap;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
 import com.android.packageinstaller.role.utils.PackageUtils;
@@ -52,6 +56,8 @@ public class Role {
 
     private static final String LOG_TAG = Role.class.getSimpleName();
 
+    private static final String PACKAGE_NAME_ANDROID_SYSTEM = "android";
+
     /**
      * The name of this role. Must be unique.
      */
@@ -59,15 +65,21 @@ public class Role {
     private final String mName;
 
     /**
-     * The string resource for the label of this role.
+     * Whether this role is available in managed profile, i.e. work profile.
      */
-    @StringRes
-    private final int mLabelResource;
+    @Nullable
+    private final RoleAvailabilityProvider mAvailabilityProvider;
 
     /**
      * Whether this role is exclusive, i.e. allows at most one holder.
      */
     private final boolean mExclusive;
+
+    /**
+     * The string resource for the label of this role.
+     */
+    @StringRes
+    private final int mLabelResource;
 
     /**
      * The required components for an application to qualify for this role.
@@ -93,12 +105,14 @@ public class Role {
     @NonNull
     private final List<PreferredActivity> mPreferredActivities;
 
-    public Role(@NonNull String name, @StringRes int labelResource, boolean exclusive,
+    public Role(@NonNull String name, @Nullable RoleAvailabilityProvider availabilityProvider,
+            boolean exclusive, @StringRes int labelResource,
             @NonNull List<RequiredComponent> requiredComponents, @NonNull List<String> permissions,
             @NonNull List<AppOp> appOps, @NonNull List<PreferredActivity> preferredActivities) {
         mName = name;
-        mLabelResource = labelResource;
+        mAvailabilityProvider = availabilityProvider;
         mExclusive = exclusive;
+        mLabelResource = labelResource;
         mRequiredComponents = requiredComponents;
         mPermissions = permissions;
         mAppOps = appOps;
@@ -110,13 +124,18 @@ public class Role {
         return mName;
     }
 
-    @StringRes
-    public int getLabelResource() {
-        return mLabelResource;
+    @Nullable
+    public RoleAvailabilityProvider getAvailabilityProvider() {
+        return mAvailabilityProvider;
     }
 
     public boolean isExclusive() {
         return mExclusive;
+    }
+
+    @StringRes
+    public int getLabelResource() {
+        return mLabelResource;
     }
 
     @NonNull
@@ -140,6 +159,32 @@ public class Role {
     }
 
     /**
+     * Check whether this role is available.
+     *
+     * @param user the user to check for
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return whether this role is available.
+     */
+    public boolean isAvailableAsUser(@NonNull UserHandle user, @NonNull Context context) {
+        if (mAvailabilityProvider != null) {
+            return mAvailabilityProvider.isRoleAvailableAsUser(user, context);
+        }
+        return true;
+    }
+
+    /**
+     * Check whether this role is available, for current user.
+     *
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return whether this role is available.
+     */
+    public boolean isAvailable(@NonNull Context context) {
+        return isAvailableAsUser(Process.myUserHandle(), context);
+    }
+
+    /**
      * Check whether a package is qualified for this role, i.e. whether it contains all the required
      * components.
      *
@@ -149,10 +194,15 @@ public class Role {
      * @return whether the package is qualified for a role
      */
     public boolean isPackageQualified(@NonNull String packageName, @NonNull Context context) {
+        if (Objects.equals(packageName, PACKAGE_NAME_ANDROID_SYSTEM)) {
+            return false;
+        }
         int requiredComponentsSize = mRequiredComponents.size();
         for (int i = 0; i < requiredComponentsSize; i++) {
             RequiredComponent requiredComponent = mRequiredComponents.get(i);
             if (requiredComponent.getQualifyingComponentForPackage(packageName, context) == null) {
+                Log.w(LOG_TAG, packageName + " not qualified for " + mName
+                        + " due to missing " + requiredComponent);
                 return false;
             }
         }
@@ -160,15 +210,17 @@ public class Role {
     }
 
     /**
-     * Get the set of packages that are qualified for this role, i.e. packages containing all the
+     * Get the list of packages that are qualified for this role, i.e. packages containing all the
      * required components.
      *
+     * @param user the user to get the qualifying packages.
      * @param context the {@code Context} to retrieve system services
      *
      * @return the set of packages that are qualified for this role
      */
     @NonNull
-    public List<String> getQualifyingPackages(@NonNull Context context) {
+    public List<String> getQualifyingPackagesAsUser(@NonNull UserHandle user,
+            @NonNull Context context) {
         ArrayMap<String, Integer> packageComponentCountMap = new ArrayMap<>();
         int requiredComponentsSize = mRequiredComponents.size();
         for (int requiredComponentsIndex = 0; requiredComponentsIndex < requiredComponentsSize;
@@ -176,8 +228,8 @@ public class Role {
             RequiredComponent requiredComponent = mRequiredComponents.get(requiredComponentsIndex);
 
             // This returns at most one component per package.
-            List<ComponentName> qualifyingComponents = requiredComponent.getQualifyingComponents(
-                    context);
+            List<ComponentName> qualifyingComponents =
+                    requiredComponent.getQualifyingComponentsAsUser(user, context);
             int qualifyingComponentsSize = qualifyingComponents.size();
             for (int qualifyingComponentsIndex = 0;
                     qualifyingComponentsIndex < qualifyingComponentsSize;
@@ -185,6 +237,9 @@ public class Role {
                 ComponentName componentName = qualifyingComponents.get(qualifyingComponentsIndex);
 
                 String packageName = componentName.getPackageName();
+                if (Objects.equals(packageName, PACKAGE_NAME_ANDROID_SYSTEM)) {
+                    continue;
+                }
                 Integer componentCount = packageComponentCountMap.get(packageName);
                 packageComponentCountMap.put(packageName, componentCount == null ? 1
                         : componentCount + 1);
@@ -247,7 +302,7 @@ public class Role {
     }
 
     /**
-     * Revoke this role to an application.
+     * Revoke this role from an application.
      *
      * @param packageName the package name of the application to be granted this role to
      * @param mayKillApp whether this application may be killed due to changes
@@ -256,12 +311,30 @@ public class Role {
      */
     public void revoke(@NonNull String packageName, boolean mayKillApp,
             boolean overrideSystemFixedPermissions, @NonNull Context context) {
-        boolean permissionOrAppOpChanged = Permissions.revoke(packageName, mPermissions,
+        RoleManager roleManager = context.getSystemService(RoleManager.class);
+        List<String> otherRoleNames = roleManager.getHeldRolesFromController(packageName);
+        otherRoleNames.remove(mName);
+
+        List<String> permissionsToRevoke = new ArrayList<>(mPermissions);
+        ArrayMap<String, Role> roles = Roles.getRoles(context);
+        int otherRoleNamesSize = otherRoleNames.size();
+        for (int i = 0; i < otherRoleNamesSize; i++) {
+            String roleName = otherRoleNames.get(i);
+            Role role = roles.get(roleName);
+            permissionsToRevoke.removeAll(role.getPermissions());
+        }
+        boolean permissionOrAppOpChanged = Permissions.revoke(packageName, permissionsToRevoke,
                 overrideSystemFixedPermissions, context);
 
-        int appOpsSize = mAppOps.size();
+        List<AppOp> appOpsToRevoke = new ArrayList<>(mAppOps);
+        for (int i = 0; i < otherRoleNamesSize; i++) {
+            String roleName = otherRoleNames.get(i);
+            Role role = roles.get(roleName);
+            appOpsToRevoke.removeAll(role.getAppOps());
+        }
+        int appOpsSize = appOpsToRevoke.size();
         for (int i = 0; i < appOpsSize; i++) {
-            AppOp appOp = mAppOps.get(i);
+            AppOp appOp = appOpsToRevoke.get(i);
             permissionOrAppOpChanged |= appOp.revoke(packageName, context);
         }
 
@@ -272,7 +345,7 @@ public class Role {
         }
     }
 
-    private void killApp(@NonNull String packageName, @NonNull Context context) {
+    private static void killApp(@NonNull String packageName, @NonNull Context context) {
         ApplicationInfo applicationInfo = PackageUtils.getApplicationInfo(packageName, context);
         if (applicationInfo == null) {
             Log.w(LOG_TAG, "Cannot get ApplicationInfo for package: " + packageName);
@@ -286,7 +359,9 @@ public class Role {
     public String toString() {
         return "Role{"
                 + "mName='" + mName + '\''
+                + ", mAvailabilityProvider=" + mAvailabilityProvider
                 + ", mExclusive=" + mExclusive
+                + ", mLabelResource=" + mLabelResource
                 + ", mRequiredComponents=" + mRequiredComponents
                 + ", mPermissions=" + mPermissions
                 + ", mAppOps=" + mAppOps
@@ -304,7 +379,9 @@ public class Role {
         }
         Role role = (Role) object;
         return mExclusive == role.mExclusive
+                && mLabelResource == role.mLabelResource
                 && Objects.equals(mName, role.mName)
+                && Objects.equals(mAvailabilityProvider, role.mAvailabilityProvider)
                 && Objects.equals(mRequiredComponents, role.mRequiredComponents)
                 && Objects.equals(mPermissions, role.mPermissions)
                 && Objects.equals(mAppOps, role.mAppOps)
@@ -313,7 +390,7 @@ public class Role {
 
     @Override
     public int hashCode() {
-        return Objects.hash(mName, mExclusive, mRequiredComponents, mPermissions, mAppOps,
-                mPreferredActivities);
+        return Objects.hash(mName, mAvailabilityProvider, mExclusive, mLabelResource,
+                mRequiredComponents, mPermissions, mAppOps, mPreferredActivities);
     }
 }
