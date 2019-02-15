@@ -23,6 +23,7 @@ import static android.app.PendingIntent.FLAG_ONE_SHOT;
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 import static android.app.PendingIntent.getBroadcast;
 import static android.app.job.JobScheduler.RESULT_SUCCESS;
+import static android.content.Context.MODE_PRIVATE;
 import static android.content.Intent.EXTRA_PACKAGE_NAME;
 import static android.content.Intent.EXTRA_PERMISSION_NAME;
 import static android.content.Intent.EXTRA_UID;
@@ -32,6 +33,7 @@ import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 import static android.content.pm.PackageManager.GET_PERMISSIONS;
 import static android.graphics.Bitmap.Config.ARGB_8888;
 import static android.graphics.Bitmap.createBitmap;
+import static android.os.Process.INVALID_UID;
 import static android.os.UserHandle.getUserHandleForUid;
 import static android.os.UserHandle.myUserId;
 import static android.provider.Settings.Secure.LOCATION_ACCESS_CHECK_DELAY_MILLIS;
@@ -53,10 +55,9 @@ import static com.android.packageinstaller.permission.utils.Utils.getSystemServi
 
 import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.DAYS;
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 import android.app.AppOpsManager;
-import android.app.AppOpsManager.HistoricalOpEntry;
+import android.app.AppOpsManager.HistoricalOps;
 import android.app.AppOpsManager.HistoricalPackageOps;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -67,6 +68,7 @@ import android.app.job.JobScheduler;
 import android.app.job.JobService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -75,6 +77,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.UserHandle;
@@ -86,10 +89,10 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 import androidx.core.util.Preconditions;
 
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
-import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.ui.AppPermissionActivity;
 import com.android.permissioncontroller.R;
 
@@ -103,13 +106,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.function.BooleanSupplier;
 
 /**
  * Show notification that double-guesses the user if she/he really wants to grant fine background
  * location access to an app.
  *
  * <p>A notification is scheduled after the background permission access is granted via
- * {@link #checkLocationAccessSoon(Context)} or periodically.
+ * {@link #checkLocationAccessSoon()} or periodically.
  *
  * <p>We rate limit the number of notification we show and only ever show one notification at a
  * time. Further we only shown notifications if the app has actually accessed the fine location
@@ -118,7 +122,7 @@ import java.util.Random;
  * <p>As there are many cases why a notification should not been shown, we always schedule a
  * {@link #addLocationNotificationIfNeeded check} which then might add a notification.
  */
-public class LocationAccessCheck extends JobService {
+public class LocationAccessCheck {
     private static final String LOG_TAG = LocationAccessCheck.class.getSimpleName();
     private static final boolean DEBUG = false;
 
@@ -127,42 +131,39 @@ public class LocationAccessCheck extends JobService {
 
     private final Random mRandom = new Random();
 
-    /* Initialized late in {@link #onCreate} */
-    private NotificationManager mNotificationManager;
-    private AppOpsManager mAppOpsManager;
-    private PackageManager mPackageManager;
-    private UserManager mUserManager;
-    private SharedPreferences mSharedPrefs;
+    private final @NonNull Context mContext;
+    private final @NonNull JobScheduler mJobScheduler;
+    private final @NonNull ContentResolver mContentResolver;
+    private final @NonNull AppOpsManager mAppOpsManager;
+    private final @NonNull PackageManager mPackageManager;
+    private final @NonNull UserManager mUserManager;
+    private final @NonNull SharedPreferences mSharedPrefs;
 
-    /** If we currently check if we should show a notification, the task executing the check */
-    // @GuardedBy("sLock")
-    private @Nullable AddLocationNotificationIfNeededTask mAddLocationNotificationIfNeededTask;
+    /** If the current long running operation should be canceled */
+    private final @Nullable BooleanSupplier mShouldCancel;
 
     /**
      * Get time in between two periodic checks.
      *
      * <p>Default: 1 day
      *
-     * @param context Context used to resolve settings
-     *
      * @return The time in between check in milliseconds
      */
-    private static long getPeriodicCheckIntervalMillis(@NonNull Context context) {
-        return Settings.Secure.getLong(context.getContentResolver(),
-                LOCATION_ACCESS_CHECK_INTERVAL_MILLIS, DAYS.toMillis(1));
+    private long getPeriodicCheckIntervalMillis() {
+        // STOPSHIP: Set delay back to 1 day once location access should be checked again
+        return Settings.Secure.getLong(mContentResolver,
+                LOCATION_ACCESS_CHECK_INTERVAL_MILLIS, DAYS.toMillis(10000));
     }
 
     /**
      * Flexibility of the periodic check.
      *
-     * <p>10% of {@link #getPeriodicCheckIntervalMillis(Context)}
-     *
-     * @param context Context used to resolve settings
+     * <p>10% of {@link #getPeriodicCheckIntervalMillis()}
      *
      * @return The flexibility of the periodic check in milliseconds
      */
-    private static long getFlexForPeriodicCheckMillis(@NonNull Context context) {
-        return getPeriodicCheckIntervalMillis(context) / 10;
+    private long getFlexForPeriodicCheckMillis() {
+        return getPeriodicCheckIntervalMillis() / 10;
     }
 
     /**
@@ -170,13 +171,12 @@ public class LocationAccessCheck extends JobService {
      *
      * <p>Default: 10 minutes
      *
-     * @param context Context used to resolve settings
-     *
      * @return The delay in milliseconds
      */
-    private static long getDelayMillis(@NonNull Context context) {
-        return Settings.Secure.getLong(context.getContentResolver(),
-                LOCATION_ACCESS_CHECK_DELAY_MILLIS, MINUTES.toMillis(10));
+    private long getDelayMillis() {
+        // STOPSHIP: Set delay back to 10 minutes once location access should be checked again
+        return Settings.Secure.getLong(mContentResolver,
+                LOCATION_ACCESS_CHECK_DELAY_MILLIS, DAYS.toMillis(1000));
     }
 
     /**
@@ -184,28 +184,20 @@ public class LocationAccessCheck extends JobService {
      *
      * <p>This is just small enough so that the periodic check can always show a notification.
      *
-     * @param context Context used to resolve settings
-     *
      * @return The minimum time in milliseconds
      */
-    private static long getInBetweenNotificationsMillis(@NonNull Context context) {
-        return getPeriodicCheckIntervalMillis(context) - (long) (getFlexForPeriodicCheckMillis(
-                context) * 2.1);
+    private long getInBetweenNotificationsMillis() {
+        return getPeriodicCheckIntervalMillis() - (long) (getFlexForPeriodicCheckMillis() * 2.1);
     }
 
     /**
      * Load the list of {@link UserPackage packages} we already shown a notification for.
      *
-     * @param context A context used to resolve managers.
-     *
      * @return The list of packages we already shown a notification for.
      */
-    private static @NonNull ArraySet<UserPackage> loadAlreadyNotifiedPackagesLocked(
-            @NonNull Context context) {
-        UserManager userManager = context.getSystemService(UserManager.class);
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(context.openFileInput(
-                LOCATION_ACCESS_CHECK_ALREADY_NOTIFIED_FILE)))) {
+    private @NonNull ArraySet<UserPackage> loadAlreadyNotifiedPackagesLocked() {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                mContext.openFileInput(LOCATION_ACCESS_CHECK_ALREADY_NOTIFIED_FILE)))) {
             ArraySet<UserPackage> packages = new ArraySet<>();
 
             /*
@@ -223,11 +215,11 @@ public class LocationAccessCheck extends JobService {
 
                 String[] lineComponents = line.split(" ");
                 String pkg = lineComponents[0];
-                UserHandle user = userManager.getUserForSerialNumber(
+                UserHandle user = mUserManager.getUserForSerialNumber(
                         Long.valueOf(lineComponents[1]));
 
                 if (user != null) {
-                    packages.add(new UserPackage(pkg, user));
+                    packages.add(new UserPackage(mContext, pkg, user));
                 } else {
                     Log.i(LOG_TAG, "Not restoring state \"" + line + "\" as user is unknown");
                 }
@@ -245,15 +237,11 @@ public class LocationAccessCheck extends JobService {
     /**
      * Safe the list of {@link UserPackage packages} we have already shown a notification for.
      *
-     * @param context A context used to resolve managers.
      * @param packages The list of packages we already shown a notification for.
      */
-    private static void safeAlreadyNotifiedPackagesLocked(@NonNull Context context,
-            @NonNull ArraySet<UserPackage> packages) {
-        UserManager userManager = getSystemServiceSafe(context, UserManager.class);
-
+    private void safeAlreadyNotifiedPackagesLocked(@NonNull ArraySet<UserPackage> packages) {
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
-                context.openFileOutput(LOCATION_ACCESS_CHECK_ALREADY_NOTIFIED_FILE,
+                mContext.openFileOutput(LOCATION_ACCESS_CHECK_ALREADY_NOTIFIED_FILE,
                         MODE_PRIVATE)))) {
             /*
              * The format of the file is <package> <serial of user>, e.g.
@@ -269,7 +257,7 @@ public class LocationAccessCheck extends JobService {
                 writer.append(userPkg.pkg);
                 writer.append(' ');
                 writer.append(
-                        Long.valueOf(userManager.getSerialNumberForUser(userPkg.user)).toString());
+                        Long.valueOf(mUserManager.getSerialNumberForUser(userPkg.user)).toString());
                 writer.newLine();
             }
         } catch (IOException e) {
@@ -280,17 +268,14 @@ public class LocationAccessCheck extends JobService {
     /**
      * Remember that we showed a notification for a {@link UserPackage}
      *
-     * @param context Context used to resolve manager
      * @param pkg The package we notified for
      * @param user The user we notified for
      */
-    private static void markAsNotified(@NonNull Context context, @NonNull String pkg,
-            @NonNull UserHandle user) {
+    private void markAsNotified(@NonNull String pkg, @NonNull UserHandle user) {
         synchronized (sLock) {
-            ArraySet<UserPackage> alreadyNotifiedPackages = loadAlreadyNotifiedPackagesLocked(
-                    context);
-            alreadyNotifiedPackages.add(new UserPackage(pkg, user));
-            safeAlreadyNotifiedPackagesLocked(context, alreadyNotifiedPackages);
+            ArraySet<UserPackage> alreadyNotifiedPackages = loadAlreadyNotifiedPackagesLocked();
+            alreadyNotifiedPackages.add(new UserPackage(mContext, pkg, user));
+            safeAlreadyNotifiedPackagesLocked(alreadyNotifiedPackages);
         }
     }
 
@@ -300,116 +285,119 @@ public class LocationAccessCheck extends JobService {
      * @param user The user to create the channel for
      */
     private void createPermissionReminderChannel(@NonNull UserHandle user) {
-        NotificationManager notificationManager = getSystemServiceSafe(this,
+        NotificationManager notificationManager = getSystemServiceSafe(mContext,
                 NotificationManager.class, user);
 
         NotificationChannel permissionReminderChannel = new NotificationChannel(
-                PERMISSION_REMINDER_CHANNEL_ID, getString(R.string.permission_reminders),
+                PERMISSION_REMINDER_CHANNEL_ID, mContext.getString(R.string.permission_reminders),
                 IMPORTANCE_LOW);
         notificationManager.createNotificationChannel(permissionReminderChannel);
     }
 
     /**
-     * If the {@link #mAddLocationNotificationIfNeededTask} is canceled, throw a
-     * {@link InterruptedException}.
+     * If {@link #mShouldCancel} throw an {@link InterruptedException}.
      */
-    private void throwInterruptedExceptionIfTaskIsCanceledLocked() throws InterruptedException {
-        AddLocationNotificationIfNeededTask task = mAddLocationNotificationIfNeededTask;
-        if (task != null && task.isCancelled()) {
+    private void throwInterruptedExceptionIfTaskIsCanceled() throws InterruptedException {
+        if (mShouldCancel != null && mShouldCancel.getAsBoolean()) {
             throw new InterruptedException();
         }
     }
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
-
-        mNotificationManager = getSystemService(NotificationManager.class);
-        mAppOpsManager = getSystemService(AppOpsManager.class);
-        mPackageManager = getPackageManager();
-        mUserManager = getSystemService(UserManager.class);
-        mSharedPrefs = getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
-    }
-
     /**
-     * Starts an asynchronous {@link #addLocationNotificationIfNeeded() check} if a location access
-     * notification should be shown.
+     * Create a new {@link LocationAccessCheck} object.
      *
-     * @param params Not used other than for interacting with job scheduling
-     *
-     * @return {@code false} iff another check if already running
+     * @param context Used to resolve managers
+     * @param shouldCancel If supplied, can be used to interrupt long running operations
      */
-    @Override
-    public boolean onStartJob(JobParameters params) {
-        synchronized (sLock) {
-            if (mAddLocationNotificationIfNeededTask != null) {
-                return false;
+    public LocationAccessCheck(@NonNull Context context, @Nullable BooleanSupplier shouldCancel) {
+        UserHandle parentUser = getSystemServiceSafe(context, UserManager.class)
+                .getProfileParent(UserHandle.of(myUserId()));
+
+        if (parentUser != null) {
+            // In a multi profile environment perform all operations as the parent user of the
+            // current profile
+            try {
+                mContext = context.createPackageContextAsUser(context.getPackageName(), 0,
+                        parentUser);
+            } catch (PackageManager.NameNotFoundException e) {
+                // cannot happen
+                throw new IllegalStateException("Could not switch to parent user " + parentUser, e);
             }
-
-            mAddLocationNotificationIfNeededTask = new AddLocationNotificationIfNeededTask();
+        } else {
+            mContext = context;
         }
 
-        mAddLocationNotificationIfNeededTask.execute(this, params);
+        mJobScheduler = getSystemServiceSafe(mContext, JobScheduler.class);
+        mAppOpsManager = getSystemServiceSafe(mContext, AppOpsManager.class);
+        mPackageManager = mContext.getPackageManager();
+        mUserManager = getSystemServiceSafe(mContext, UserManager.class);
+        mSharedPrefs = mContext.getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+        mContentResolver = mContext.getContentResolver();
 
-        return true;
-    }
-
-    /**
-     * Abort the {@link #addLocationNotificationIfNeeded() check} if still running.
-     *
-     * @param params ignored
-     *
-     * @return false
-     */
-    @Override
-    public boolean onStopJob(JobParameters params) {
-        AddLocationNotificationIfNeededTask task;
-        synchronized (sLock) {
-            if (mAddLocationNotificationIfNeededTask == null) {
-                return false;
-            } else {
-                task = mAddLocationNotificationIfNeededTask;
-            }
-        }
-
-        task.cancel(false);
-
-        try {
-            // Wait for task to finish
-            task.get();
-        } catch (Exception e) {
-            Log.e(LOG_TAG, "While waiting for " + task + " to finish", e);
-        }
-
-        return false;
+        mShouldCancel = shouldCancel;
     }
 
     /**
      * Check if a location access notification should be shown and then add it.
      *
-     * <p>Always run async inside a {@link AddLocationNotificationIfNeededTask}.
-     *
-     * @throws InterruptedException If the {@link #mAddLocationNotificationIfNeededTask} has been
-     * canceled.
+     * <p>Always run async inside a
+     * {@link LocationAccessCheckJobService.AddLocationNotificationIfNeededTask}.
      */
-    private void addLocationNotificationIfNeeded() throws InterruptedException {
+    @WorkerThread
+    private void addLocationNotificationIfNeeded(@NonNull JobParameters params,
+            @NonNull LocationAccessCheckJobService service) {
         synchronized (sLock) {
-            if (currentTimeMillis() - mSharedPrefs.getLong(
-                    KEY_LAST_LOCATION_ACCESS_NOTIFICATION_SHOWN, 0)
-                    < getInBetweenNotificationsMillis(this)) {
-                return;
-            }
+            try {
+                if (currentTimeMillis() - mSharedPrefs.getLong(
+                        KEY_LAST_LOCATION_ACCESS_NOTIFICATION_SHOWN, 0)
+                        < getInBetweenNotificationsMillis()) {
+                    service.jobFinished(params, false);
+                    return;
+                }
 
-            if (getCurrentlyShownNotificationLocked(this) != null) {
-                return;
-            }
+                if (getCurrentlyShownNotificationLocked() != null) {
+                    service.jobFinished(params, false);
+                    return;
+                }
 
-            List<UserPackage> packages = getLocationUsersWithNoNotificationYetLocked();
+                HistoricalOps[] ops = new HistoricalOps[1];
+                mAppOpsManager.getHistoricalOps(INVALID_UID, null,
+                        new String[]{OPSTR_FINE_LOCATION}, 0, Long.MAX_VALUE,
+                        mContext.getMainExecutor(), (h) -> {
+                            synchronized (ops) {
+                                ops[0] = h;
+                                ops.notifyAll();
+                            }
+                        }
+                );
+
+                synchronized (ops) {
+                    while (ops[0] == null) {
+                        ops.wait();
+                    }
+                }
+
+                addLocationNotificationIfNeeded(ops[0]);
+                service.jobFinished(params, false);
+            } catch (InterruptedException e) {
+                service.jobFinished(params, true);
+            } finally {
+                synchronized (sLock) {
+                    service.mAddLocationNotificationIfNeededTask = null;
+                }
+            }
+        }
+    }
+
+    private void addLocationNotificationIfNeeded(@NonNull HistoricalOps ops)
+            throws InterruptedException {
+        synchronized (sLock) {
+            List<UserPackage> packages = getLocationUsersWithNoNotificationYetLocked(ops);
 
             // Get a random package and resolve package info
             PackageInfo pkgInfo = null;
             while (pkgInfo == null) {
-                throwInterruptedExceptionIfTaskIsCanceledLocked();
+                throwInterruptedExceptionIfTaskIsCanceled();
 
                 if (packages.isEmpty()) {
                     return;
@@ -417,32 +405,27 @@ public class LocationAccessCheck extends JobService {
 
                 UserPackage packageToNotifyFor = null;
 
-                // Prefer location history
-                /* TODO: Enable once we know the location history package
+                // Prefer to show notification for location controller extra package
                 int numPkgs = packages.size();
                 for (int i = 0; i < numPkgs; i++) {
                     UserPackage pkg = packages.get(i);
 
-                    if (pkg.pkg.equals(getSystemServiceSafe(this, LocationManager.class,
-                            pkg.user).getLocationHistoryProviderPackage())) {
+                    LocationManager locationManager = getSystemServiceSafe(mContext,
+                            LocationManager.class, pkg.user);
+                    if (locationManager.isLocationControllerExtraPackageEnabled() && pkg.pkg.equals(
+                            locationManager.getLocationControllerExtraPackage())) {
                         packageToNotifyFor = pkg;
+                        break;
                     }
                 }
-                */
 
                 if (packageToNotifyFor == null) {
                     packageToNotifyFor = packages.get(mRandom.nextInt(packages.size()));
                 }
 
                 try {
-                    pkgInfo = packageToNotifyFor.getPackageInfo(this);
+                    pkgInfo = packageToNotifyFor.getPackageInfo();
                 } catch (PackageManager.NameNotFoundException e) {
-                    packages.remove(packageToNotifyFor);
-                    continue;
-                }
-
-                if (!isBackgroundLocationPermissionGranted(pkgInfo)) {
-                    pkgInfo = null;
                     packages.remove(packageToNotifyFor);
                 }
             }
@@ -456,46 +439,77 @@ public class LocationAccessCheck extends JobService {
      * Get the {@link UserPackage packages} which accessed the location but we have not yet shown
      * a notification for.
      *
+     * <p>This also ignores all packages that are excepted from the notification.
+     *
      * @return The packages we need to show a notification for
      *
-     * @throws InterruptedException If the {@link #mAddLocationNotificationIfNeededTask} is canceled
+     * @throws InterruptedException If {@link #mShouldCancel}
      */
-    private @NonNull List<UserPackage> getLocationUsersWithNoNotificationYetLocked()
-            throws InterruptedException {
+    private @NonNull List<UserPackage> getLocationUsersWithNoNotificationYetLocked(
+            @NonNull HistoricalOps allOps) throws InterruptedException {
         List<UserPackage> pkgsWithLocationAccess = new ArrayList<>();
         List<UserHandle> profiles = mUserManager.getUserProfiles();
 
-        List<HistoricalPackageOps> pkgOps = mAppOpsManager.getAllHistoricPackagesOps(
-                new String[]{OPSTR_FINE_LOCATION}, 0, System.currentTimeMillis());
+        int numUid = allOps.getUidCount();
+        for (int uidNum = 0; uidNum < numUid; uidNum++) {
+            AppOpsManager.HistoricalUidOps uidOps = allOps.getUidOpsAt(uidNum);
 
-        int numPkgOps = pkgOps.size();
-        for (int pkgOpsNum = 0; pkgOpsNum < numPkgOps; pkgOpsNum++) {
-            HistoricalPackageOps ops = pkgOps.get(pkgOpsNum);
+            int numPkgs = uidOps.getPackageCount();
+            for (int pkgNum = 0; pkgNum < numPkgs; pkgNum++) {
+                HistoricalPackageOps ops = uidOps.getPackageOpsAt(pkgNum);
 
-            String pkg = ops.getPackageName();
-            if (pkg.equals(OS_PKG) || isNetworkLocationProvider(this, pkg)) {
-                continue;
-            }
+                String pkg = ops.getPackageName();
+                if (pkg.equals(OS_PKG) || isNetworkLocationProvider(mContext, pkg)) {
+                    continue;
+                }
 
-            UserHandle user = getUserHandleForUid(ops.getUid());
-            if (!profiles.contains(user)) {
-                continue;
-            }
+                UserHandle user = getUserHandleForUid(uidOps.getUid());
+                // Do not handle apps that belong to a different profile user group
+                if (!profiles.contains(user)) {
+                    continue;
+                }
 
-            int numEntries = ops.getEntryCount();
-            for (int entryNum = 0; entryNum < numEntries; entryNum++) {
-                HistoricalOpEntry entry = ops.getEntryAt(entryNum);
+                UserPackage userPkg = new UserPackage(mContext, pkg, user);
 
-                if (entry.getBackgroundAccessCount() > 0) {
-                    pkgsWithLocationAccess.add(new UserPackage(pkg, user));
+                AppPermissionGroup bgLocationGroup;
+                try {
+                    bgLocationGroup = userPkg.getBackgroundLocationGroup();
+                } catch (PackageManager.NameNotFoundException e) {
+                    // Package was uninstalled
+                    continue;
+                }
 
-                    break;
+                // Do not show notification that do not request the background permission anymore
+                if (bgLocationGroup == null) {
+                    continue;
+                }
+
+                // Do not show notification that do not currently have the background permission
+                // granted
+                if (!bgLocationGroup.areRuntimePermissionsGranted()) {
+                    continue;
+                }
+
+                // Do not show notification for apps that have the background permission by default
+                if (bgLocationGroup.hasGrantedByDefaultPermission()) {
+                    continue;
+                }
+
+                int numOps = ops.getOpCount();
+                for (int opNum = 0; opNum < numOps; opNum++) {
+                    AppOpsManager.HistoricalOp op = ops.getOpAt(opNum);
+
+                    if (op.getBackgroundAccessCount() > 0) {
+                        pkgsWithLocationAccess.add(userPkg);
+
+                        break;
+                    }
                 }
             }
         }
 
-        ArraySet<UserPackage> alreadyNotifiedPkgs = loadAlreadyNotifiedPackagesLocked(this);
-        throwInterruptedExceptionIfTaskIsCanceledLocked();
+        ArraySet<UserPackage> alreadyNotifiedPkgs = loadAlreadyNotifiedPackagesLocked();
+        throwInterruptedExceptionIfTaskIsCanceled();
 
         resetAlreadyNotifiedPackagesWithoutPermissionLocked(alreadyNotifiedPkgs);
 
@@ -521,31 +535,32 @@ public class LocationAccessCheck extends JobService {
         String pkgName = pkg.packageName;
         UserHandle user = getUserHandleForUid(pkg.applicationInfo.uid);
 
-        NotificationManager notificationManager = getSystemServiceSafe(this,
+        NotificationManager notificationManager = getSystemServiceSafe(mContext,
                 NotificationManager.class, user);
 
-        Intent deleteIntent = new Intent(this, NotificationDeleteHandler.class);
+        Intent deleteIntent = new Intent(mContext, NotificationDeleteHandler.class);
         deleteIntent.putExtra(EXTRA_PACKAGE_NAME, pkgName);
         deleteIntent.putExtra(EXTRA_USER, user);
 
-        Intent clickIntent = new Intent(this, NotificationClickHandler.class);
+        Intent clickIntent = new Intent(mContext, NotificationClickHandler.class);
         clickIntent.putExtra(EXTRA_PACKAGE_NAME, pkgName);
         clickIntent.putExtra(EXTRA_USER, user);
 
-        Notification.Builder b = (new Notification.Builder(this, PERMISSION_REMINDER_CHANNEL_ID))
-                .setContentTitle(getString(
+        Notification.Builder b = (new Notification.Builder(mContext,
+                PERMISSION_REMINDER_CHANNEL_ID))
+                .setContentTitle(mContext.getString(
                         R.string.background_location_access_reminder_notification_title, pkgLabel))
-                .setContentText(getString(
+                .setContentText(mContext.getString(
                         R.string.background_location_access_reminder_notification_content))
-                .setStyle(new Notification.BigTextStyle().bigText(getString(
+                .setStyle(new Notification.BigTextStyle().bigText(mContext.getString(
                         R.string.background_location_access_reminder_notification_content)))
                 .setSmallIcon(R.drawable.ic_signal_location)
                 .setLargeIcon(pkgIconBmp)
-                .setColor(getColor(android.R.color.system_notification_accent_color))
+                .setColor(mContext.getColor(android.R.color.system_notification_accent_color))
                 .setAutoCancel(true)
-                .setDeleteIntent(getBroadcast(this, 0, deleteIntent,
+                .setDeleteIntent(getBroadcast(mContext, 0, deleteIntent,
                         FLAG_ONE_SHOT | FLAG_UPDATE_CURRENT))
-                .setContentIntent(getBroadcast(this, 0, clickIntent,
+                .setContentIntent(getBroadcast(mContext, 0, clickIntent,
                         FLAG_ONE_SHOT | FLAG_UPDATE_CURRENT));
         notificationManager.notify(pkgName, LOCATION_ACCESS_CHECK_NOTIFICATION_ID, b.build());
 
@@ -558,19 +573,14 @@ public class LocationAccessCheck extends JobService {
     /**
      * Get currently shown notification. We only ever show one notification per profile group.
      *
-     * @param context A context to resolve managers
-     *
      * @return The notification or {@code null} if no notification is currently shown
      */
-    private static @Nullable StatusBarNotification getCurrentlyShownNotificationLocked(
-            @NonNull Context context) {
-        UserManager userManager = getSystemServiceSafe(context, UserManager.class);
-
-        List<UserHandle> profiles = userManager.getUserProfiles();
+    private @Nullable StatusBarNotification getCurrentlyShownNotificationLocked() {
+        List<UserHandle> profiles = mUserManager.getUserProfiles();
 
         int numProfiles = profiles.size();
         for (int profileNum = 0; profileNum < numProfiles; profileNum++) {
-            NotificationManager notificationManager = getSystemServiceSafe(context,
+            NotificationManager notificationManager = getSystemServiceSafe(mContext,
                     NotificationManager.class, profiles.get(profileNum));
 
             StatusBarNotification[] notifications = notificationManager.getActiveNotifications();
@@ -589,137 +599,108 @@ public class LocationAccessCheck extends JobService {
     }
 
     /**
-     * Check is a package currently has the background access to
-     * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} or can get it without user
-     * interaction.
-     *
-     * @param pkg The package that might have access.
-     *
-     * @return {@code true} iff the app currently has access to the fine background location
-     */
-    private boolean isBackgroundLocationPermissionGranted(@NonNull PackageInfo pkg) {
-        AppPermissionGroup locationGroup = AppPermissionGroup.create(this, pkg,
-                ACCESS_FINE_LOCATION, false);
-
-        if (locationGroup == null) {
-            // All location permissions have been removed from this package
-            return false;
-        } else {
-            AppPermissionGroup locationBgGroup = locationGroup.getBackgroundPermissions();
-            Permission locationPerm = locationGroup.getPermission(ACCESS_FINE_LOCATION);
-
-            // Individual permission have been removed
-            return locationBgGroup != null
-                    && locationPerm != null
-                    && locationBgGroup.hasPermission(locationPerm.getBackgroundPermissionName())
-                    && locationGroup.areRuntimePermissionsGranted()
-                    && locationBgGroup.areRuntimePermissionsGranted();
-        }
-    }
-
-    /**
      * Go through the list of packages we already shown a notification for and remove those that do
      * not request fine background location access.
      *
      * @param alreadyNotifiedPkgs The packages we already shown a notification for. This paramter is
      *                            modified inside of this method.
      *
-     * @throws InterruptedException If the {@link #mAddLocationNotificationIfNeededTask} is canceled
+     * @throws InterruptedException If {@link #mShouldCancel}
      */
     private void resetAlreadyNotifiedPackagesWithoutPermissionLocked(
             @NonNull ArraySet<UserPackage> alreadyNotifiedPkgs) throws InterruptedException {
         ArrayList<UserPackage> packagesToRemove = new ArrayList<>();
 
         for (UserPackage userPkg : alreadyNotifiedPkgs) {
-            throwInterruptedExceptionIfTaskIsCanceledLocked();
+            throwInterruptedExceptionIfTaskIsCanceled();
 
-            PackageInfo pkgInfo;
             try {
-                pkgInfo = userPkg.getPackageInfo(this);
+                AppPermissionGroup bgLocationGroup = userPkg.getBackgroundLocationGroup();
+                if (bgLocationGroup == null || !bgLocationGroup.areRuntimePermissionsGranted()) {
+                    packagesToRemove.add(userPkg);
+                }
             } catch (PackageManager.NameNotFoundException e) {
-                packagesToRemove.add(userPkg);
-                continue;
-            }
-
-            if (!isBackgroundLocationPermissionGranted(pkgInfo)) {
                 packagesToRemove.add(userPkg);
             }
         }
 
         if (!packagesToRemove.isEmpty()) {
             alreadyNotifiedPkgs.removeAll(packagesToRemove);
-            safeAlreadyNotifiedPackagesLocked(this, alreadyNotifiedPkgs);
-            throwInterruptedExceptionIfTaskIsCanceledLocked();
+            safeAlreadyNotifiedPackagesLocked(alreadyNotifiedPkgs);
+            throwInterruptedExceptionIfTaskIsCanceled();
         }
     }
 
     /**
      * Remove all persisted state for a package.
      *
-     * @param context Context to the use
      * @param pkg name of package
      * @param user user the package belongs to
      */
-    private static void forgetAboutPackage(@NonNull Context context, @NonNull String pkg,
-            @NonNull UserHandle user) {
+    private void forgetAboutPackage(@NonNull String pkg, @NonNull UserHandle user) {
         synchronized (sLock) {
-            StatusBarNotification notification = getCurrentlyShownNotificationLocked(context);
+            StatusBarNotification notification = getCurrentlyShownNotificationLocked();
             if (notification != null && notification.getUser().equals(user)
                     && notification.getTag().equals(pkg)) {
-                getSystemServiceSafe(context, NotificationManager.class, user).cancel(
+                getSystemServiceSafe(mContext, NotificationManager.class, user).cancel(
                         pkg, LOCATION_ACCESS_CHECK_NOTIFICATION_ID);
             }
 
-            ArraySet<UserPackage> packages = loadAlreadyNotifiedPackagesLocked(context);
-            packages.remove(new UserPackage(pkg, user));
-            safeAlreadyNotifiedPackagesLocked(context, packages);
+            ArraySet<UserPackage> packages = loadAlreadyNotifiedPackagesLocked();
+            packages.remove(new UserPackage(mContext, pkg, user));
+            safeAlreadyNotifiedPackagesLocked(packages);
         }
     }
 
     /**
-     * After a small delay schedule a {@link #addLocationNotificationIfNeeded() check} if we should
-     * show a notification.
+     * After a small delay schedule a check if we should show a notification.
      *
      * <p>This is called when location access is granted to an app. In this case it is likely that
      * the app will access the location soon. If this happens the notification will appear only a
      * little after the user granted the location.
-     *
-     * @param context A context to resolve managers
      */
-    public static void checkLocationAccessSoon(@NonNull Context context) {
-        JobScheduler jobScheduler = getSystemServiceSafe(context, JobScheduler.class);
-
+    public void checkLocationAccessSoon() {
         JobInfo.Builder b = (new JobInfo.Builder(LOCATION_ACCESS_CHECK_JOB_ID,
-                new ComponentName(context, LocationAccessCheck.class)))
-                .setMinimumLatency(getDelayMillis(context));
+                new ComponentName(mContext, LocationAccessCheckJobService.class)))
+                .setMinimumLatency(getDelayMillis());
 
-        int scheduleResult = jobScheduler.schedule(b.build());
+        int scheduleResult = mJobScheduler.schedule(b.build());
         if (scheduleResult != RESULT_SUCCESS) {
             Log.e(LOG_TAG, "Could not schedule location access check " + scheduleResult);
         }
     }
 
     /**
-     * On boot set up a periodic job that starts {@link #addLocationNotificationIfNeeded() checks}.
+     * Check if the current user is the profile parent.
+     *
+     * @return {@code true} if the current user is the profile parent.
+     */
+    private boolean isRunningInParentProfile() {
+        UserHandle user = UserHandle.of(myUserId());
+        UserHandle parent = mUserManager.getProfileParent(user);
+
+        return parent == null || user.equals(parent);
+    }
+
+    /**
+     * On boot set up a periodic job that starts checks.
      */
     public static class SetupPeriodicBackgroundLocationAccessCheck extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+            LocationAccessCheck locationAccessCheck = new LocationAccessCheck(context, null);
             JobScheduler jobScheduler = getSystemServiceSafe(context, JobScheduler.class);
-            UserManager userManager = getSystemServiceSafe(context, UserManager.class);
 
-            UserHandle user = UserHandle.of(myUserId());
-            UserHandle parent = userManager.getProfileParent(user);
-            if (parent != null && !user.equals(parent)) {
+            if (!locationAccessCheck.isRunningInParentProfile()) {
                 // Profile parent handles child profiles too.
                 return;
             }
 
             if (jobScheduler.getPendingJob(PERIODIC_LOCATION_ACCESS_CHECK_JOB_ID) == null) {
                 JobInfo.Builder b = (new JobInfo.Builder(PERIODIC_LOCATION_ACCESS_CHECK_JOB_ID,
-                        new ComponentName(context, LocationAccessCheck.class)))
-                        .setPeriodic(getPeriodicCheckIntervalMillis(context),
-                                getFlexForPeriodicCheckMillis(context));
+                        new ComponentName(context, LocationAccessCheckJobService.class)))
+                        .setPeriodic(locationAccessCheck.getPeriodicCheckIntervalMillis(),
+                                locationAccessCheck.getFlexForPeriodicCheckMillis());
 
                 int scheduleResult = jobScheduler.schedule(b.build());
                 if (scheduleResult != RESULT_SUCCESS) {
@@ -731,28 +712,92 @@ public class LocationAccessCheck extends JobService {
     }
 
     /**
-     * A {@link AsyncTask task} that runs {@link #addLocationNotificationIfNeeded()} in the
-     * background.
+     * Checks if a new notification should be shown.
      */
-    private static class AddLocationNotificationIfNeededTask extends AsyncTask<Object, Void, Void> {
-        @Override
-        protected final Void doInBackground(Object... in) {
-            LocationAccessCheck service = (LocationAccessCheck) in[0];
-            JobParameters params = (JobParameters) in[1];
+    public static class LocationAccessCheckJobService extends JobService {
+        private LocationAccessCheck mLocationAccessCheck;
 
-            try {
-                service.addLocationNotificationIfNeeded();
-            } catch (InterruptedException e) {
-                service.jobFinished(params, true);
-                return null;
-            } finally {
+        /** If we currently check if we should show a notification, the task executing the check */
+        // @GuardedBy("sLock")
+        private @Nullable AddLocationNotificationIfNeededTask mAddLocationNotificationIfNeededTask;
+
+        @Override
+        public void onCreate() {
+            super.onCreate();
+            mLocationAccessCheck = new LocationAccessCheck(this, () -> {
                 synchronized (sLock) {
-                    service.mAddLocationNotificationIfNeededTask = null;
+                    AddLocationNotificationIfNeededTask task = mAddLocationNotificationIfNeededTask;
+
+                    return task != null && task.isCancelled();
+                }
+            });
+        }
+
+        /**
+         * Starts an asynchronous check if a location access notification should be shown.
+         *
+         * @param params Not used other than for interacting with job scheduling
+         *
+         * @return {@code false} iff another check if already running
+         */
+        @Override
+        public boolean onStartJob(JobParameters params) {
+            synchronized (LocationAccessCheck.sLock) {
+                if (mAddLocationNotificationIfNeededTask != null) {
+                    return false;
+                }
+
+                mAddLocationNotificationIfNeededTask =
+                        new AddLocationNotificationIfNeededTask();
+
+                mAddLocationNotificationIfNeededTask.execute(params, this);
+            }
+
+            return true;
+        }
+
+        /**
+         * Abort the check if still running.
+         *
+         * @param params ignored
+         *
+         * @return false
+         */
+        @Override
+        public boolean onStopJob(JobParameters params) {
+            AddLocationNotificationIfNeededTask task;
+            synchronized (sLock) {
+                if (mAddLocationNotificationIfNeededTask == null) {
+                    return false;
+                } else {
+                    task = mAddLocationNotificationIfNeededTask;
                 }
             }
 
-            service.jobFinished(params, false);
-            return null;
+            task.cancel(false);
+
+            try {
+                // Wait for task to finish
+                task.get();
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "While waiting for " + task + " to finish", e);
+            }
+
+            return false;
+        }
+
+        /**
+         * A {@link AsyncTask task} that runs the check in the background.
+         */
+        private class AddLocationNotificationIfNeededTask extends
+                AsyncTask<Object, Void, Void> {
+            @Override
+            protected final Void doInBackground(Object... in) {
+                JobParameters params = (JobParameters) in[0];
+                LocationAccessCheckJobService service = (LocationAccessCheckJobService) in[1];
+                mLocationAccessCheck.addLocationNotificationIfNeeded(params, service);
+                return null;
+            }
         }
     }
 
@@ -765,7 +810,7 @@ public class LocationAccessCheck extends JobService {
             String pkg = getStringExtraSafe(intent, EXTRA_PACKAGE_NAME);
             UserHandle user = getParcelableExtraSafe(intent, EXTRA_USER);
 
-            markAsNotified(context, pkg, user);
+            new LocationAccessCheck(context, null).markAsNotified(pkg, user);
         }
     }
 
@@ -778,7 +823,7 @@ public class LocationAccessCheck extends JobService {
             String pkg = getStringExtraSafe(intent, EXTRA_PACKAGE_NAME);
             UserHandle user = getParcelableExtraSafe(intent, EXTRA_USER);
 
-            markAsNotified(context, pkg, user);
+            new LocationAccessCheck(context, null).markAsNotified(pkg, user);
 
             Intent manageAppPermission = new Intent(context, AppPermissionActivity.class);
             manageAppPermission.addFlags(FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_MULTIPLE_TASK);
@@ -803,7 +848,8 @@ public class LocationAccessCheck extends JobService {
 
             if (DEBUG) Log.i(LOG_TAG, "Reset " + data.getSchemeSpecificPart());
 
-            forgetAboutPackage(context, data.getSchemeSpecificPart(), user);
+            new LocationAccessCheck(context, null).forgetAboutPackage(
+                    data.getSchemeSpecificPart(), user);
         }
     }
 
@@ -811,10 +857,25 @@ public class LocationAccessCheck extends JobService {
      * A immutable class containing a package name and a {@link UserHandle}.
      */
     private static final class UserPackage {
+        private final @NonNull Context mContext;
+
         public final @NonNull String pkg;
         public final @NonNull UserHandle user;
 
-        private UserPackage(@NonNull String pkg, @NonNull UserHandle user) {
+        /**
+         * Create a new {@link UserPackage}
+         *
+         * @param context A context to be used by methods of this object
+         * @param pkg The name of the package
+         * @param user The user the package belongs to
+         */
+        UserPackage(@NonNull Context context, @NonNull String pkg, @NonNull UserHandle user) {
+            try {
+                mContext = context.createPackageContextAsUser(context.getPackageName(), 0, user);
+            } catch (PackageManager.NameNotFoundException e) {
+                throw new IllegalStateException(e);
+            }
+
             this.pkg = pkg;
             this.user = user;
         }
@@ -822,16 +883,45 @@ public class LocationAccessCheck extends JobService {
         /**
          * Get {@link PackageInfo} for this user package.
          *
-         * @param context A context used to resolve the info
-         *
          * @return The package info
          *
          * @throws PackageManager.NameNotFoundException if package/user does not exist
          */
-        public @NonNull PackageInfo getPackageInfo(@NonNull Context context)
+        @NonNull PackageInfo getPackageInfo() throws PackageManager.NameNotFoundException {
+            return mContext.getPackageManager().getPackageInfo(pkg, GET_PERMISSIONS);
+        }
+
+        /**
+         * Get the {@link AppPermissionGroup} for
+         * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} and this user package.
+         *
+         * @return The app permission group or {@code null} if the app does not request location
+         *
+         * @throws PackageManager.NameNotFoundException if package/user does not exist
+         */
+        @Nullable AppPermissionGroup getLocationGroup()
                 throws PackageManager.NameNotFoundException {
-            return context.createPackageContextAsUser(pkg, 0, user)
-                    .getPackageManager().getPackageInfo(pkg, GET_PERMISSIONS);
+            return AppPermissionGroup.create(mContext, getPackageInfo(), ACCESS_FINE_LOCATION,
+                    false);
+        }
+
+        /**
+         * Get the {@link AppPermissionGroup} for the background location of
+         * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} and this user package.
+         *
+         * @return The app permission group or {@code null} if the app does not request background
+         *         location
+         *
+         * @throws PackageManager.NameNotFoundException if package/user does not exist
+         */
+        @Nullable AppPermissionGroup getBackgroundLocationGroup()
+                throws PackageManager.NameNotFoundException {
+            AppPermissionGroup locationGroup = getLocationGroup();
+            if (locationGroup == null) {
+                return null;
+            }
+
+            return locationGroup.getBackgroundPermissions();
         }
 
         @Override

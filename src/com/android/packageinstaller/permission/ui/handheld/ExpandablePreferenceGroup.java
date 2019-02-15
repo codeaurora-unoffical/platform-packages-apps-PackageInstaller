@@ -22,6 +22,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceGroup;
@@ -41,13 +42,12 @@ public class ExpandablePreferenceGroup extends PreferenceGroup {
     private @NonNull List<Integer> mSummaryIcons;
     private boolean mExpanded;
 
-    public ExpandablePreferenceGroup(@NonNull Context context,
-            @NonNull List<Integer> summaryIcons) {
+    public ExpandablePreferenceGroup(@NonNull Context context) {
         super(context, null);
 
         mContext = context;
         mPreferences = new ArrayList<>();
-        mSummaryIcons = summaryIcons;
+        mSummaryIcons = new ArrayList<>();
         mExpanded = false;
 
         setLayoutResource(R.layout.preference_usage);
@@ -87,21 +87,21 @@ public class ExpandablePreferenceGroup extends PreferenceGroup {
         holder.setDividerAllowedAbove(false);
         holder.setDividerAllowedBelow(false);
 
+        holder.findViewById(R.id.title_widget_frame).setVisibility(View.GONE);
+
         ViewGroup summaryFrame = (ViewGroup) holder.findViewById(R.id.summary_widget_frame);
         if (mSummaryIcons.isEmpty()) {
             summaryFrame.setVisibility(View.GONE);
         } else {
             summaryFrame.removeAllViews();
-            int summaryIconSize = mContext.getResources().getDimensionPixelSize(
-                    R.dimen.preference_usage_summary_icon_size);
             int numIcons = mSummaryIcons.size();
             for (int i = 0; i < numIcons; i++) {
                 LayoutInflater inflater = mContext.getSystemService(LayoutInflater.class);
-                ViewGroup layoutView = (ViewGroup) inflater.inflate(R.layout.summary_image_view,
+                ViewGroup group = (ViewGroup) inflater.inflate(R.layout.title_summary_image_view,
                         null);
-                ImageView imageView = layoutView.requireViewById(R.id.icon);
+                ImageView imageView = group.requireViewById(R.id.icon);
                 imageView.setImageResource(mSummaryIcons.get(i));
-                summaryFrame.addView(layoutView);
+                summaryFrame.addView(group);
             }
         }
     }
@@ -110,5 +110,14 @@ public class ExpandablePreferenceGroup extends PreferenceGroup {
     public boolean addPreference(Preference preference) {
         mPreferences.add(preference);
         return true;
+    }
+
+    /**
+     * Show the given icon next to this preference's summary.
+     *
+     * @param resId the resourceId of the drawable to use as the icon.
+     */
+    public void addSummaryIcon(@DrawableRes int resId) {
+        mSummaryIcons.add(resId);
     }
 }

@@ -70,7 +70,7 @@ public class RequestRoleFragment extends DialogFragment {
             @NonNull String packageName) {
         RequestRoleFragment fragment = new RequestRoleFragment();
         Bundle arguments = new Bundle();
-        arguments.putString(RoleManager.EXTRA_REQUEST_ROLE_NAME, roleName);
+        arguments.putString(Intent.EXTRA_ROLE_NAME, roleName);
         arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
         fragment.setArguments(arguments);
         return fragment;
@@ -82,14 +82,14 @@ public class RequestRoleFragment extends DialogFragment {
 
         Bundle arguments = getArguments();
         mPackageName = arguments.getString(Intent.EXTRA_PACKAGE_NAME);
-        mRoleName = arguments.getString(RoleManager.EXTRA_REQUEST_ROLE_NAME);
+        mRoleName = arguments.getString(Intent.EXTRA_ROLE_NAME);
     }
 
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         Context context = requireContext();
-        Role role = Roles.getRoles(context).get(mRoleName);
+        Role role = Roles.get(context).get(mRoleName);
         if (role == null) {
             Log.w(LOG_TAG, "Unknown role: " + mRoleName);
             finish();
@@ -141,7 +141,7 @@ public class RequestRoleFragment extends DialogFragment {
         super.onActivityCreated(savedInstanceState);
 
         mViewModel = ViewModelProviders.of(this).get(RequestRoleViewModel.class);
-        mViewModel.getLiveData().observe(this, this::onAddRoleHolderStateChanged);
+        mViewModel.getLiveData().observe(this, this::onManageRoleHolderStateChanged);
     }
 
     @Override
@@ -187,28 +187,28 @@ public class RequestRoleFragment extends DialogFragment {
         }
     }
 
-    private void onAddRoleHolderStateChanged(int state) {
+    private void onManageRoleHolderStateChanged(int state) {
         AlertDialog dialog = (AlertDialog) getDialog();
         switch (state) {
-            case AddRoleHolderStateLiveData.STATE_IDLE:
+            case ManageRoleHolderStateLiveData.STATE_IDLE:
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
                 dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(true);
                 break;
-            case AddRoleHolderStateLiveData.STATE_ADDING:
+            case ManageRoleHolderStateLiveData.STATE_WORKING:
                 dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
                 dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(false);
                 break;
-            case AddRoleHolderStateLiveData.STATE_SUCCESS:
+            case ManageRoleHolderStateLiveData.STATE_SUCCESS:
                 setResultOkAndFinish();
                 break;
-            case AddRoleHolderStateLiveData.STATE_FAILURE:
+            case ManageRoleHolderStateLiveData.STATE_FAILURE:
                 finish();
                 break;
         }
     }
 
     private void addRoleHolder() {
-        mViewModel.getLiveData().addRoleHolderAsUser(mRoleName, mPackageName,
+        mViewModel.getLiveData().setRoleHolderAsUser(mRoleName, mPackageName, true,
                 Process.myUserHandle(), requireContext());
     }
 

@@ -9,6 +9,7 @@ LOCAL_SRC_FILES := \
     $(call all-java-files-under, src)
 
 LOCAL_STATIC_ANDROID_LIBRARIES += \
+    iconloader \
     androidx.car_car \
     androidx.design_design \
     androidx.transition_transition \
@@ -32,7 +33,8 @@ LOCAL_STATIC_ANDROID_LIBRARIES += \
     SettingsLibSettingsSpinner \
     SettingsLibLayoutPreference \
     SettingsLibActionButtonsPreference \
-    SettingsLibBarChartPreference
+    SettingsLibBarChartPreference \
+    SettingsLibEntityHeaderWidgets
 
 LOCAL_STATIC_JAVA_LIBRARIES := \
     androidx.annotation_annotation

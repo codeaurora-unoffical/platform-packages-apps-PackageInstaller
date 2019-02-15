@@ -33,6 +33,7 @@ import androidx.annotation.StringRes;
 import com.android.packageinstaller.role.utils.PackageUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -56,6 +57,8 @@ public class Role {
 
     private static final String LOG_TAG = Role.class.getSimpleName();
 
+    private static final boolean DEBUG = false;
+
     private static final String PACKAGE_NAME_ANDROID_SYSTEM = "android";
 
     /**
@@ -65,10 +68,10 @@ public class Role {
     private final String mName;
 
     /**
-     * Whether this role is available in managed profile, i.e. work profile.
+     * The behavior of this role.
      */
     @Nullable
-    private final RoleAvailabilityProvider mAvailabilityProvider;
+    private final RoleBehavior mBehavior;
 
     /**
      * Whether this role is exclusive, i.e. allows at most one holder.
@@ -80,6 +83,13 @@ public class Role {
      */
     @StringRes
     private final int mLabelResource;
+
+    /**
+     * Whether the UI for this role will show the "None" item. Only valid if this role is
+     * {@link #mExclusive exclusive}, and {@link #getFallbackHolder(Context)} should also return
+     * empty to allow actually selecting "None".
+     */
+    private final boolean mShowNone;
 
     /**
      * The required components for an application to qualify for this role.
@@ -105,14 +115,15 @@ public class Role {
     @NonNull
     private final List<PreferredActivity> mPreferredActivities;
 
-    public Role(@NonNull String name, @Nullable RoleAvailabilityProvider availabilityProvider,
-            boolean exclusive, @StringRes int labelResource,
+    public Role(@NonNull String name, @Nullable RoleBehavior behavior, boolean exclusive,
+            @StringRes int labelResource, boolean showNone,
             @NonNull List<RequiredComponent> requiredComponents, @NonNull List<String> permissions,
             @NonNull List<AppOp> appOps, @NonNull List<PreferredActivity> preferredActivities) {
         mName = name;
-        mAvailabilityProvider = availabilityProvider;
+        mBehavior = behavior;
         mExclusive = exclusive;
         mLabelResource = labelResource;
+        mShowNone = showNone;
         mRequiredComponents = requiredComponents;
         mPermissions = permissions;
         mAppOps = appOps;
@@ -125,8 +136,8 @@ public class Role {
     }
 
     @Nullable
-    public RoleAvailabilityProvider getAvailabilityProvider() {
-        return mAvailabilityProvider;
+    public RoleBehavior getBehavior() {
+        return mBehavior;
     }
 
     public boolean isExclusive() {
@@ -136,6 +147,13 @@ public class Role {
     @StringRes
     public int getLabelResource() {
         return mLabelResource;
+    }
+
+    /**
+     * @see #mShowNone
+     */
+    public boolean shouldShowNone() {
+        return mShowNone;
     }
 
     @NonNull
@@ -167,8 +185,8 @@ public class Role {
      * @return whether this role is available.
      */
     public boolean isAvailableAsUser(@NonNull UserHandle user, @NonNull Context context) {
-        if (mAvailabilityProvider != null) {
-            return mAvailabilityProvider.isRoleAvailableAsUser(user, context);
+        if (mBehavior != null) {
+            return mBehavior.isAvailableAsUser(this, user, context);
         }
         return true;
     }
@@ -185,8 +203,58 @@ public class Role {
     }
 
     /**
+     * Get the default holders of this role, which will be added when the role is added for the
+     * first time.
+     *
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return the list of package names of the default holders
+     */
+    @NonNull
+    public List<String> getDefaultHolders(@NonNull Context context) {
+        if (mBehavior != null) {
+            return mBehavior.getDefaultHolders(this, context);
+        }
+        return Collections.emptyList();
+    }
+
+    /**
+     * Get the fallback holder of this role, which will be added whenever there are no role holders.
+     * <p>
+     * Should return empty if this role {@link #mShowNone shows a "None" item}.
+     *
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return the package name of the fallback holder, or {@code null} if none
+     */
+    @Nullable
+    public String getFallbackHolder(@NonNull Context context) {
+        if (mBehavior != null) {
+            return mBehavior.getFallbackHolder(this, context);
+        }
+        return null;
+    }
+
+    /**
+     * Get the confirmation message for adding an application as a holder of this role.
+     *
+     * @param packageName the package name of the application to get confirmation message for
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return the confirmation message, or {@code null} if no confirmation is needed
+     */
+    @Nullable
+    public CharSequence getConfirmationMessage(@NonNull String packageName,
+            @NonNull Context context) {
+        if (mBehavior != null) {
+            return mBehavior.getConfirmationMessage(this, packageName, context);
+        }
+        return null;
+    }
+
+    /**
      * Check whether a package is qualified for this role, i.e. whether it contains all the required
-     * components.
+     * components (plus meeting some other general restrictions).
      *
      * @param packageName the package name to check for
      * @param context the {@code Context} to retrieve system services
@@ -194,9 +262,17 @@ public class Role {
      * @return whether the package is qualified for a role
      */
     public boolean isPackageQualified(@NonNull String packageName, @NonNull Context context) {
-        if (Objects.equals(packageName, PACKAGE_NAME_ANDROID_SYSTEM)) {
+        if (!isPackageMinimallyQualifiedAsUser(packageName, Process.myUserHandle(), context)) {
             return false;
         }
+
+        if (mBehavior != null) {
+            Boolean isPackageQualified = mBehavior.isPackageQualified(this, packageName, context);
+            if (isPackageQualified != null) {
+                return isPackageQualified;
+            }
+        }
+
         int requiredComponentsSize = mRequiredComponents.size();
         for (int i = 0; i < requiredComponentsSize; i++) {
             RequiredComponent requiredComponent = mRequiredComponents.get(i);
@@ -206,58 +282,104 @@ public class Role {
                 return false;
             }
         }
+
         return true;
     }
 
     /**
      * Get the list of packages that are qualified for this role, i.e. packages containing all the
-     * required components.
+     * required components (plus meeting some other general restrictions).
      *
      * @param user the user to get the qualifying packages.
      * @param context the {@code Context} to retrieve system services
      *
-     * @return the set of packages that are qualified for this role
+     * @return the list of packages that are qualified for this role
      */
     @NonNull
     public List<String> getQualifyingPackagesAsUser(@NonNull UserHandle user,
             @NonNull Context context) {
-        ArrayMap<String, Integer> packageComponentCountMap = new ArrayMap<>();
-        int requiredComponentsSize = mRequiredComponents.size();
-        for (int requiredComponentsIndex = 0; requiredComponentsIndex < requiredComponentsSize;
-                requiredComponentsIndex++) {
-            RequiredComponent requiredComponent = mRequiredComponents.get(requiredComponentsIndex);
+        List<String> qualifyingPackages = null;
 
-            // This returns at most one component per package.
-            List<ComponentName> qualifyingComponents =
-                    requiredComponent.getQualifyingComponentsAsUser(user, context);
-            int qualifyingComponentsSize = qualifyingComponents.size();
-            for (int qualifyingComponentsIndex = 0;
-                    qualifyingComponentsIndex < qualifyingComponentsSize;
-                    ++qualifyingComponentsIndex) {
-                ComponentName componentName = qualifyingComponents.get(qualifyingComponentsIndex);
+        if (mBehavior != null) {
+            qualifyingPackages = mBehavior.getQualifyingPackagesAsUser(this, user, context);
+        }
 
-                String packageName = componentName.getPackageName();
-                if (Objects.equals(packageName, PACKAGE_NAME_ANDROID_SYSTEM)) {
+        if (qualifyingPackages == null) {
+            ArrayMap<String, Integer> packageComponentCountMap = new ArrayMap<>();
+            int requiredComponentsSize = mRequiredComponents.size();
+            for (int requiredComponentsIndex = 0; requiredComponentsIndex < requiredComponentsSize;
+                    requiredComponentsIndex++) {
+                RequiredComponent requiredComponent = mRequiredComponents.get(
+                        requiredComponentsIndex);
+
+                // This returns at most one component per package.
+                List<ComponentName> qualifyingComponents =
+                        requiredComponent.getQualifyingComponentsAsUser(user, context);
+                int qualifyingComponentsSize = qualifyingComponents.size();
+                for (int qualifyingComponentsIndex = 0;
+                        qualifyingComponentsIndex < qualifyingComponentsSize;
+                        ++qualifyingComponentsIndex) {
+                    ComponentName componentName = qualifyingComponents.get(
+                            qualifyingComponentsIndex);
+
+                    String packageName = componentName.getPackageName();
+                    Integer componentCount = packageComponentCountMap.get(packageName);
+                    packageComponentCountMap.put(packageName, componentCount == null ? 1
+                            : componentCount + 1);
+                }
+            }
+
+            qualifyingPackages = new ArrayList<>();
+            int packageComponentCountMapSize = packageComponentCountMap.size();
+            for (int i = 0; i < packageComponentCountMapSize; i++) {
+                int componentCount = packageComponentCountMap.valueAt(i);
+
+                if (componentCount != requiredComponentsSize) {
                     continue;
                 }
-                Integer componentCount = packageComponentCountMap.get(packageName);
-                packageComponentCountMap.put(packageName, componentCount == null ? 1
-                        : componentCount + 1);
+                String packageName = packageComponentCountMap.keyAt(i);
+                qualifyingPackages.add(packageName);
             }
         }
 
-        List<String> qualifyingPackages = new ArrayList<>();
-        int packageComponentCountMapSize = packageComponentCountMap.size();
-        for (int i = 0; i < packageComponentCountMapSize; i++) {
-            int componentCount = packageComponentCountMap.valueAt(i);
-            if (componentCount != requiredComponentsSize) {
-                continue;
+        int qualifyingPackagesSize = qualifyingPackages.size();
+        for (int i = 0; i < qualifyingPackagesSize; ) {
+            String packageName = qualifyingPackages.get(i);
+
+            if (!isPackageMinimallyQualifiedAsUser(packageName, user, context)) {
+                qualifyingPackages.remove(i);
+                qualifyingPackagesSize--;
+            } else {
+                i++;
             }
-            String packageName = packageComponentCountMap.keyAt(i);
-            qualifyingPackages.add(packageName);
         }
 
         return qualifyingPackages;
+    }
+
+    private boolean isPackageMinimallyQualifiedAsUser(
+            @NonNull String packageName, @NonNull UserHandle user, @NonNull Context context) {
+        if (Objects.equals(packageName, PACKAGE_NAME_ANDROID_SYSTEM)) {
+            return false;
+        }
+
+        ApplicationInfo applicationInfo = PackageUtils.getApplicationInfoAsUser(packageName, user,
+                context);
+        if (applicationInfo == null) {
+            Log.w(LOG_TAG, "Cannot get ApplicationInfo for package: " + packageName + ", user: "
+                    + user.getIdentifier());
+            return false;
+        }
+
+        // TODO: STOPSHIP: Check for disabled packages?
+
+        // TODO: STOPSHIP: Add and check PackageManager.getSharedLibraryInfo().
+
+        if (applicationInfo.isInstantApp()) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -316,7 +438,7 @@ public class Role {
         otherRoleNames.remove(mName);
 
         List<String> permissionsToRevoke = new ArrayList<>(mPermissions);
-        ArrayMap<String, Role> roles = Roles.getRoles(context);
+        ArrayMap<String, Role> roles = Roles.get(context);
         int otherRoleNamesSize = otherRoleNames.size();
         for (int i = 0; i < otherRoleNamesSize; i++) {
             String roleName = otherRoleNames.get(i);
@@ -345,7 +467,12 @@ public class Role {
         }
     }
 
-    private static void killApp(@NonNull String packageName, @NonNull Context context) {
+    private void killApp(@NonNull String packageName, @NonNull Context context) {
+        if (DEBUG) {
+            Log.i(LOG_TAG, "Killing " + packageName + " due to "
+                    + Thread.currentThread().getStackTrace()[3].getMethodName()
+                    + "(" + mName + ")");
+        }
         ApplicationInfo applicationInfo = PackageUtils.getApplicationInfo(packageName, context);
         if (applicationInfo == null) {
             Log.w(LOG_TAG, "Cannot get ApplicationInfo for package: " + packageName);
@@ -359,7 +486,7 @@ public class Role {
     public String toString() {
         return "Role{"
                 + "mName='" + mName + '\''
-                + ", mAvailabilityProvider=" + mAvailabilityProvider
+                + ", mBehavior=" + mBehavior
                 + ", mExclusive=" + mExclusive
                 + ", mLabelResource=" + mLabelResource
                 + ", mRequiredComponents=" + mRequiredComponents
@@ -381,7 +508,7 @@ public class Role {
         return mExclusive == role.mExclusive
                 && mLabelResource == role.mLabelResource
                 && Objects.equals(mName, role.mName)
-                && Objects.equals(mAvailabilityProvider, role.mAvailabilityProvider)
+                && Objects.equals(mBehavior, role.mBehavior)
                 && Objects.equals(mRequiredComponents, role.mRequiredComponents)
                 && Objects.equals(mPermissions, role.mPermissions)
                 && Objects.equals(mAppOps, role.mAppOps)
@@ -390,7 +517,7 @@ public class Role {
 
     @Override
     public int hashCode() {
-        return Objects.hash(mName, mAvailabilityProvider, mExclusive, mLabelResource,
+        return Objects.hash(mName, mBehavior, mExclusive, mLabelResource,
                 mRequiredComponents, mPermissions, mAppOps, mPreferredActivities);
     }
 }

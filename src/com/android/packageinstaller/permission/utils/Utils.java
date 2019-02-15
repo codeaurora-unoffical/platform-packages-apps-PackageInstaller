@@ -31,7 +31,6 @@ import static android.Manifest.permission_group.SMS;
 import static android.Manifest.permission_group.STORAGE;
 
 import android.Manifest;
-import android.app.AppOpsManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
@@ -43,12 +42,15 @@ import android.content.pm.PermissionInfo;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.content.res.Resources.Theme;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Parcelable;
 import android.os.UserHandle;
 import android.provider.Settings;
 import android.text.Html;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
@@ -62,16 +64,18 @@ import androidx.annotation.StringRes;
 import androidx.core.text.BidiFormatter;
 import androidx.core.util.Preconditions;
 
+import com.android.launcher3.icons.IconFactory;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissionUsage;
 import com.android.packageinstaller.permission.model.AppPermissions;
-import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.model.PermissionApps.PermissionApp;
 import com.android.permissioncontroller.R;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public final class Utils {
 
@@ -503,25 +507,59 @@ public final class Utils {
     }
 
     /**
-     * Build a string representing the amount of time passed since the most recent permission usage
-     * by this AppPermissionGroup.
+     * Build a string representing the amount of time passed since the most recent permission usage.
      *
      * @return a string representing the amount of time since this app's most recent permission
      * usage or null if there are no usages.
      */
-    public static @Nullable String getUsageTimeDiffString(@NonNull Context context,
-            @NonNull AppPermissionGroup group) {
-        long mostRecentTime = 0;
-        List<AppPermissionUsage> groupUsages = group.getAppPermissionUsage();
-        int numUsages = groupUsages.size();
-        for (int usageNum = 0; usageNum < numUsages; usageNum++) {
-            AppPermissionUsage usage = groupUsages.get(usageNum);
-            mostRecentTime = Math.max(mostRecentTime, usage.getTime());
-        }
-        if (mostRecentTime <= 0) {
+    public static @Nullable String getRelativeLastUsageString(@NonNull Context context,
+            @Nullable AppPermissionUsage.GroupUsage groupUsage) {
+        if (groupUsage == null) {
             return null;
         }
-        return getTimeDiffStr(context, System.currentTimeMillis() - mostRecentTime);
+        return getTimeDiffStr(context, System.currentTimeMillis()
+                - groupUsage.getLastAccessTime());
+    }
+
+    /**
+     * Build a string representing the time of the most recent permission usage if it happened on
+     * the current day and the date otherwise.
+     *
+     * @param context the context.
+     * @param groupUsage the permission usage.
+     *
+     * @return a string representing the time or date of the most recent usage or null if there are
+     * no usages.
+     */
+    public static @Nullable String getAbsoluteLastUsageString(@NonNull Context context,
+            @Nullable AppPermissionUsage.GroupUsage groupUsage) {
+        if (groupUsage == null) {
+            return null;
+        }
+        long lastAccessTime = groupUsage.getLastAccessTime();
+        if (lastAccessTime == 0) {
+            return null;
+        }
+        if (isToday(lastAccessTime)) {
+            return DateFormat.getTimeFormat(context).format(groupUsage.getLastAccessTime());
+        } else {
+            return DateFormat.getMediumDateFormat(context).format(groupUsage.getLastAccessTime());
+        }
+    }
+
+    /**
+     * Build a string representing the duration of a permission usage.
+     *
+     * @return a string representing the amount of time since this app's most recent permission
+     * usage or null if there are no usages.
+     */
+    public static @Nullable String getUsageDurationString(@NonNull Context context,
+            @Nullable AppPermissionUsage.GroupUsage groupUsage) {
+        if (groupUsage == null) {
+            return null;
+        }
+        return getTimeDiffStr(context, System.currentTimeMillis()
+                - groupUsage.getAccessDuration());
     }
 
     /**
@@ -552,38 +590,23 @@ public final class Utils {
     }
 
     /**
-     * Get the historical usage information for the given app and permission group.
+     * Check whether the given time (in milliseconds) is in the current day.
      *
-     * @param group the AppPermissionGroup.
-     * @param appOpsManager the AppOpsManager object.
-     * @param timeDiff the number of milliseconds in the past to get usage information.  If this is
-     *                 larger than the current time in milliseconds, we go back as far as possible.
+     * @param time the time in milliseconds
      *
-     * @return the historical usage information or {@code null} if there are no ops for this group.
+     * @return whether the given time is in the current day.
      */
-    public static @Nullable AppOpsManager.HistoricalPackageOps getUsageForGroup(
-            @NonNull AppPermissionGroup group, @NonNull AppOpsManager appOpsManager,
-            long timeDiff) {
-        ArrayList<Permission> permissions = group.getPermissions();
-        ArrayList<String> permissionNames = new ArrayList<>();
+    private static boolean isToday(long time) {
+        Calendar today = Calendar.getInstance(Locale.getDefault());
+        today.setTimeInMillis(System.currentTimeMillis());
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MILLISECOND, 0);
 
-        int size = permissions.size();
-        for (int i = 0; i < size; i++) {
-            String opName = AppOpsManager.permissionToOp(permissions.get(i).getName());
-            if (opName != null) {
-                permissionNames.add(opName);
-            }
-        }
-
-        long curTime = System.currentTimeMillis();
-        if (timeDiff >= curTime) {
-            timeDiff = curTime;
-        }
-
-        return appOpsManager.getHistoricalPackagesOps(group.getApp().applicationInfo.uid,
-                group.getApp().packageName,
-                permissionNames.toArray(new String[permissionNames.size()]),
-                curTime - timeDiff, curTime);
+        Calendar date = Calendar.getInstance(Locale.getDefault());
+        date.setTimeInMillis(time);
+        return !date.before(today);
     }
 
     /**
@@ -608,5 +631,24 @@ public final class Utils {
             }
             return true;
         });
+    }
+
+    /**
+     * Get badged app icon similar as used in the Settings UI.
+     *
+     * @param context The context to use
+     * @param appInfo The app the icon belong to
+     *
+     * @return The icon to use
+     */
+    public static @NonNull Drawable getBadgedIcon(@NonNull Context context,
+            @NonNull ApplicationInfo appInfo) {
+        try (IconFactory iconFactory = IconFactory.obtain(context)) {
+            Bitmap iconBmp = iconFactory.createBadgedIconBitmap(
+                    appInfo.loadIcon(context.getPackageManager()),
+                    UserHandle.getUserHandleForUid(appInfo.uid), false).icon;
+
+            return new BitmapDrawable(context.getResources(), iconBmp);
+        }
     }
 }

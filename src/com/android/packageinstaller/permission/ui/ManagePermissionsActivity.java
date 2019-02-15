@@ -22,6 +22,7 @@ import static com.android.packageinstaller.permission.service.PermissionSearchIn
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.UserHandle;
 import android.util.Log;
 import android.view.MenuItem;
 
@@ -33,6 +34,7 @@ import com.android.packageinstaller.permission.service.PermissionSearchIndexable
 import com.android.packageinstaller.permission.ui.handheld.ManageStandardPermissionsFragment;
 import com.android.packageinstaller.permission.ui.handheld.PermissionUsageFragment;
 import com.android.packageinstaller.permission.ui.wear.AppPermissionsFragmentWear;
+import com.android.packageinstaller.permission.utils.Utils;
 
 public final class ManagePermissionsActivity extends FragmentActivity {
     private static final String LOG_TAG = ManagePermissionsActivity.class.getSimpleName();
@@ -65,10 +67,28 @@ public final class ManagePermissionsActivity extends FragmentActivity {
             case PermissionSearchIndexablesProvider.ACTION_REVIEW_PERMISSION_USAGE:
                 verifyIntent(this, getIntent());
                 // fall through
-            case Intent.ACTION_REVIEW_PERMISSION_USAGE:
+            case Intent.ACTION_REVIEW_PERMISSION_USAGE: {
                 permissionName = getIntent().getStringExtra(Intent.EXTRA_PERMISSION_NAME);
-                androidXFragment = PermissionUsageFragment.newInstance(permissionName);
-                break;
+                String groupName = getIntent().getStringExtra(Intent.EXTRA_PERMISSION_GROUP_NAME);
+
+                if (permissionName != null) {
+                    String permGroupName = Utils.getGroupOfPlatformPermission(permissionName);
+                    if (permGroupName == null) {
+                        Log.w(LOG_TAG, "Invalid platform permission: " + permissionName);
+                    }
+                    if (groupName != null && !groupName.equals(permGroupName)) {
+                        Log.i(LOG_TAG,
+                                "Inconsistent EXTRA_PERMISSION_NAME / EXTRA_PERMISSION_GROUP_NAME");
+                        finish();
+                        return;
+                    }
+                    if (groupName == null) {
+                        groupName = permGroupName;
+                    }
+                }
+
+                androidXFragment = PermissionUsageFragment.newInstance(groupName);
+            } break;
 
             case Intent.ACTION_MANAGE_APP_PERMISSIONS: {
                 String packageName = getIntent().getStringExtra(Intent.EXTRA_PACKAGE_NAME);
@@ -127,8 +147,14 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                     finish();
                     return;
                 }
+                UserHandle userHandle = getIntent().getParcelableExtra(Intent.EXTRA_USER);
+                if (userHandle == null) {
+                    Log.i(LOG_TAG, "Missing mandatory argument EXTRA_USER");
+                    finish();
+                    return;
+                }
                 androidXFragment = com.android.packageinstaller.permission.ui.handheld
-                        .AppPermissionUsageFragment.newInstance(packageName);
+                        .AppPermissionUsageFragment.newInstance(packageName, userHandle);
             } break;
 
             default: {

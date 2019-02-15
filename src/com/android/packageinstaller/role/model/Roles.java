@@ -71,9 +71,10 @@ public class Roles {
     private static final String TAG_PREFERRED_ACTIVITIES = "preferred-activities";
     private static final String TAG_PREFERRED_ACTIVITY = "preferred-activity";
     private static final String ATTRIBUTE_NAME = "name";
-    private static final String ATTRIBUTE_AVAILABILITY_PROVIDER = "availabilityProvider";
+    private static final String ATTRIBUTE_BEHAVIOR = "behavior";
     private static final String ATTRIBUTE_EXCLUSIVE = "exclusive";
     private static final String ATTRIBUTE_LABEL = "label";
+    private static final String ATTRIBUTE_SHOW_NONE = "showNone";
     private static final String ATTRIBUTE_PERMISSION = "permission";
     private static final String ATTRIBUTE_SCHEME = "scheme";
     private static final String ATTRIBUTE_MIME_TYPE = "mimeType";
@@ -125,17 +126,17 @@ public class Roles {
      * @return a map from role name to {@link Role} instances
      */
     @NonNull
-    public static ArrayMap<String, Role> getRoles(@NonNull Context context) {
+    public static ArrayMap<String, Role> get(@NonNull Context context) {
         synchronized (sLock) {
             if (sRoles == null) {
-                sRoles = loadRoles(context);
+                sRoles = load(context);
             }
             return sRoles;
         }
     }
 
     @NonNull
-    private static ArrayMap<String, Role> loadRoles(@NonNull Context context) {
+    private static ArrayMap<String, Role> load(@NonNull Context context) {
         // If the storage model feature flag is disabled, we need to fiddle
         // around with permission definitions to return us to pre-Q behavior.
         // STOPSHIP(b/112545973): remove once feature enabled by default
@@ -287,34 +288,38 @@ public class Roles {
             return null;
         }
 
+        String behaviorClassSimpleName = getAttributeValue(parser, ATTRIBUTE_BEHAVIOR);
+        RoleBehavior behavior;
+        if (behaviorClassSimpleName != null) {
+            String behaviorClassName = Roles.class.getPackage().getName() + '.'
+                    + behaviorClassSimpleName;
+            try {
+                behavior = (RoleBehavior) Class.forName(behaviorClassName).newInstance();
+            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+                throwOrLogMessage("Unable to instantiate behavior: " + behaviorClassName, e);
+                skipCurrentTag(parser);
+                return null;
+            }
+        } else {
+            behavior = null;
+        }
+
+        Boolean exclusive = requireAttributeBooleanValue(parser, ATTRIBUTE_EXCLUSIVE, true,
+                TAG_ROLE);
+        if (exclusive == null) {
+            skipCurrentTag(parser);
+            return null;
+        }
+
         Integer labelResource = requireAttributeResourceValue(parser, ATTRIBUTE_LABEL, 0, TAG_ROLE);
         if (labelResource == null) {
             skipCurrentTag(parser);
             return null;
         }
 
-        String availabilityProviderClassSimpleName = getAttributeValue(parser,
-                ATTRIBUTE_AVAILABILITY_PROVIDER);
-        RoleAvailabilityProvider availabilityProvider;
-        if (availabilityProviderClassSimpleName != null) {
-            String availabilityProviderClassName = Roles.class.getPackage().getName() + '.'
-                    + availabilityProviderClassSimpleName;
-            try {
-                availabilityProvider = (RoleAvailabilityProvider) Class.forName(
-                        availabilityProviderClassName).newInstance();
-            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
-                throwOrLogMessage("Unable to instantiate availability provider: "
-                        + availabilityProviderClassName, e);
-                skipCurrentTag(parser);
-                return null;
-            }
-        } else {
-            availabilityProvider = null;
-        }
-
-        Boolean exclusive = requireAttributeBooleanValue(parser, ATTRIBUTE_EXCLUSIVE, true,
-                TAG_ROLE);
-        if (exclusive == null) {
+        boolean showNone = getAttributeBooleanValue(parser, ATTRIBUTE_SHOW_NONE, false);
+        if (showNone && !exclusive) {
+            throwOrLogMessage("showNone=\"true\" is invalid for a non-exclusive role: " + name);
             skipCurrentTag(parser);
             return null;
         }
@@ -385,7 +390,7 @@ public class Roles {
         if (preferredActivities == null) {
             preferredActivities = Collections.emptyList();
         }
-        return new Role(name, availabilityProvider, exclusive, labelResource, requiredComponents,
+        return new Role(name, behavior, exclusive, labelResource, showNone, requiredComponents,
                 permissions, appOps, preferredActivities);
     }
 
@@ -781,6 +786,12 @@ public class Roles {
                     }
                     checkDuplicateElement(intentFilterData, intentFilterDatas,
                             "intent filter");
+                    if (DEBUG) {
+                        if (intentFilterData.getDataType() != null) {
+                            throwOrLogMessage("mimeType in <data> is not supported when setting a"
+                                    + " preferred activity");
+                        }
+                    }
                     intentFilterDatas.add(intentFilterData);
                     break;
                 default:

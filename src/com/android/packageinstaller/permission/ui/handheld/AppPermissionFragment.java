@@ -54,7 +54,7 @@ import androidx.fragment.app.Fragment;
 
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.Permission;
-import com.android.packageinstaller.permission.utils.IconDrawableFactory;
+import com.android.packageinstaller.permission.model.PermissionUsages;
 import com.android.packageinstaller.permission.utils.LocationUtils;
 import com.android.packageinstaller.permission.utils.PackageRemovalMonitor;
 import com.android.packageinstaller.permission.utils.SafetyNetLogger;
@@ -157,7 +157,7 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
         UserHandle userHandle = getArguments().getParcelable(Intent.EXTRA_USER);
         mGroup = AppPermissionGroup.create(context,
                 getPackageInfo(activity, packageName, userHandle),
-                groupInfo, groupPermInfos, userHandle, false);
+                groupInfo, groupPermInfos, false);
 
         if (mGroup == null || !Utils.shouldShowPermission(context, mGroup)) {
             Log.i(LOG_TAG, "Illegal group: " + (mGroup == null ? "null" : mGroup.getName()));
@@ -178,13 +178,14 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
         }
 
         String appLabel = Utils.getFullAppLabel(mGroup.getApp().applicationInfo, context);
-        setHeader(getAppIcon(), appLabel);
-        updateHeader(root.requireViewById(R.id.button_header));
+        setHeader(getAppIcon(), appLabel, true);
+        updateHeader(root.requireViewById(R.id.button_header), true);
 
         ((TextView) root.requireViewById(R.id.permission_message)).setText(
                 context.getString(R.string.app_permission_header, mGroup.getLabel(), appLabel));
 
-        String timeDiffStr = Utils.getUsageTimeDiffString(context, mGroup);
+        String timeDiffStr = Utils.getRelativeLastUsageString(context,
+                PermissionUsages.loadLastGroupUsage(context, mGroup));
         if (timeDiffStr == null) {
             ((TextView) root.requireViewById(R.id.usage_summary)).setText(
                     context.getString(
@@ -200,11 +201,11 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
                             timeDiffStr));
         }
 
-        TextView usageLink = root.requireViewById(R.id.usage_link);
-        usageLink.setText(context.getString(R.string.app_permission_footer_usage_link));
-        usageLink.setOnClickListener((v) -> {
+        root.requireViewById(R.id.usage_link).setOnClickListener((v) -> {
             Intent intent = new Intent(Intent.ACTION_REVIEW_APP_PERMISSION_USAGE);
             intent.putExtra(Intent.EXTRA_PACKAGE_NAME, mGroup.getApp().packageName);
+            intent.putExtra(Intent.EXTRA_USER,
+                    UserHandle.getUserHandleForUid(mGroup.getApp().applicationInfo.uid));
             context.startActivity(intent);
         });
 
@@ -217,7 +218,7 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
         mPermissionDetails = root.requireViewById(R.id.permission_details);
 
         updateButtons();
-        updateJustification(context, root);
+        updateJustification(context, root, appLabel);
 
         return root;
     }
@@ -401,7 +402,7 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
         }
     }
 
-    private void updateJustification(Context context, ViewGroup root) {
+    private void updateJustification(Context context, ViewGroup root, @NonNull String appLabel) {
         // Collect the names of the permissions of the group.
         ArrayList<Permission> groupPerms = mGroup.getPermissions();
         ArraySet<String> permissions = new ArraySet(groupPerms.size());
@@ -494,6 +495,21 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
                         context.getString(
                                 R.string.permission_justification_data_retention_unlimited));
             }
+        }
+
+        TextView infoIntentView = root.requireViewById(R.id.justification_info_intent);
+        Intent infoIntent = new Intent(Intent.ACTION_PERMISSION_USAGE_DETAILS);
+        infoIntent.setPackage(mGroup.getApp().packageName);
+        if (infoIntent.resolveActivity(context.getPackageManager()) != null) {
+            infoIntentView.setText(context.getString(R.string.permission_justification_info_intent,
+                    appLabel));
+            infoIntentView.setOnClickListener((v) -> {
+                infoIntent.putExtra(Intent.EXTRA_PERMISSION_USAGE_PERMISSIONS,
+                        permissions.toArray(new String[permissions.size()]));
+                context.startActivity(infoIntent);
+            });
+        } else {
+            infoIntentView.setVisibility(View.GONE);
         }
     }
 
@@ -790,8 +806,7 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
      */
     private @NonNull Drawable getAppIcon() {
         ApplicationInfo appInfo = mGroup.getApp().applicationInfo;
-        return IconDrawableFactory.getBadgedIcon(getActivity(), appInfo,
-                UserHandle.getUserHandleForUid(appInfo.uid));
+        return Utils.getBadgedIcon(getActivity(), appInfo);
     }
 
     /**

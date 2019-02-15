@@ -33,7 +33,6 @@ import androidx.preference.PreferenceGroup;
 import androidx.preference.PreferenceManager;
 import androidx.preference.PreferenceScreen;
 
-import com.android.packageinstaller.permission.utils.IconDrawableFactory;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.packageinstaller.role.model.Role;
 import com.android.permissioncontroller.R;
@@ -50,7 +49,7 @@ public class DefaultAppListFragment extends SettingsFragment
 
     private static final String PREFERENCE_KEY_WORK_CATEGORY = "work_category";
 
-    private RoleListViewModel mViewModel;
+    private DefaultAppListViewModel mViewModel;
 
     /**
      * Create a new instance of this fragment.
@@ -66,8 +65,7 @@ public class DefaultAppListFragment extends SettingsFragment
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        mViewModel = ViewModelProviders.of(this, new RoleListViewModel.Factory(true,
-                requireActivity().getApplication())).get(RoleListViewModel.class);
+        mViewModel = ViewModelProviders.of(this).get(DefaultAppListViewModel.class);
         mViewModel.getLiveData().observe(this, roleItems -> onRoleListChanged());
         if (mViewModel.hasWorkProfile()) {
             mViewModel.getWorkLiveData().observe(this, roleItems -> onRoleListChanged());
@@ -170,8 +168,7 @@ public class DefaultAppListFragment extends SettingsFragment
                 preference.setSummary(R.string.default_app_none);
             } else {
                 ApplicationInfo holderApplicationInfo = holderApplicationInfos.get(0);
-                preference.setIcon(IconDrawableFactory.getBadgedIcon(context, holderApplicationInfo,
-                        UserHandle.getUserHandleForUid(holderApplicationInfo.uid)));
+                preference.setIcon(Utils.getBadgedIcon(context, holderApplicationInfo));
                 preference.setSummary(Utils.getAppLabel(holderApplicationInfo, context));
             }
 
