@@ -47,6 +47,21 @@ public class Constants {
     public static final int LOCATION_ACCESS_CHECK_NOTIFICATION_ID = 0;
 
     /**
+     * Key for Notification.Builder.setGroup() for the incident report approval notification.
+     */
+    public static final String INCIDENT_NOTIFICATION_GROUP_KEY = "incident confirmation";
+
+    /**
+     * Key for Notification.Builder.setChannelId() for the incident report approval notification.
+     */
+    public static final String INCIDENT_NOTIFICATION_CHANNEL_ID = "incident_confirmation";
+
+    /**
+     * ID for our notification.  We always post it with a tag which is the uri in string form.
+     */
+    public static final int INCIDENT_NOTIFICATION_ID = 66900652;
+
+    /**
      * Channel of the notifications shown by
      * {@link com.android.packageinstaller.permission.service.LocationAccessCheck}.
      */
@@ -63,4 +78,10 @@ public class Constants {
      */
     public static final String KEY_LAST_LOCATION_ACCESS_NOTIFICATION_SHOWN =
             "last_location_access_notification_shown";
+
+    /**
+     * Key in the generic shared preferences that stores if the user manually selected the "none"
+     * role holder for a role.
+     */
+    public static final String IS_NONE_ROLE_HOLDER_SELECTED_KEY = "is_none_role_holder_selected:";
 }

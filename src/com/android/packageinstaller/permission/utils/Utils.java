@@ -47,6 +47,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Parcelable;
 import android.os.UserHandle;
+import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.text.Html;
 import android.text.TextUtils;
@@ -395,6 +396,15 @@ public final class Utils {
     }
 
     /**
+     * Get the names of the platform permission groups.
+     *
+     * @return the names of the platform permission groups.
+     */
+    public static List<String> getPlatformPermissionGroups() {
+        return new ArrayList<>(PLATFORM_PERMISSION_GROUPS.keySet());
+    }
+
+    /**
      * Should UI show this permission.
      *
      * <p>If the user cannot change the group, it should not be shown.
@@ -650,5 +660,16 @@ public final class Utils {
 
             return new BitmapDrawable(context.getResources(), iconBmp);
         }
+    }
+
+
+    /**
+     * Whether the Location Access Check is enabled.
+     *
+     * @return {@code true} iff the Location Access Check is enabled.
+     */
+    public static boolean isLocationAccessCheckEnabled() {
+        return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
+                DeviceConfig.Privacy.PROPERTY_LOCATION_ACCESS_CHECK_ENABLED));
     }
 }

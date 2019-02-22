@@ -20,6 +20,8 @@ import android.app.ActivityManager;
 import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.os.Process;
 import android.os.UserHandle;
@@ -30,7 +32,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
+import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.role.utils.PackageUtils;
+import com.android.packageinstaller.role.utils.UserUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -92,6 +96,11 @@ public class Role {
     private final boolean mShowNone;
 
     /**
+     * Whether this role only accepts system apps as its holders.
+     */
+    private final boolean mSystemOnly;
+
+    /**
      * The required components for an application to qualify for this role.
      */
     @NonNull
@@ -116,7 +125,7 @@ public class Role {
     private final List<PreferredActivity> mPreferredActivities;
 
     public Role(@NonNull String name, @Nullable RoleBehavior behavior, boolean exclusive,
-            @StringRes int labelResource, boolean showNone,
+            @StringRes int labelResource, boolean showNone, boolean systemOnly,
             @NonNull List<RequiredComponent> requiredComponents, @NonNull List<String> permissions,
             @NonNull List<AppOp> appOps, @NonNull List<PreferredActivity> preferredActivities) {
         mName = name;
@@ -124,6 +133,7 @@ public class Role {
         mExclusive = exclusive;
         mLabelResource = labelResource;
         mShowNone = showNone;
+        mSystemOnly = systemOnly;
         mRequiredComponents = requiredComponents;
         mPermissions = permissions;
         mAppOps = appOps;
@@ -229,8 +239,24 @@ public class Role {
      */
     @Nullable
     public String getFallbackHolder(@NonNull Context context) {
-        if (mBehavior != null) {
+        if (mBehavior != null && !isNoneHolderSelected(context)) {
             return mBehavior.getFallbackHolder(this, context);
+        }
+        return null;
+    }
+
+    /**
+     * Get the {@link Intent} to manage this role, or {@code null} to use the default UI.
+     *
+     * @param user the user to manage this role for
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return the {@link Intent} to manage this role, or {@code null} to use the default UI.
+     */
+    @Nullable
+    public Intent getManageIntentAsUser(@NonNull UserHandle user, @NonNull Context context) {
+        if (mBehavior != null) {
+            return mBehavior.getManageIntentAsUser(this, user, context);
         }
         return null;
     }
@@ -371,6 +397,10 @@ public class Role {
             return false;
         }
 
+        if (mSystemOnly && (applicationInfo.flags & ApplicationInfo.FLAG_SYSTEM) == 0) {
+            return false;
+        }
+
         // TODO: STOPSHIP: Check for disabled packages?
 
         // TODO: STOPSHIP: Add and check PackageManager.getSharedLibraryInfo().
@@ -415,6 +445,10 @@ public class Role {
         for (int i = 0; i < preferredActivitiesSize; i++) {
             PreferredActivity preferredActivity = mPreferredActivities.get(i);
             preferredActivity.configure(packageName, context);
+        }
+
+        if (mBehavior != null) {
+            mBehavior.grant(this, packageName, context);
         }
 
         if (mayKillApp && !Permissions.isRuntimePermissionsSupported(packageName, context)
@@ -462,6 +496,10 @@ public class Role {
 
         // TODO: STOPSHIP: Revoke preferred activities?
 
+        if (mBehavior != null) {
+            mBehavior.revoke(this, packageName, context);
+        }
+
         if (mayKillApp && permissionOrAppOpChanged) {
             killApp(packageName, context);
         }
@@ -482,6 +520,50 @@ public class Role {
         activityManager.killUid(applicationInfo.uid, "Permission or app op changed");
     }
 
+    /**
+     * Did the user selected the "none" role holder.
+     *
+     * @param context A context to use
+     *
+     * @return {@code true} iff the user selected the "none" role holder
+     */
+    private boolean isNoneHolderSelected(@NonNull Context context) {
+        return getDeviceProtectedSharedPreferences(context).getBoolean(
+                Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, false);
+    }
+
+    /**
+     * Indicate that the any other holder than "none" was selected.
+     *
+     * @param context A context to use
+     * @param user the user the role belongs to
+     */
+    public void onHolderSelectedAsUser(@NonNull Context context, @NonNull UserHandle user) {
+        getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
+                .remove(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName)
+                .apply();
+    }
+
+    /**
+     * Indicate that the "none" role holder was selected.
+     *
+     * @param context A context to use
+     * @param user the user the role belongs to
+     */
+    public void onNoneHolderSelectedAsUser(@NonNull Context context, @NonNull UserHandle user) {
+        getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
+                .putBoolean(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, true)
+                .apply();
+    }
+
+    @NonNull
+    private SharedPreferences getDeviceProtectedSharedPreferences(@NonNull Context context) {
+        if (!context.isDeviceProtectedStorage()) {
+            context = context.createDeviceProtectedStorageContext();
+        }
+        return context.getSharedPreferences(Constants.PREFERENCES_FILE, Context.MODE_PRIVATE);
+    }
+
     @Override
     public String toString() {
         return "Role{"
@@ -489,6 +571,8 @@ public class Role {
                 + ", mBehavior=" + mBehavior
                 + ", mExclusive=" + mExclusive
                 + ", mLabelResource=" + mLabelResource
+                + ", mShowNone=" + mShowNone
+                + ", mSystemOnly=" + mSystemOnly
                 + ", mRequiredComponents=" + mRequiredComponents
                 + ", mPermissions=" + mPermissions
                 + ", mAppOps=" + mAppOps
@@ -504,20 +588,22 @@ public class Role {
         if (object == null || getClass() != object.getClass()) {
             return false;
         }
-        Role role = (Role) object;
-        return mExclusive == role.mExclusive
-                && mLabelResource == role.mLabelResource
-                && Objects.equals(mName, role.mName)
-                && Objects.equals(mBehavior, role.mBehavior)
-                && Objects.equals(mRequiredComponents, role.mRequiredComponents)
-                && Objects.equals(mPermissions, role.mPermissions)
-                && Objects.equals(mAppOps, role.mAppOps)
-                && Objects.equals(mPreferredActivities, role.mPreferredActivities);
+        Role that = (Role) object;
+        return mExclusive == that.mExclusive
+                && mLabelResource == that.mLabelResource
+                && mShowNone == that.mShowNone
+                && mSystemOnly == that.mSystemOnly
+                && mName.equals(that.mName)
+                && Objects.equals(mBehavior, that.mBehavior)
+                && mRequiredComponents.equals(that.mRequiredComponents)
+                && mPermissions.equals(that.mPermissions)
+                && mAppOps.equals(that.mAppOps)
+                && mPreferredActivities.equals(that.mPreferredActivities);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(mName, mBehavior, mExclusive, mLabelResource,
+        return Objects.hash(mName, mBehavior, mExclusive, mLabelResource, mShowNone, mSystemOnly,
                 mRequiredComponents, mPermissions, mAppOps, mPreferredActivities);
     }
 }

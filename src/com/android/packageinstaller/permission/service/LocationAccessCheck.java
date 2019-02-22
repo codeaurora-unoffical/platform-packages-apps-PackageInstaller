@@ -18,7 +18,7 @@ package com.android.packageinstaller.permission.service;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.app.AppOpsManager.OPSTR_FINE_LOCATION;
-import static android.app.NotificationManager.IMPORTANCE_LOW;
+import static android.app.NotificationManager.IMPORTANCE_HIGH;
 import static android.app.PendingIntent.FLAG_ONE_SHOT;
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 import static android.app.PendingIntent.getBroadcast;
@@ -46,15 +46,16 @@ import static com.android.packageinstaller.Constants.LOCATION_ACCESS_CHECK_NOTIF
 import static com.android.packageinstaller.Constants.PERIODIC_LOCATION_ACCESS_CHECK_JOB_ID;
 import static com.android.packageinstaller.Constants.PERMISSION_REMINDER_CHANNEL_ID;
 import static com.android.packageinstaller.Constants.PREFERENCES_FILE;
-import static com.android.packageinstaller.permission.utils.LocationUtils.isNetworkLocationProvider;
 import static com.android.packageinstaller.permission.utils.Utils.OS_PKG;
 import static com.android.packageinstaller.permission.utils.Utils.getGroupOfPlatformPermission;
 import static com.android.packageinstaller.permission.utils.Utils.getParcelableExtraSafe;
 import static com.android.packageinstaller.permission.utils.Utils.getStringExtraSafe;
 import static com.android.packageinstaller.permission.utils.Utils.getSystemServiceSafe;
+import static com.android.packageinstaller.permission.utils.Utils.isLocationAccessCheckEnabled;
 
 import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.DAYS;
+import static java.util.concurrent.TimeUnit.MINUTES;
 
 import android.app.AppOpsManager;
 import android.app.AppOpsManager.HistoricalOps;
@@ -150,9 +151,8 @@ public class LocationAccessCheck {
      * @return The time in between check in milliseconds
      */
     private long getPeriodicCheckIntervalMillis() {
-        // STOPSHIP: Set delay back to 1 day once location access should be checked again
         return Settings.Secure.getLong(mContentResolver,
-                LOCATION_ACCESS_CHECK_INTERVAL_MILLIS, DAYS.toMillis(10000));
+                LOCATION_ACCESS_CHECK_INTERVAL_MILLIS, DAYS.toMillis(1));
     }
 
     /**
@@ -174,9 +174,8 @@ public class LocationAccessCheck {
      * @return The delay in milliseconds
      */
     private long getDelayMillis() {
-        // STOPSHIP: Set delay back to 10 minutes once location access should be checked again
         return Settings.Secure.getLong(mContentResolver,
-                LOCATION_ACCESS_CHECK_DELAY_MILLIS, DAYS.toMillis(1000));
+                LOCATION_ACCESS_CHECK_DELAY_MILLIS, MINUTES.toMillis(10));
     }
 
     /**
@@ -290,7 +289,7 @@ public class LocationAccessCheck {
 
         NotificationChannel permissionReminderChannel = new NotificationChannel(
                 PERMISSION_REMINDER_CHANNEL_ID, mContext.getString(R.string.permission_reminders),
-                IMPORTANCE_LOW);
+                IMPORTANCE_HIGH);
         notificationManager.createNotificationChannel(permissionReminderChannel);
     }
 
@@ -346,6 +345,10 @@ public class LocationAccessCheck {
     @WorkerThread
     private void addLocationNotificationIfNeeded(@NonNull JobParameters params,
             @NonNull LocationAccessCheckJobService service) {
+        if (!isLocationAccessCheckEnabled()) {
+            return;
+        }
+
         synchronized (sLock) {
             try {
                 if (currentTimeMillis() - mSharedPrefs.getLong(
@@ -450,6 +453,8 @@ public class LocationAccessCheck {
         List<UserPackage> pkgsWithLocationAccess = new ArrayList<>();
         List<UserHandle> profiles = mUserManager.getUserProfiles();
 
+        LocationManager lm = mContext.getSystemService(LocationManager.class);
+
         int numUid = allOps.getUidCount();
         for (int uidNum = 0; uidNum < numUid; uidNum++) {
             AppOpsManager.HistoricalUidOps uidOps = allOps.getUidOpsAt(uidNum);
@@ -459,7 +464,7 @@ public class LocationAccessCheck {
                 HistoricalPackageOps ops = uidOps.getPackageOpsAt(pkgNum);
 
                 String pkg = ops.getPackageName();
-                if (pkg.equals(OS_PKG) || isNetworkLocationProvider(mContext, pkg)) {
+                if (pkg.equals(OS_PKG) || lm.isProviderPackage(pkg)) {
                     continue;
                 }
 
