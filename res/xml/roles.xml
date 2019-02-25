@@ -84,7 +84,11 @@
       ~ @see com.android.server.pm.PackageManagerService.setDefaultBrowserPackageName(String, int)
       ~ @see com.android.server.pm.permission.DefaultPermissionGrantPolicy.grantDefaultPermissionsToDefaultBrowser(String, int)
       -->
-    <role name="android.app.role.BROWSER" exclusive="true" label="@string/role_label_browser">
+    <role
+        name="android.app.role.BROWSER"
+        behavior="BrowserRoleBehavior"
+        exclusive="true"
+        label="@string/role_label_browser">
         <!--
           ~ Required components matching is handled in BrowserRoleBehavior because it needs the
           ~ PackageManager.MATCH_ALL flag and other manual filtering, which cannot fit in our
@@ -256,16 +260,19 @@
         </preferred-activities>
     </role>
 
-    <!-- TODO: STOPSHIP: Add availability and confirmation message in role behavior. -->
     <!-- TODO: STOPSHIP: Intent action sometimes changing dynamically in com.android.phone.EmergencyAssistanceHelper.getIntentAction -->
     <!-- TODO: STOPSHIP: Make this non-configurable at least by default. -->
-    <!-- TODO: STOPSHIP: Make sure we initialize an emergency app for user. -->
     <!---
       ~ @see com.android.settings.applications.defaultapps.DefaultEmergencyPreferenceController
       ~ @see com.android.settings.applications.defaultapps.DefaultEmergencyPicker
       ~ @see com.android.phone.EmergencyAssistanceHelper
       -->
-    <role name="android.app.role.EMERGENCY" exclusive="true" label="@string/role_label_emergency">
+    <role
+        name="android.app.role.EMERGENCY"
+        behavior="EmergencyRoleBehavior"
+        exclusive="true"
+        label="@string/role_label_emergency"
+        systemOnly="true">
         <required-components>
             <activity>
                 <intent-filter>
@@ -437,5 +444,74 @@
                 </intent-filter>
             </service>
         </required-components>
+    </role>
+
+    <role
+        name="android.app.role.ASSISTANT"
+        behavior="AssistantRoleBehavior"
+        exclusive="true"
+        showNone="true"
+        label="@string/role_label_assistant">
+        <required-components>
+            <!-- Qualified components are determined int AssistantRoleBehavior. This comment here is
+                 ignored and represents just a rough description
+
+            <any-of>
+                <service permission="android.permission.BIND_VOICE_INTERACTION"
+                         supportsAssist="true">
+                    <intent-filter>
+                        <action name="android.service.voice.VoiceInteractionService" />
+                    </intent-filter>
+                    <meta-data name="android.voice_interaction"
+                               optional="false">
+                        required tag in metadata xml: sessionService
+                        required tag in metadata xml: recognitionService
+                        required tag in metadata xml: supportsAssist = true
+                    </meta-data>
+                </service>
+                <activity>
+                    <intent-filter>
+                        <action name="android.intent.action.ASSIST" />
+                    </intent-filter>
+                </activity>
+            </ any-of>
+
+            -->
+        </required-components>
+        <permissions>
+            <!-- STOPSHIP: Allow to only enable permissions, but not grant them -->
+            <permission-set name="sms" />
+            <permission name="android.permission.READ_CALL_LOG" />
+        </permissions>
+    </role>
+
+    <!-- STOPSHIP: Allow any app to access SMS -->
+    <role
+        name="android.app.role.TEMPORARY_SMS_ACCESS"
+        behavior="TemporarySmsAccessRoleBehavior"
+        exclusive="false"
+        label="@string/role_label_temporary_sms_access">
+        <permissions>
+            <permission-set name="sms" />
+        </permissions>
+    </role>
+
+    <role
+        name="android.app.role.CAR_PROJECTION"
+        exclusive="true"
+        label="@string/role_label_car_projection">
+        <required-components>
+            <activity>
+              <intent-filter>
+                  <action name="android.intent.action.MAIN" />
+                  <category name="android.intent.category.CAR_PROJECTION" />
+              </intent-filter>
+            </activity>
+        </required-components>
+        <permissions>
+            <permission name="android.permission.READ_CALL_LOG" />
+            <permission name="android.permission.SEND_SMS" />
+            <permission name="android.permission.RECEIVE_SMS" />
+        </permissions>
     </role>
 </roles>
