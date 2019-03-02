@@ -84,6 +84,17 @@ public final class SafetyNetLogger {
         }
     }
 
+    /**
+     * Log that a permission group has been toggled for the purpose of safety net.
+     *
+     * @param group The group toggled.
+     */
+    public static void logPermissionToggled(AppPermissionGroup group) {
+        ArraySet groups = new ArraySet<AppPermissionGroup>(1);
+        groups.add(group);
+        logPermissionsToggled(groups);
+    }
+
     private static void buildChangedPermissionForGroup(AppPermissionGroup group,
             StringBuilder builder) {
         int permissionCount = group.getPermissions().size();
@@ -95,14 +106,7 @@ public final class SafetyNetLogger {
             }
 
             builder.append(permission.getName()).append('|');
-
-            if (group.doesSupportRuntimePermissions()) {
-                builder.append(permission.isGranted()).append('|');
-            } else {
-                builder.append(permission.isGranted()
-                        && (!permission.affectsAppOp() || permission.isAppOpAllowed())).append('|');
-            }
-
+            builder.append(permission.isGrantedIncludingAppOp()).append('|');
             builder.append(permission.getFlags());
         }
     }

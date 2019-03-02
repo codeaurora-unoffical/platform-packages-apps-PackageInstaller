@@ -25,10 +25,10 @@ import androidx.lifecycle.ViewModel;
 public class RequestRoleViewModel extends ViewModel {
 
     @NonNull
-    private RequestRoleLiveData mLiveData = new RequestRoleLiveData();
+    private ManageRoleHolderStateLiveData mLiveData = new ManageRoleHolderStateLiveData();
 
     @NonNull
-    public RequestRoleLiveData getLiveData() {
+    public ManageRoleHolderStateLiveData getLiveData() {
         return mLiveData;
     }
 }

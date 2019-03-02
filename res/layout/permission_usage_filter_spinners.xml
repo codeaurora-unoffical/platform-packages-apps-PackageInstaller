@@ -15,29 +15,29 @@
      limitations under the License.
 -->
 
-<RelativeLayout
+<com.android.packageinstaller.permission.ui.ButtonBarLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingLeft="16dp"
     android:paddingRight="16dp"
-    android:orientation="horizontal"
-    android:gravity="center" >
-
-    <com.android.settingslib.widget.settingsspinner.SettingsSpinner
-        android:id="@+id/filter_spinner_permissions"
-        android:layout_height="wrap_content"
-        android:layout_width="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="8dp"/>
+    android:layout_marginTop="16dp"
+    android:layout_marginBottom="8dp"
+    android:orientation="horizontal" >
 
     <com.android.settingslib.widget.settingsspinner.SettingsSpinner
         android:id="@+id/filter_spinner_time"
         android:layout_height="wrap_content"
-        android:layout_width="wrap_content"
-        android:layout_alignParentRight="true"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="8dp"/>
+        android:layout_width="wrap_content"/>
 
-</RelativeLayout>
+    <View
+        android:id="@+id/spacer"
+        android:layout_width="24dp"
+        android:layout_height="match_parent"/>
+
+    <com.android.settingslib.widget.settingsspinner.SettingsSpinner
+        android:id="@+id/sort_spinner"
+        android:layout_height="wrap_content"
+        android:layout_width="wrap_content"/>
+
+</com.android.packageinstaller.permission.ui.ButtonBarLayout>

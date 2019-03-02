@@ -16,17 +16,11 @@
 
 package com.android.packageinstaller.permission.ui.handheld;
 
-import static android.provider.Settings.ACTION_APP_SEARCH_SETTINGS;
-import static android.view.MenuItem.SHOW_AS_ACTION_ALWAYS;
-
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
+import android.app.ActionBar;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
@@ -34,15 +28,17 @@ import android.view.animation.Animation.AnimationListener;
 import android.view.animation.AnimationUtils;
 import android.widget.TextView;
 
+import androidx.core.widget.NestedScrollView;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.packageinstaller.permission.utils.Utils;
 import com.android.permissioncontroller.R;
+import com.android.settingslib.widget.ActionBarShadowController;
 
 public abstract class PermissionsFrameFragment extends PreferenceFragmentCompat {
     private static final String LOG_TAG = PermissionsFrameFragment.class.getSimpleName();
 
-    private static final int MENU_SEARCH_SETTINGS = Menu.FIRST;
     static final int MENU_ALL_PERMS = Menu.FIRST + 1;
     static final int MENU_SHOW_SYSTEM = Menu.FIRST + 2;
     static final int MENU_HIDE_SYSTEM = Menu.FIRST + 3;
@@ -52,6 +48,7 @@ public abstract class PermissionsFrameFragment extends PreferenceFragmentCompat 
     private TextView mEmptyView;
     private View mLoadingView;
     private ViewGroup mPrefsView;
+    private NestedScrollView mNestedScrollView;
     private boolean mIsLoading;
 
     /**
@@ -66,28 +63,7 @@ public abstract class PermissionsFrameFragment extends PreferenceFragmentCompat 
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
 
-        if (getContext().getPackageManager().resolveActivity(new Intent(ACTION_APP_SEARCH_SETTINGS),
-                0) != null) {
-            MenuItem searchItem = menu.add(Menu.NONE, MENU_SEARCH_SETTINGS, Menu.NONE,
-                    R.string.search_menu);
-            searchItem.setIcon(R.drawable.ic_search_24dp);
-            searchItem.setShowAsAction(SHOW_AS_ACTION_ALWAYS);
-        }
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case MENU_SEARCH_SETTINGS:
-                try {
-                    getActivity().startActivity(new Intent(ACTION_APP_SEARCH_SETTINGS));
-                } catch (ActivityNotFoundException e) {
-                    Log.e(LOG_TAG, "Cannot search settings", e);
-                }
-                break;
-        }
-
-        return super.onOptionsItemSelected(item);
+        Utils.prepareSearchMenuItem(menu, requireContext());
     }
 
     @Override
@@ -105,8 +81,23 @@ public abstract class PermissionsFrameFragment extends PreferenceFragmentCompat 
         mPreferencesContainer = (ViewGroup) super.onCreateView(
                 inflater, mPrefsView, savedInstanceState);
         setLoading(mIsLoading, false, true /* force */);
-        mPrefsView.addView(mPreferencesContainer);
+        mPrefsView.addView(mPreferencesContainer, 0);
+        mNestedScrollView = rootView.requireViewById(R.id.nested_scroll_view);
         return rootView;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        if (mNestedScrollView != null) {
+            ActionBar ab = getActivity().getActionBar();
+            if (ab != null) {
+                ab.setElevation(0);
+            }
+            ActionBarShadowController.attachToView(getActivity(), getLifecycle(),
+                    mNestedScrollView);
+        }
     }
 
     @Override

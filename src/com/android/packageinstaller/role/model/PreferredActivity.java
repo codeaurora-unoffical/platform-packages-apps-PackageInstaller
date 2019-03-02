@@ -18,8 +18,10 @@ package com.android.packageinstaller.role.model;
 
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.Process;
 
 import androidx.annotation.NonNull;
 
@@ -67,18 +69,29 @@ public class PreferredActivity {
      * @param context the {@code Context} to retrieve system services
      */
     public void configure(@NonNull String packageName, @NonNull Context context) {
-        IntentFilter intentFilter = mActivity.getIntentFilterData().createIntentFilter();
-        List<ComponentName> activities = mActivity.getQualifyingComponents(context);
+        PackageManager packageManager = context.getPackageManager();
         ComponentName packageActivity = mActivity.getQualifyingComponentForPackage(
                 packageName, context);
         // TODO: STOPSHIP: Race condition, what if packageActivity became null? Just don't crash?
         if (packageActivity == null) {
             return;
         }
-        PackageManager packageManager = context.getPackageManager();
-        // TODO: STOPSHIP: MATCH_CATEGORY_SCHEME ?
-        packageManager.replacePreferredActivity(intentFilter, IntentFilter.MATCH_CATEGORY_SCHEME
-                | IntentFilter.MATCH_ADJUSTMENT_NORMAL, activities, packageActivity);
+
+        int intentFilterDatasSize = mIntentFilterDatas.size();
+        for (int i = 0; i < intentFilterDatasSize; i++) {
+            IntentFilterData intentFilterData = mIntentFilterDatas.get(i);
+
+            IntentFilter intentFilter = intentFilterData.createIntentFilter();
+            intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
+            // PackageManager.replacePreferredActivity() expects filter to have no data authorities,
+            // paths, or types; and at most one scheme.
+            int match = intentFilterData.getDataScheme() != null
+                    ? IntentFilter.MATCH_CATEGORY_SCHEME : IntentFilter.MATCH_CATEGORY_EMPTY;
+            List<ComponentName> activities = mActivity.getQualifyingComponentsAsUser(
+                    Process.myUserHandle(), context);
+            packageManager.replacePreferredActivity(intentFilter, match, activities,
+                    packageActivity);
+        }
     }
 
     @Override

@@ -21,16 +21,19 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.widget.ImageView;
 
 import androidx.preference.Preference;
 import androidx.preference.PreferenceScreen;
+import androidx.preference.PreferenceViewHolder;
 
 import com.android.packageinstaller.permission.model.PermissionGroup;
 import com.android.packageinstaller.permission.model.PermissionGroups;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.permissioncontroller.R;
 
-import java.util.List;
+import java.text.Collator;
+import java.util.ArrayList;
 
 /**
  * Superclass for fragments allowing the user to manage permissions.
@@ -44,6 +47,8 @@ abstract class ManagePermissionsFragment extends PermissionsFrameFragment
 
     private PermissionGroups mPermissions;
 
+    private Collator mCollator;
+
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
@@ -53,7 +58,10 @@ abstract class ManagePermissionsFragment extends PermissionsFrameFragment
         if (ab != null) {
             ab.setDisplayHomeAsUpEnabled(true);
         }
-        mPermissions = new PermissionGroups(getContext(), getActivity().getLoaderManager(), this);
+        mPermissions = new PermissionGroups(getContext(), getActivity().getLoaderManager(), this,
+                true);
+        mCollator = Collator.getInstance(
+                getContext().getResources().getConfiguration().getLocales().get(0));
     }
 
     @Override
@@ -102,11 +110,12 @@ abstract class ManagePermissionsFragment extends PermissionsFrameFragment
      */
     protected PreferenceScreen updatePermissionsUi(boolean addSystemPermissions) {
         Context context = getPreferenceManager().getContext();
-        if (context == null) {
+        if (context == null || getActivity() == null) {
             return null;
         }
 
-        List<PermissionGroup> groups = mPermissions.getGroups();
+        ArrayList<PermissionGroup> groups = new ArrayList<>(mPermissions.getGroups());
+        groups.sort((x, y) -> mCollator.compare(x.getLabel(), y.getLabel()));
         PreferenceScreen screen = getPreferenceScreen();
         if (screen == null) {
             screen = getPreferenceManager().createPreferenceScreen(context);
@@ -114,17 +123,19 @@ abstract class ManagePermissionsFragment extends PermissionsFrameFragment
         } else {
             screen.removeAll();
         }
+        screen.setOrderingAsAdded(true);
 
         // Use this to speed up getting the info for all of the PermissionApps below.
         // Create a new one for each refresh to make sure it has fresh data.
-        for (PermissionGroup group : groups) {
+        for (int i = 0; i < groups.size(); i++) {
+            PermissionGroup group = groups.get(i);
             boolean isSystemPermission = group.getDeclaringPackage().equals(OS_PKG);
 
             if (addSystemPermissions == isSystemPermission) {
                 Preference preference = findPreference(group.getName());
 
                 if (preference == null) {
-                    preference = new Preference(context);
+                    preference = new FixedSizeIconPreference(context);
                     preference.setOnPreferenceClickListener(this);
                     preference.setKey(group.getName());
                     preference.setIcon(Utils.applyTint(context, group.getIcon(),
@@ -145,5 +156,24 @@ abstract class ManagePermissionsFragment extends PermissionsFrameFragment
         }
 
         return screen;
+    }
+
+    /**
+     * A preference whose icons have the same fixed size.
+     */
+    private static final class FixedSizeIconPreference extends Preference {
+        FixedSizeIconPreference(Context context) {
+            super(context);
+        }
+
+        @Override
+        public void onBindViewHolder(PreferenceViewHolder holder) {
+            super.onBindViewHolder(holder);
+            ImageView icon = ((ImageView) holder.findViewById(android.R.id.icon));
+            icon.setMaxWidth(getContext().getResources().getDimensionPixelSize(
+                    R.dimen.secondary_app_icon_size));
+            icon.setMaxHeight(getContext().getResources().getDimensionPixelSize(
+                    R.dimen.secondary_app_icon_size));
+        }
     }
 }

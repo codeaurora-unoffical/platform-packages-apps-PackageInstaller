@@ -20,7 +20,9 @@ import android.app.AppOpsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.XmlResourceParser;
+import android.os.Build;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
@@ -37,7 +39,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -67,15 +68,20 @@ public class Roles {
     private static final String TAG_PERMISSIONS = "permissions";
     private static final String TAG_APP_OPS = "app-ops";
     private static final String TAG_APP_OP = "app-op";
-    private static final String TAG_PREFERRED_ACTIVITIES = "preferred-activites";
+    private static final String TAG_PREFERRED_ACTIVITIES = "preferred-activities";
     private static final String TAG_PREFERRED_ACTIVITY = "preferred-activity";
     private static final String ATTRIBUTE_NAME = "name";
-    private static final String ATTRIBUTE_PERMISSION = "permission";
+    private static final String ATTRIBUTE_BEHAVIOR = "behavior";
     private static final String ATTRIBUTE_EXCLUSIVE = "exclusive";
     private static final String ATTRIBUTE_LABEL = "label";
+    private static final String ATTRIBUTE_SHOW_NONE = "showNone";
+    private static final String ATTRIBUTE_SYSTEM_ONLY = "systemOnly";
+    private static final String ATTRIBUTE_PERMISSION = "permission";
     private static final String ATTRIBUTE_SCHEME = "scheme";
     private static final String ATTRIBUTE_MIME_TYPE = "mimeType";
     private static final String ATTRIBUTE_VALUE = "value";
+    private static final String ATTRIBUTE_OPTIONAL = "optional";
+    private static final String ATTRIBUTE_MAX_TARGET_SDK_VERSION = "maxTargetSdkVersion";
     private static final String ATTRIBUTE_MODE = "mode";
 
     private static final String MODE_NAME_ALLOWED = "allowed";
@@ -96,7 +102,20 @@ public class Roles {
     private static final Object sLock = new Object();
 
     @Nullable
-    private static Map<String, Role> sRoles;
+    private static ArrayMap<String, Role> sRoles;
+
+    private static boolean sIsolatedStorage;
+    private static final List<String> ISOLATED_STORAGE_PERMISSIONS = new ArrayList<>();
+    static {
+        ISOLATED_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_MEDIA_AUDIO);
+        ISOLATED_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_MEDIA_VIDEO);
+        ISOLATED_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_MEDIA_IMAGES);
+    }
+    private static final List<String> LEGACY_STORAGE_PERMISSIONS = new ArrayList<>();
+    static {
+        LEGACY_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
+        LEGACY_STORAGE_PERMISSIONS.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+    }
 
     private Roles() {}
 
@@ -108,42 +127,54 @@ public class Roles {
      * @return a map from role name to {@link Role} instances
      */
     @NonNull
-    public static Map<String, Role> getRoles(@NonNull Context context) {
+    public static ArrayMap<String, Role> get(@NonNull Context context) {
         synchronized (sLock) {
             if (sRoles == null) {
-                sRoles = loadRoles(context);
+                sRoles = load(context);
             }
             return sRoles;
         }
     }
 
     @NonNull
-    private static Map<String, Role> loadRoles(@NonNull Context context) {
+    private static ArrayMap<String, Role> load(@NonNull Context context) {
+        // If the storage model feature flag is disabled, we need to fiddle
+        // around with permission definitions to return us to pre-Q behavior.
+        // STOPSHIP(b/112545973): remove once feature enabled by default
+        try {
+            context.getPackageManager().getPermissionInfo(ISOLATED_STORAGE_PERMISSIONS.get(0), 0);
+            sIsolatedStorage = true;
+        } catch (NameNotFoundException e) {
+            sIsolatedStorage = false;
+        }
+
         try (XmlResourceParser parser = context.getResources().getXml(R.xml.roles)) {
-            Pair<Map<String, PermissionSet>, Map<String, Role>> xml = parseXml(parser);
+            Pair<ArrayMap<String, PermissionSet>, ArrayMap<String, Role>> xml = parseXml(parser);
             if (xml == null) {
-                return Collections.emptyMap();
+                return new ArrayMap<>();
             }
-            Map<String, PermissionSet> permissionSets = xml.first;
-            Map<String, Role> roles = xml.second;
+            ArrayMap<String, PermissionSet> permissionSets = xml.first;
+            ArrayMap<String, Role> roles = xml.second;
             validateParseResult(permissionSets, roles, context);
             return roles;
         } catch (XmlPullParserException | IOException e) {
             throwOrLogMessage("Unable to parse roles.xml", e);
-            return Collections.emptyMap();
+            return new ArrayMap<>();
         }
     }
 
     @Nullable
-    private static Pair<Map<String, PermissionSet>, Map<String, Role>> parseXml(
+    private static Pair<ArrayMap<String, PermissionSet>, ArrayMap<String, Role>> parseXml(
             @NonNull XmlResourceParser parser) throws IOException, XmlPullParserException {
-        Pair<Map<String, PermissionSet>, Map<String, Role>> xml = null;
+        Pair<ArrayMap<String, PermissionSet>, ArrayMap<String, Role>> xml = null;
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -167,16 +198,18 @@ public class Roles {
     }
 
     @NonNull
-    private static Pair<Map<String, PermissionSet>, Map<String, Role>> parseRoles(
+    private static Pair<ArrayMap<String, PermissionSet>, ArrayMap<String, Role>> parseRoles(
             @NonNull XmlResourceParser parser) throws IOException, XmlPullParserException {
-        Map<String, PermissionSet> permissionSets = new ArrayMap<>();
-        Map<String, Role> roles = new ArrayMap<>();
+        ArrayMap<String, PermissionSet> permissionSets = new ArrayMap<>();
+        ArrayMap<String, Role> roles = new ArrayMap<>();
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -220,11 +253,13 @@ public class Roles {
 
         List<String> permissions = new ArrayList<>();
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -246,10 +281,33 @@ public class Roles {
 
     @Nullable
     private static Role parseRole(@NonNull XmlResourceParser parser,
-            @NonNull Map<String, PermissionSet> permissionSets) throws IOException,
+            @NonNull ArrayMap<String, PermissionSet> permissionSets) throws IOException,
             XmlPullParserException {
         String name = requireAttributeValue(parser, ATTRIBUTE_NAME, TAG_ROLE);
         if (name == null) {
+            skipCurrentTag(parser);
+            return null;
+        }
+
+        String behaviorClassSimpleName = getAttributeValue(parser, ATTRIBUTE_BEHAVIOR);
+        RoleBehavior behavior;
+        if (behaviorClassSimpleName != null) {
+            String behaviorClassName = Roles.class.getPackage().getName() + '.'
+                    + behaviorClassSimpleName;
+            try {
+                behavior = (RoleBehavior) Class.forName(behaviorClassName).newInstance();
+            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+                throwOrLogMessage("Unable to instantiate behavior: " + behaviorClassName, e);
+                skipCurrentTag(parser);
+                return null;
+            }
+        } else {
+            behavior = null;
+        }
+
+        Boolean exclusive = requireAttributeBooleanValue(parser, ATTRIBUTE_EXCLUSIVE, true,
+                TAG_ROLE);
+        if (exclusive == null) {
             skipCurrentTag(parser);
             return null;
         }
@@ -260,23 +318,27 @@ public class Roles {
             return null;
         }
 
-        Boolean exclusive = requireAttributeBooleanValue(parser, ATTRIBUTE_EXCLUSIVE, true,
-                TAG_ROLE);
-        if (exclusive == null) {
+        boolean showNone = getAttributeBooleanValue(parser, ATTRIBUTE_SHOW_NONE, false);
+        if (showNone && !exclusive) {
+            throwOrLogMessage("showNone=\"true\" is invalid for a non-exclusive role: " + name);
             skipCurrentTag(parser);
             return null;
         }
+
+        boolean systemOnly = getAttributeBooleanValue(parser, ATTRIBUTE_SYSTEM_ONLY, false);
 
         List<RequiredComponent> requiredComponents = null;
         List<String> permissions = null;
         List<AppOp> appOps = null;
         List<PreferredActivity> preferredActivities = null;
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -331,8 +393,8 @@ public class Roles {
         if (preferredActivities == null) {
             preferredActivities = Collections.emptyList();
         }
-        return new Role(name, labelResource, exclusive, requiredComponents, permissions, appOps,
-                preferredActivities);
+        return new Role(name, behavior, exclusive, labelResource, showNone, systemOnly,
+                requiredComponents, permissions, appOps, preferredActivities);
     }
 
     @NonNull
@@ -340,11 +402,13 @@ public class Roles {
             @NonNull XmlResourceParser parser) throws IOException, XmlPullParserException {
         List<RequiredComponent> requiredComponents = new ArrayList<>();
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -377,13 +441,19 @@ public class Roles {
             @NonNull String name) throws IOException, XmlPullParserException {
         String permission = getAttributeValue(parser, ATTRIBUTE_PERMISSION);
         IntentFilterData intentFilterData = null;
-        ArrayMap<String, Object> metaData = new ArrayMap<>();
+        List<RequiredMetaData> metaData = new ArrayList<>();
+        List<String> metaDataNames;
+        if (DEBUG) {
+            metaDataNames = new ArrayList<>();
+        }
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -402,7 +472,9 @@ public class Roles {
                     if (metaDataName == null) {
                         continue;
                     }
-                    checkDuplicateElement(metaDataName, metaData.keySet(), "meta data");
+                    if (DEBUG) {
+                        checkDuplicateElement(metaDataName, metaDataNames, "meta data");
+                    }
                     // HACK: Only support boolean for now.
                     // TODO: Support android:resource and other types of android:value, maybe by
                     // switching to TypedArray and styleables.
@@ -411,7 +483,14 @@ public class Roles {
                     if (metaDataValue == null) {
                         continue;
                     }
-                    metaData.put(metaDataName, metaDataValue);
+                    boolean metaDataOptional = getAttributeBooleanValue(parser, ATTRIBUTE_OPTIONAL,
+                            false);
+                    RequiredMetaData requiredMetaData = new RequiredMetaData(metaDataName,
+                            metaDataValue, metaDataOptional);
+                    metaData.add(requiredMetaData);
+                    if (DEBUG) {
+                        metaDataNames.add(metaDataName);
+                    }
                     break;
                 default:
                     throwOrLogForUnknownTag(parser);
@@ -447,11 +526,13 @@ public class Roles {
         String dataScheme = null;
         String dataType = null;
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -521,15 +602,17 @@ public class Roles {
 
     @NonNull
     private static List<String> parsePermissions(@NonNull XmlResourceParser parser,
-            @NonNull Map<String, PermissionSet> permissionSets) throws IOException,
+            @NonNull ArrayMap<String, PermissionSet> permissionSets) throws IOException,
             XmlPullParserException {
         List<String> permissions = new ArrayList<>();
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -565,6 +648,16 @@ public class Roles {
             }
         }
 
+        // If the storage model feature flag is disabled, we need to fiddle
+        // around with permission definitions to return us to pre-Q behavior.
+        // STOPSHIP(b/112545973): remove once feature enabled by default
+        if (!sIsolatedStorage) {
+            boolean removed = permissions.removeAll(ISOLATED_STORAGE_PERMISSIONS);
+            if (removed) {
+                permissions.addAll(LEGACY_STORAGE_PERMISSIONS);
+            }
+        }
+
         return permissions;
     }
 
@@ -574,11 +667,13 @@ public class Roles {
         List<String> appOpNames = new ArrayList<>();
         List<AppOp> appOps = new ArrayList<>();
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -590,6 +685,18 @@ public class Roles {
                 validateAppOpName(name);
                 checkDuplicateElement(name, appOpNames, "app op");
                 appOpNames.add(name);
+                Integer maxTargetSdkVersion = getAttributeIntValue(parser,
+                        ATTRIBUTE_MAX_TARGET_SDK_VERSION, Integer.MIN_VALUE);
+                if (maxTargetSdkVersion == Integer.MIN_VALUE) {
+                    maxTargetSdkVersion = null;
+                }
+                if (DEBUG) {
+                    if (maxTargetSdkVersion != null
+                            && maxTargetSdkVersion < Build.VERSION_CODES.BASE) {
+                        throwOrLogMessage("Invalid value for \"maxTargetSdkVersion\": "
+                                + maxTargetSdkVersion);
+                    }
+                }
                 String modeName = requireAttributeValue(parser, ATTRIBUTE_MODE, TAG_APP_OP);
                 if (modeName == null) {
                     continue;
@@ -600,7 +707,7 @@ public class Roles {
                     continue;
                 }
                 int mode = sModeNameToMode.valueAt(modeIndex);
-                AppOp appOp = new AppOp(name, mode);
+                AppOp appOp = new AppOp(name, maxTargetSdkVersion, mode);
                 appOps.add(appOp);
             } else {
                 throwOrLogForUnknownTag(parser);
@@ -623,11 +730,13 @@ public class Roles {
             @NonNull XmlResourceParser parser) throws IOException, XmlPullParserException {
         List<PreferredActivity> preferredActivities = new ArrayList<>();
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -654,11 +763,13 @@ public class Roles {
         RequiredActivity activity = null;
         List<IntentFilterData> intentFilterDatas = new ArrayList<>();
 
-        int outerDepth = parser.getDepth();
         int type;
+        int depth;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
-            if (type == XmlResourceParser.END_TAG || type == XmlResourceParser.TEXT) {
+                && ((depth = parser.getDepth()) >= innerDepth
+                || type != XmlResourceParser.END_TAG)) {
+            if (depth > innerDepth || type != XmlResourceParser.START_TAG) {
                 continue;
             }
 
@@ -678,6 +789,12 @@ public class Roles {
                     }
                     checkDuplicateElement(intentFilterData, intentFilterDatas,
                             "intent filter");
+                    if (DEBUG) {
+                        if (intentFilterData.getDataType() != null) {
+                            throwOrLogMessage("mimeType in <data> is not supported when setting a"
+                                    + " preferred activity");
+                        }
+                    }
                     intentFilterDatas.add(intentFilterData);
                     break;
                 default:
@@ -699,10 +816,10 @@ public class Roles {
 
     private static void skipCurrentTag(@NonNull XmlResourceParser parser)
             throws XmlPullParserException, IOException {
-        int outerDepth = parser.getDepth();
         int type;
+        int innerDepth = parser.getDepth() + 1;
         while ((type = parser.next()) != XmlResourceParser.END_DOCUMENT
-                && (type != XmlResourceParser.END_TAG || parser.getDepth() > outerDepth)) {
+                && (parser.getDepth() >= innerDepth || type != XmlResourceParser.END_TAG)) {
             // Do nothing
         }
     }
@@ -736,6 +853,11 @@ public class Roles {
             return null;
         }
         return getAttributeBooleanValue(parser, name, defaultValue);
+    }
+
+    private static int getAttributeIntValue(@NonNull XmlResourceParser parser,
+            @NonNull String name, int defaultValue) {
+        return parser.getAttributeIntValue(null, name, defaultValue);
     }
 
     private static int getAttributeResourceValue(@NonNull XmlResourceParser parser,
@@ -787,38 +909,86 @@ public class Roles {
      * a permission in {@code AppOpsManager} have declared that permission in its role and ensures
      * that all preferred activities are listed in the required components.
      */
-    private static void validateParseResult(@NonNull Map<String, PermissionSet> permissionSets,
-            @NonNull Map<String, Role> roles, @NonNull Context context) {
+    private static void validateParseResult(@NonNull ArrayMap<String, PermissionSet> permissionSets,
+            @NonNull ArrayMap<String, Role> roles, @NonNull Context context) {
         if (!DEBUG) {
             return;
         }
 
-        for (PermissionSet permissionSet : permissionSets.values()) {
-            permissionSet.getPermissions().forEach(permission -> validatePermission(permission,
-                    context));
+        int permissionSetsSize = permissionSets.size();
+        for (int permissionSetsIndex = 0; permissionSetsIndex < permissionSetsSize;
+                permissionSetsIndex++) {
+            PermissionSet permissionSet = permissionSets.valueAt(permissionSetsIndex);
+
+            List<String> permissions = permissionSet.getPermissions();
+            int permissionsSize = permissions.size();
+            for (int permissionsIndex = 0; permissionsIndex < permissionsSize; permissionsIndex++) {
+                String permission = permissions.get(permissionsIndex);
+
+                // If the storage model feature flag is disabled, we need to fiddle
+                // around with permission definitions to return us to pre-Q behavior.
+                // STOPSHIP(b/112545973): remove once feature enabled by default
+                if (!sIsolatedStorage) {
+                    if (ISOLATED_STORAGE_PERMISSIONS.contains(permission)) {
+                        continue;
+                    }
+                }
+
+                validatePermission(permission, context);
+            }
         }
-        for (Role role : roles.values()) {
-            role.getRequiredComponents().forEach(requiredComponent -> {
+
+        int rolesSize = roles.size();
+        for (int rolesIndex = 0; rolesIndex < rolesSize; rolesIndex++) {
+            Role role = roles.valueAt(rolesIndex);
+
+            List<RequiredComponent> requiredComponents = role.getRequiredComponents();
+            int requiredComponentsSize = requiredComponents.size();
+            for (int requiredComponentsIndex = 0; requiredComponentsIndex < requiredComponentsSize;
+                    requiredComponentsIndex++) {
+                RequiredComponent requiredComponent = requiredComponents.get(
+                        requiredComponentsIndex);
+
                 String permission = requiredComponent.getPermission();
                 if (permission != null) {
                     validatePermission(permission, context);
                 }
-            });
-            role.getPermissions().forEach(permission -> validatePermission(permission, context));
-            role.getAppOps().forEach(appOp -> {
+            }
+
+            List<String> permissions = role.getPermissions();
+            int permissionsSize = permissions.size();
+            for (int i = 0; i < permissionsSize; i++) {
+                String permission = permissions.get(i);
+
+                validatePermission(permission, context);
+            }
+
+            List<AppOp> appOps = role.getAppOps();
+            int appOpsSize = appOps.size();
+            for (int i = 0; i < appOpsSize; i++) {
+                AppOp appOp = appOps.get(i);
+
                 String permission = AppOpsManager.opToPermission(appOp.getName());
                 if (permission != null) {
                     throw new IllegalArgumentException("App op has an associated permission: "
                             + appOp.getName());
                 }
-            });
-            role.getPreferredActivities().forEach(preferredActivity -> {
+            }
+
+            List<PreferredActivity> preferredActivities = role.getPreferredActivities();
+            int preferredActivitiesSize = preferredActivities.size();
+            for (int preferredActivitiesIndex = 0;
+                    preferredActivitiesIndex < preferredActivitiesSize;
+                    preferredActivitiesIndex++) {
+                PreferredActivity preferredActivity = preferredActivities.get(
+                        preferredActivitiesIndex);
+
                 if (!role.getRequiredComponents().contains(preferredActivity.getActivity())) {
                     throw new IllegalArgumentException("<activity> of <preferred-activity> not"
                             + " required in <required-components>, role: " + role.getName()
                             + ", preferred activity: " + preferredActivity);
                 }
-            });
+            }
         }
     }
 

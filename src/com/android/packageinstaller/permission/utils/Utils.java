@@ -31,35 +31,52 @@ import static android.Manifest.permission_group.SMS;
 import static android.Manifest.permission_group.STORAGE;
 
 import android.Manifest;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.PermissionInfo;
 import android.content.pm.ResolveInfo;
 import android.content.res.Resources;
 import android.content.res.Resources.Theme;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.os.Parcelable;
+import android.os.UserHandle;
+import android.provider.DeviceConfig;
+import android.provider.Settings;
 import android.text.Html;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.core.text.BidiFormatter;
+import androidx.core.util.Preconditions;
 
+import com.android.launcher3.icons.IconFactory;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
+import com.android.packageinstaller.permission.model.AppPermissionUsage;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.PermissionApps.PermissionApp;
 import com.android.permissioncontroller.R;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public final class Utils {
 
@@ -99,12 +116,9 @@ public final class Utils {
         PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, STORAGE);
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_AUDIO, MEDIA_AURAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_MEDIA_AUDIO, MEDIA_AURAL);
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_IMAGES, MEDIA_VISUAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_MEDIA_IMAGES, MEDIA_VISUAL);
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_VIDEO, MEDIA_VISUAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_MEDIA_VIDEO, MEDIA_VISUAL);
         PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_MEDIA_LOCATION, MEDIA_VISUAL);
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_FINE_LOCATION, LOCATION);
@@ -153,13 +167,53 @@ public final class Utils {
     }
 
     /**
+     * {@code @NonNull} version of {@link Context#getSystemService(Class)}
+     */
+    public static @NonNull <M> M getSystemServiceSafe(@NonNull Context context, Class<M> clazz) {
+        return Preconditions.checkNotNull(context.getSystemService(clazz),
+                "Could not resolve " + clazz.getSimpleName());
+    }
+
+    /**
+     * {@code @NonNull} version of {@link Context#getSystemService(Class)}
+     */
+    public static @NonNull <M> M getSystemServiceSafe(@NonNull Context context, Class<M> clazz,
+            @NonNull UserHandle user) {
+        try {
+            return Preconditions.checkNotNull(context.createPackageContextAsUser(
+                    context.getPackageName(), 0, user).getSystemService(clazz),
+                    "Could not resolve " + clazz.getSimpleName());
+        } catch (PackageManager.NameNotFoundException neverHappens) {
+            throw new IllegalStateException();
+        }
+    }
+
+    /**
+     * {@code @NonNull} version of {@link Intent#getParcelableExtra(String)}
+     */
+    public static @NonNull <T extends Parcelable> T getParcelableExtraSafe(@NonNull Intent intent,
+            @NonNull String name) {
+        return Preconditions.checkNotNull(intent.getParcelableExtra(name),
+                "Could not get parcelable extra for " + name);
+    }
+
+    /**
+     * {@code @NonNull} version of {@link Intent#getStringExtra(String)}
+     */
+    public static @NonNull String getStringExtraSafe(@NonNull Intent intent,
+            @NonNull String name) {
+        return Preconditions.checkNotNull(intent.getStringExtra(name),
+                "Could not get string extra for " + name);
+    }
+
+    /**
      * Get permission group a platform permission belongs to.
      *
      * @param permission the permission to resolve
      *
      * @return The group the permission belongs to
      */
-    private static @Nullable String getGroupOfPlatformPermission(@NonNull String permission) {
+    public static @Nullable String getGroupOfPlatformPermission(@NonNull String permission) {
         return PLATFORM_PERMISSIONS.get(permission);
     }
 
@@ -171,9 +225,9 @@ public final class Utils {
      * @return The group the permission belongs to
      */
     public static @Nullable String getGroupOfPermission(@NonNull PermissionInfo permission) {
-        String groupName = permission.group;
+        String groupName = Utils.getGroupOfPlatformPermission(permission.name);
         if (groupName == null) {
-            groupName = Utils.getGroupOfPlatformPermission(permission.name);
+            groupName = permission.group;
         }
 
         return groupName;
@@ -219,7 +273,7 @@ public final class Utils {
      * @param pm    Package manager to use to resolve permission infos
      * @param group the group
      *
-     * @return The infos of permissions belonging to the group or an empty list if the group is not
+     * @return The infos of permissions belonging to the group or an empty list if the group
      *         does not have runtime permissions
      */
     public static @NonNull List<PermissionInfo> getPermissionInfosForGroup(
@@ -232,7 +286,58 @@ public final class Utils {
     }
 
     /**
-     * Get the label for an application.
+     * Get the {@link PackageItemInfo infos} for the given permission group.
+     *
+     * @param groupName the group
+     * @param context the {@code Context} to retrieve {@code PackageManager}
+     *
+     * @return The info of permission group or null if the group does not have runtime permissions.
+     */
+    public static @Nullable PackageItemInfo getGroupInfo(@NonNull String groupName,
+            @NonNull Context context) {
+        try {
+            return context.getPackageManager().getPermissionGroupInfo(groupName, 0);
+        } catch (NameNotFoundException e) {
+            /* ignore */
+        }
+        try {
+            return context.getPackageManager().getPermissionInfo(groupName, 0);
+        } catch (NameNotFoundException e) {
+            /* ignore */
+        }
+        return null;
+    }
+
+    /**
+     * Get the {@link PermissionInfo infos} for all permission infos belonging to a group.
+     *
+     * @param groupName the group
+     * @param context the {@code Context} to retrieve {@code PackageManager}
+     *
+     * @return The infos of permissions belonging to the group or null if the group does not have
+     *         runtime permissions.
+     */
+    public static @Nullable List<PermissionInfo> getGroupPermissionInfos(@NonNull String groupName,
+            @NonNull Context context) {
+        try {
+            return Utils.getPermissionInfosForGroup(context.getPackageManager(), groupName);
+        } catch (NameNotFoundException e) {
+            /* ignore */
+        }
+        try {
+            PermissionInfo permissionInfo = context.getPackageManager()
+                    .getPermissionInfo(groupName, 0);
+            List<PermissionInfo> permissions = new ArrayList<>();
+            permissions.add(permissionInfo);
+            return permissions;
+        } catch (NameNotFoundException e) {
+            /* ignore */
+        }
+        return null;
+    }
+
+    /**
+     * Get the label for an application, truncating if it is too long.
      *
      * @param applicationInfo the {@link ApplicationInfo} of the application
      * @param context the {@code Context} to retrieve {@code PackageManager}
@@ -242,8 +347,37 @@ public final class Utils {
     @NonNull
     public static String getAppLabel(@NonNull ApplicationInfo applicationInfo,
             @NonNull Context context) {
+        return getAppLabel(applicationInfo, DEFAULT_MAX_LABEL_SIZE_PX, context);
+    }
+
+    /**
+     * Get the full label for an application without truncation.
+     *
+     * @param applicationInfo the {@link ApplicationInfo} of the application
+     * @param context the {@code Context} to retrieve {@code PackageManager}
+     *
+     * @return the label for the application
+     */
+    @NonNull
+    public static String getFullAppLabel(@NonNull ApplicationInfo applicationInfo,
+            @NonNull Context context) {
+        return getAppLabel(applicationInfo, 0, context);
+    }
+
+    /**
+     * Get the label for an application with the ability to control truncating.
+     *
+     * @param applicationInfo the {@link ApplicationInfo} of the application
+     * @param ellipsizeDip see {@link TextUtils#makeSafeForPresentation}.
+     * @param context the {@code Context} to retrieve {@code PackageManager}
+     *
+     * @return the label for the application
+     */
+    @NonNull
+    private static String getAppLabel(@NonNull ApplicationInfo applicationInfo, float ellipsizeDip,
+            @NonNull Context context) {
         return BidiFormatter.getInstance().unicodeWrap(applicationInfo.loadSafeLabel(
-                context.getPackageManager(), DEFAULT_MAX_LABEL_SIZE_PX,
+                context.getPackageManager(), ellipsizeDip,
                 TextUtils.SAFE_STRING_FLAG_TRIM | TextUtils.SAFE_STRING_FLAG_FIRST_LINE)
                 .toString());
     }
@@ -262,6 +396,15 @@ public final class Utils {
     }
 
     /**
+     * Get the names of the platform permission groups.
+     *
+     * @return the names of the platform permission groups.
+     */
+    public static List<String> getPlatformPermissionGroups() {
+        return new ArrayList<>(PLATFORM_PERMISSION_GROUPS.keySet());
+    }
+
+    /**
      * Should UI show this permission.
      *
      * <p>If the user cannot change the group, it should not be shown.
@@ -271,22 +414,6 @@ public final class Utils {
      * @return
      */
     public static boolean shouldShowPermission(Context context, AppPermissionGroup group) {
-        boolean isSystemFixed = group.isSystemFixed();
-        if (group.getBackgroundPermissions() != null) {
-            // If the foreground mode is fixed to "enabled", the background mode might still be
-            // switchable. We only want to suppress the group if nothing can be switched
-            if (group.areRuntimePermissionsGranted()) {
-                isSystemFixed &= group.getBackgroundPermissions().isSystemFixed();
-            }
-        }
-
-        // We currently will not show permissions fixed by the system.
-        // which is what the system does for system components.
-        if (isSystemFixed && !LocationUtils.isLocationGroupAndProvider(context,
-                group.getName(), group.getApp().packageName)) {
-            return false;
-        }
-
         if (!group.isGrantingAllowed()) {
             return false;
         }
@@ -390,6 +517,62 @@ public final class Utils {
     }
 
     /**
+     * Build a string representing the amount of time passed since the most recent permission usage.
+     *
+     * @return a string representing the amount of time since this app's most recent permission
+     * usage or null if there are no usages.
+     */
+    public static @Nullable String getRelativeLastUsageString(@NonNull Context context,
+            @Nullable AppPermissionUsage.GroupUsage groupUsage) {
+        if (groupUsage == null) {
+            return null;
+        }
+        return getTimeDiffStr(context, System.currentTimeMillis()
+                - groupUsage.getLastAccessTime());
+    }
+
+    /**
+     * Build a string representing the time of the most recent permission usage if it happened on
+     * the current day and the date otherwise.
+     *
+     * @param context the context.
+     * @param groupUsage the permission usage.
+     *
+     * @return a string representing the time or date of the most recent usage or null if there are
+     * no usages.
+     */
+    public static @Nullable String getAbsoluteLastUsageString(@NonNull Context context,
+            @Nullable AppPermissionUsage.GroupUsage groupUsage) {
+        if (groupUsage == null) {
+            return null;
+        }
+        long lastAccessTime = groupUsage.getLastAccessTime();
+        if (lastAccessTime == 0) {
+            return null;
+        }
+        if (isToday(lastAccessTime)) {
+            return DateFormat.getTimeFormat(context).format(groupUsage.getLastAccessTime());
+        } else {
+            return DateFormat.getMediumDateFormat(context).format(groupUsage.getLastAccessTime());
+        }
+    }
+
+    /**
+     * Build a string representing the duration of a permission usage.
+     *
+     * @return a string representing the amount of time since this app's most recent permission
+     * usage or null if there are no usages.
+     */
+    public static @Nullable String getUsageDurationString(@NonNull Context context,
+            @Nullable AppPermissionUsage.GroupUsage groupUsage) {
+        if (groupUsage == null) {
+            return null;
+        }
+        return getTimeDiffStr(context, System.currentTimeMillis()
+                - groupUsage.getAccessDuration());
+    }
+
+    /**
      * Build a string representing the number of milliseconds passed in.  It rounds to the nearest
      * unit.  For example, given a duration of 3500 and an English locale, this can return
      * "3 seconds".
@@ -414,5 +597,79 @@ public final class Utils {
         }
         long days = hours / 24;
         return context.getResources().getQuantityString(R.plurals.days, (int) days, days);
+    }
+
+    /**
+     * Check whether the given time (in milliseconds) is in the current day.
+     *
+     * @param time the time in milliseconds
+     *
+     * @return whether the given time is in the current day.
+     */
+    private static boolean isToday(long time) {
+        Calendar today = Calendar.getInstance(Locale.getDefault());
+        today.setTimeInMillis(System.currentTimeMillis());
+        today.set(Calendar.HOUR_OF_DAY, 0);
+        today.set(Calendar.MINUTE, 0);
+        today.set(Calendar.SECOND, 0);
+        today.set(Calendar.MILLISECOND, 0);
+
+        Calendar date = Calendar.getInstance(Locale.getDefault());
+        date.setTimeInMillis(time);
+        return !date.before(today);
+    }
+
+    /**
+     * Add a menu item for searching Settings, if there is an activity handling the action.
+     *
+     * @param menu the menu to add the menu item into
+     * @param context the context for checking whether there is an activity handling the action
+     */
+    public static void prepareSearchMenuItem(@NonNull Menu menu, @NonNull Context context) {
+        Intent intent = new Intent(Settings.ACTION_APP_SEARCH_SETTINGS);
+        if (context.getPackageManager().resolveActivity(intent, 0) == null) {
+            return;
+        }
+        MenuItem searchItem = menu.add(Menu.NONE, Menu.NONE, Menu.NONE, R.string.search_menu);
+        searchItem.setIcon(R.drawable.ic_search_24dp);
+        searchItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        searchItem.setOnMenuItemClickListener(item -> {
+            try {
+                context.startActivity(intent);
+            } catch (ActivityNotFoundException e) {
+                Log.e(LOG_TAG, "Cannot start activity to search settings", e);
+            }
+            return true;
+        });
+    }
+
+    /**
+     * Get badged app icon similar as used in the Settings UI.
+     *
+     * @param context The context to use
+     * @param appInfo The app the icon belong to
+     *
+     * @return The icon to use
+     */
+    public static @NonNull Drawable getBadgedIcon(@NonNull Context context,
+            @NonNull ApplicationInfo appInfo) {
+        try (IconFactory iconFactory = IconFactory.obtain(context)) {
+            Bitmap iconBmp = iconFactory.createBadgedIconBitmap(
+                    appInfo.loadIcon(context.getPackageManager()),
+                    UserHandle.getUserHandleForUid(appInfo.uid), false).icon;
+
+            return new BitmapDrawable(context.getResources(), iconBmp);
+        }
+    }
+
+
+    /**
+     * Whether the Location Access Check is enabled.
+     *
+     * @return {@code true} iff the Location Access Check is enabled.
+     */
+    public static boolean isLocationAccessCheckEnabled() {
+        return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
+                DeviceConfig.Privacy.PROPERTY_LOCATION_ACCESS_CHECK_ENABLED));
     }
 }
