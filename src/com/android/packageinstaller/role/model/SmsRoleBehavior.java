@@ -35,7 +35,6 @@ import java.util.List;
  * @see com.android.settings.applications.DefaultAppSettings
  * @see com.android.settings.applications.defaultapps.DefaultSmsPreferenceController
  * @see com.android.settings.applications.defaultapps.DefaultSmsPicker
- *
  */
 public class SmsRoleBehavior implements RoleBehavior {
 
@@ -57,29 +56,11 @@ public class SmsRoleBehavior implements RoleBehavior {
         return true;
     }
 
-    @NonNull
-    @Override
-    public List<String> getDefaultHolders(@NonNull Role role, @NonNull Context context) {
-        return CollectionUtils.singletonOrEmpty(getDefaultHolder(role, context));
-    }
-
-    @Nullable
-    private String getDefaultHolder(@NonNull Role role, @NonNull Context context) {
-        String defaultPackageName = CollectionUtils.firstOrNull(DefaultRoleHolders.get(context).get(
-                role.getName()));
-        if (defaultPackageName == null) {
-            return null;
-        }
-        if (!role.isPackageQualified(defaultPackageName, context)) {
-            return null;
-        }
-        return defaultPackageName;
-    }
-
     @Nullable
     @Override
     public String getFallbackHolder(@NonNull Role role, @NonNull Context context) {
-        String defaultPackageName = getDefaultHolder(role, context);
+        String defaultPackageName = ExclusiveDefaultHolderMixin.getDefaultHolder(role,
+                "config_defaultSms", context);
         if (defaultPackageName != null) {
             return defaultPackageName;
         }

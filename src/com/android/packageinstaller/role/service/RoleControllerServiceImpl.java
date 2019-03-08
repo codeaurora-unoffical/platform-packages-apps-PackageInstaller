@@ -16,9 +16,14 @@
 
 package com.android.packageinstaller.role.service;
 
+import android.app.AppOpsManager;
 import android.app.role.RoleManager;
 import android.app.role.RoleManagerCallback;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.PermissionInfo;
+import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
@@ -30,9 +35,11 @@ import android.util.ArraySet;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 
 import com.android.packageinstaller.permission.utils.CollectionUtils;
+import com.android.packageinstaller.permission.utils.Utils;
 import com.android.packageinstaller.role.model.Role;
 import com.android.packageinstaller.role.model.Roles;
 import com.android.packageinstaller.role.utils.PackageUtils;
@@ -52,6 +59,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
     private static final boolean DEBUG = true;
 
     private RoleManager mRoleManager;
+    private AppOpsManager mAppOpsManager;
 
     private HandlerThread mWorkerThread;
     private Handler mWorkerHandler;
@@ -61,6 +69,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
         super.onCreate();
 
         mRoleManager = getSystemService(RoleManager.class);
+        mAppOpsManager = getSystemService(AppOpsManager.class);
 
         mWorkerThread = new HandlerThread(RoleControllerServiceImpl.class.getSimpleName());
         mWorkerThread.start();
@@ -84,7 +93,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
     }
 
     @Override
-    public void onAddRoleHolder(@NonNull String roleName, @NonNull String packageName,
+    public void onAddRoleHolder(@NonNull String roleName, @NonNull String packageName, int flags,
             @NonNull RoleManagerCallback callback) {
         if (callback == null) {
             Log.e(LOG_TAG, "callback cannot be null");
@@ -100,11 +109,15 @@ public class RoleControllerServiceImpl extends RoleControllerService {
             callback.onFailure();
             return;
         }
-        mWorkerHandler.post(() -> addRoleHolder(roleName, packageName, callback));
+        if (!checkFlags(flags, RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP)) {
+            callback.onFailure();
+            return;
+        }
+        mWorkerHandler.post(() -> addRoleHolder(roleName, packageName, flags, callback));
     }
 
     @Override
-    public void onRemoveRoleHolder(@NonNull String roleName, @NonNull String packageName,
+    public void onRemoveRoleHolder(@NonNull String roleName, @NonNull String packageName, int flags,
             @NonNull RoleManagerCallback callback) {
         if (callback == null) {
             Log.e(LOG_TAG, "callback cannot be null");
@@ -120,11 +133,15 @@ public class RoleControllerServiceImpl extends RoleControllerService {
             callback.onFailure();
             return;
         }
-        mWorkerHandler.post(() -> removeRoleHolder(roleName, packageName, callback));
+        if (!checkFlags(flags, RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP)) {
+            callback.onFailure();
+            return;
+        }
+        mWorkerHandler.post(() -> removeRoleHolder(roleName, packageName, flags, callback));
     }
 
     @Override
-    public void onClearRoleHolders(@NonNull String roleName,
+    public void onClearRoleHolders(@NonNull String roleName, int flags,
             @NonNull RoleManagerCallback callback) {
         if (callback == null) {
             Log.e(LOG_TAG, "callback cannot be null");
@@ -135,11 +152,72 @@ public class RoleControllerServiceImpl extends RoleControllerService {
             callback.onFailure();
             return;
         }
-        mWorkerHandler.post(() -> clearRoleHolders(roleName, callback));
+        if (!checkFlags(flags, RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP)) {
+            callback.onFailure();
+            return;
+        }
+        mWorkerHandler.post(() -> clearRoleHolders(roleName, flags, callback));
+    }
+
+    @Override
+    public void onSmsKillSwitchToggled(boolean smsRestrictionEnabled) {
+        mWorkerHandler.post(() -> {
+            PackageManager pm = getPackageManager();
+            ArrayMap<String, Role> roles = Roles.get(this);
+            List<PackageInfo> installedPackages = getPackageManager().getInstalledPackages(0);
+            for (int i = 0, size = installedPackages.size(); i < size; i++) {
+                PackageInfo pkg = installedPackages.get(i);
+                onSmsKillSwitchToggled(smsRestrictionEnabled, pkg,
+                        Utils.getPlatformPermissionsOfGroup(
+                                pm, android.Manifest.permission_group.SMS));
+                onSmsKillSwitchToggled(smsRestrictionEnabled, pkg,
+                        Utils.getPlatformPermissionsOfGroup(
+                                pm, android.Manifest.permission_group.CALL_LOG));
+            }
+
+            grantDefaultRoles(null /* callback */);
+        });
+    }
+
+    void onSmsKillSwitchToggled(boolean smsRestrictionEnabled, PackageInfo pkg,
+            List<PermissionInfo> permissions) {
+        PackageManager pm = getPackageManager();
+        int uid = pkg.applicationInfo.uid; //TODO multiuser support?
+
+        for (int i = 0, permissionsSize = permissions.size(); i < permissionsSize; i++) {
+            PermissionInfo permission = permissions.get(i);
+            int permFlags =
+                    pm.getPermissionFlags(permission.name, pkg.packageName, Process.myUserHandle());
+
+            if ((permFlags
+                    & (PackageManager.FLAG_PERMISSION_GRANTED_BY_DEFAULT
+                            | PackageManager.FLAG_PERMISSION_SYSTEM_FIXED)) != 0) {
+                continue;
+            }
+
+            if ((permFlags & PackageManager.FLAG_PERMISSION_POLICY_FIXED) != 0) {
+                pm.updatePermissionFlags(permission.name, pkg.packageName,
+                        PackageManager.FLAG_PERMISSION_POLICY_FIXED, 0, Process.myUserHandle());
+            }
+
+            String appOp = AppOpsManager.permissionToOp(permission.name);
+            if (appOp != null) {
+                mAppOpsManager.setUidMode(appOp, uid,
+                        smsRestrictionEnabled
+                                ? AppOpsManager.MODE_DEFAULT
+                                : AppOpsManager.MODE_ALLOWED);
+            }
+
+            if (!smsRestrictionEnabled
+                    && pkg.applicationInfo.targetSdkVersion > Build.VERSION_CODES.LOLLIPOP_MR1) {
+                pm.revokeRuntimePermission(
+                        pkg.packageName, permission.name, Process.myUserHandle());
+            }
+        }
     }
 
     @WorkerThread
-    private void grantDefaultRoles(@NonNull RoleManagerCallback callback) {
+    private void grantDefaultRoles(@Nullable RoleManagerCallback callback) {
         if (DEBUG) {
             Log.i(LOG_TAG, "Granting default roles, user: " + UserHandle.myUserId());
         }
@@ -186,12 +264,11 @@ public class RoleControllerServiceImpl extends RoleControllerService {
                 String packageName = currentPackageNames.get(currentPackageNamesIndex);
 
                 if (role.isPackageQualified(packageName, this)) {
-                    // TODO: STOPSHIP: Pass in appropriate arguments.
-                    role.grant(packageName, true, false, false, this);
+                    addRoleHolderInternal(role, packageName, false, false, true);
                 } else {
                     Log.i(LOG_TAG, "Removing package that no longer qualifies for the role,"
                             + " package: " + packageName + ", role: " + roleName);
-                    removeRoleHolderInternal(role, packageName);
+                    removeRoleHolderInternal(role, packageName, false);
                 }
             }
 
@@ -243,16 +320,18 @@ public class RoleControllerServiceImpl extends RoleControllerService {
 
                     Log.i(LOG_TAG, "Removing extraneous package for an exclusive role, package: "
                             + packageName + ", role: " + roleName);
-                    removeRoleHolderInternal(role, packageName);
+                    removeRoleHolderInternal(role, packageName, false);
                 }
             }
         }
 
-        callback.onSuccess();
+        if (callback != null) {
+            callback.onSuccess();
+        }
     }
 
     @WorkerThread
-    private void addRoleHolder(@NonNull String roleName, @NonNull String packageName,
+    private void addRoleHolder(@NonNull String roleName, @NonNull String packageName, int flags,
             @NonNull RoleManagerCallback callback) {
         Role role = Roles.get(this).get(roleName);
         if (role == null) {
@@ -287,7 +366,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
                     continue;
                 }
 
-                boolean removed = removeRoleHolderInternal(role, currentPackageName);
+                boolean removed = removeRoleHolderInternal(role, currentPackageName, false);
                 if (!removed) {
                     // TODO: Clean up?
                     callback.onFailure();
@@ -296,7 +375,8 @@ public class RoleControllerServiceImpl extends RoleControllerService {
             }
         }
 
-        added = addRoleHolderInternal(role, packageName, true, added);
+        boolean dontKillApp = hasFlag(flags, RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP);
+        added = addRoleHolderInternal(role, packageName, dontKillApp, true, added);
         if (!added) {
             callback.onFailure();
             return;
@@ -308,7 +388,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
     }
 
     @WorkerThread
-    private void removeRoleHolder(@NonNull String roleName, @NonNull String packageName,
+    private void removeRoleHolder(@NonNull String roleName, @NonNull String packageName, int flags,
             @NonNull RoleManagerCallback callback) {
         Role role = Roles.get(this).get(roleName);
         if (role == null) {
@@ -322,7 +402,8 @@ public class RoleControllerServiceImpl extends RoleControllerService {
             return;
         }
 
-        boolean removed = removeRoleHolderInternal(role, packageName);
+        boolean dontKillApp = hasFlag(flags, RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP);
+        boolean removed = removeRoleHolderInternal(role, packageName, dontKillApp);
         if (!removed) {
             callback.onFailure();
             return;
@@ -339,7 +420,8 @@ public class RoleControllerServiceImpl extends RoleControllerService {
     }
 
     @WorkerThread
-    private void clearRoleHolders(@NonNull String roleName, @NonNull RoleManagerCallback callback) {
+    private void clearRoleHolders(@NonNull String roleName, int flags,
+            @NonNull RoleManagerCallback callback) {
         Role role = Roles.get(this).get(roleName);
         if (role == null) {
             Log.e(LOG_TAG, "Unknown role: " + roleName);
@@ -352,7 +434,8 @@ public class RoleControllerServiceImpl extends RoleControllerService {
             return;
         }
 
-        boolean cleared = clearRoleHoldersInternal(role);
+        boolean dontKillApp = hasFlag(flags, RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP);
+        boolean cleared = clearRoleHoldersInternal(role, dontKillApp);
         if (!cleared) {
             callback.onFailure();
         }
@@ -370,16 +453,17 @@ public class RoleControllerServiceImpl extends RoleControllerService {
     @WorkerThread
     private boolean addRoleHolderInternal(@NonNull Role role, @NonNull String packageName,
             boolean overrideDisabledSystemPackageAndUserSetAndFixedPermissions) {
-        return addRoleHolderInternal(role, packageName,
+        return addRoleHolderInternal(role, packageName, false,
                 overrideDisabledSystemPackageAndUserSetAndFixedPermissions, false);
     }
 
     @WorkerThread
     private boolean addRoleHolderInternal(@NonNull Role role, @NonNull String packageName,
-            boolean overrideDisabledSystemPackageAndUserSetAndFixedPermissions, boolean added) {
+            boolean dontKillApp, boolean overrideDisabledSystemPackageAndUserSetAndFixedPermissions,
+            boolean added) {
         // TODO: STOPSHIP: Pass in appropriate arguments.
-        role.grant(packageName, true, overrideDisabledSystemPackageAndUserSetAndFixedPermissions,
-                false, this);
+        role.grant(packageName, dontKillApp,
+                overrideDisabledSystemPackageAndUserSetAndFixedPermissions, false, this);
 
         String roleName = role.getName();
         if (!added) {
@@ -393,7 +477,8 @@ public class RoleControllerServiceImpl extends RoleControllerService {
     }
 
     @WorkerThread
-    private boolean removeRoleHolderInternal(@NonNull Role role, @NonNull String packageName) {
+    private boolean removeRoleHolderInternal(@NonNull Role role, @NonNull String packageName,
+            boolean dontKillApp) {
         ApplicationInfo applicationInfo = PackageUtils.getApplicationInfo(packageName, this);
         if (applicationInfo == null) {
             Log.w(LOG_TAG, "Cannot get ApplicationInfo for package: " + packageName);
@@ -401,7 +486,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
 
         if (applicationInfo != null) {
             // TODO: STOPSHIP: Pass in appropriate arguments.
-            role.revoke(packageName, true, false, this);
+            role.revoke(packageName, dontKillApp, false, this);
         }
 
         String roleName = role.getName();
@@ -414,7 +499,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
     }
 
     @WorkerThread
-    private boolean clearRoleHoldersInternal(@NonNull Role role) {
+    private boolean clearRoleHoldersInternal(@NonNull Role role, boolean dontKillApp) {
         String roleName = role.getName();
         List<String> packageNames = mRoleManager.getRoleHolders(roleName);
         boolean cleared = true;
@@ -422,7 +507,7 @@ public class RoleControllerServiceImpl extends RoleControllerService {
         int packageNamesSize = packageNames.size();
         for (int i = 0; i < packageNamesSize; i++) {
             String packageName = packageNames.get(i);
-            boolean removed = removeRoleHolderInternal(role, packageName);
+            boolean removed = removeRoleHolderInternal(role, packageName, dontKillApp);
             if (!removed) {
                 cleared = false;
             }
@@ -460,5 +545,18 @@ public class RoleControllerServiceImpl extends RoleControllerService {
         // choice about permission without explicit user action is bad, so maybe we
         // should at least show a notification?
         return addRoleHolderInternal(role, fallbackPackageName, true);
+    }
+
+    private static boolean checkFlags(int flags, int allowedFlags) {
+        if ((flags & allowedFlags) != flags) {
+            Log.e(LOG_TAG, "flags is invalid, flags: 0x" + Integer.toHexString(flags)
+                    + ", allowed flags: 0x" + Integer.toHexString(allowedFlags));
+            return false;
+        }
+        return true;
+    }
+
+    private static boolean hasFlag(int flags, int flag) {
+        return (flags & flag) == flag;
     }
 }
