@@ -318,7 +318,12 @@
       ~ @see com.android.settings.applications.defaultapps.DefaultHomePicker
       ~ @see com.android.server.pm.PackageManagerService#setHomeActivity(ComponentName, int)
       -->
-    <role name="android.app.role.HOME" exclusive="true" label="@string/role_label_home">
+    <role
+        name="android.app.role.HOME"
+        behavior="HomeRoleBehavior"
+        exclusive="true"
+        label="@string/role_label_home">
+        <!-- Also used by HomeRoleBehavior.getFallbackHolder(). -->
         <required-components>
             <activity>
                 <intent-filter>
