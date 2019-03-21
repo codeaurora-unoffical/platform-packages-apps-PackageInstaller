@@ -31,6 +31,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.preference.Preference;
 
 import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.role.utils.PackageUtils;
@@ -246,6 +247,21 @@ public class Role {
     }
 
     /**
+     * Check whether this role should be visible to user.
+     *
+     * @param user the user to check for
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return whether this role should be visible to user
+     */
+    public boolean isVisibleAsUser(@NonNull UserHandle user, @NonNull Context context) {
+        if (mBehavior != null) {
+            return mBehavior.isVisibleAsUser(this, user, context);
+        }
+        return true;
+    }
+
+    /**
      * Get the {@link Intent} to manage this role, or {@code null} to use the default UI.
      *
      * @param user the user to manage this role for
@@ -259,6 +275,23 @@ public class Role {
             return mBehavior.getManageIntentAsUser(this, user, context);
         }
         return null;
+    }
+
+    /**
+     * Prepare a {@link Preference} for an application.
+     *
+     * @param preference the {@link Preference} for the application
+     * @param applicationInfo the {@link ApplicationInfo} for the application
+     * @param user the user for the application
+     * @param context the {@code Context} to retrieve system services
+     */
+    public void prepareApplicationPreferenceAsUser(@NonNull Preference preference,
+            @NonNull ApplicationInfo applicationInfo, @NonNull UserHandle user,
+            @NonNull Context context) {
+        if (mBehavior != null) {
+            mBehavior.prepareApplicationPreferenceAsUser(this, preference, applicationInfo, user,
+                    context);
+        }
     }
 
     /**
