@@ -224,6 +224,10 @@ public final class AppPermissionsFragment extends SettingsWithButtonHeader {
                                 lastAccessStr));
             } else {
                 preference.setGroupSummary(group);
+                if (preference.getSummary().length() == 0) {
+                    preference.setSummary(
+                            context.getString(R.string.app_permission_never_accessed_summary));
+                }
             }
 
             if (isPlatform) {
@@ -272,6 +276,10 @@ public final class AppPermissionsFragment extends SettingsWithButtonHeader {
                 return true;
             });
             allowed.addPreference(details);
+
+            if (!Utils.isPermissionsHubEnabled()) {
+                allowed.removePreference(details);
+            }
         } else {
             Preference empty = new Preference(context);
             empty.setTitle(getString(R.string.no_permissions_allowed));

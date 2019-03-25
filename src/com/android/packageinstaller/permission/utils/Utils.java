@@ -242,7 +242,7 @@ public final class Utils {
      * @return The infos for platform permissions belonging to the group or an empty list if the
      *         group is not does not have platform runtime permissions
      */
-    private static @NonNull List<PermissionInfo> getPlatformPermissionsOfGroup(
+    public static @NonNull List<PermissionInfo> getPlatformPermissionsOfGroup(
             @NonNull PackageManager pm, @NonNull String group) {
         ArrayList<PermissionInfo> permInfos = new ArrayList<>();
 
@@ -546,30 +546,42 @@ public final class Utils {
         if (groupUsage == null) {
             return null;
         }
-        long lastAccessTime = groupUsage.getLastAccessTime();
+        return getAbsoluteTimeString(context, groupUsage.getLastAccessTime());
+    }
+
+    /**
+     * Build a string representing the given time if it happened on the current day and the date
+     * otherwise.
+     *
+     * @param context the context.
+     * @param lastAccessTime the time in milliseconds.
+     *
+     * @return a string representing the time or date of the given time or null if the time is 0.
+     */
+    public static @Nullable String getAbsoluteTimeString(@NonNull Context context,
+            long lastAccessTime) {
         if (lastAccessTime == 0) {
             return null;
         }
         if (isToday(lastAccessTime)) {
-            return DateFormat.getTimeFormat(context).format(groupUsage.getLastAccessTime());
+            return DateFormat.getTimeFormat(context).format(lastAccessTime);
         } else {
-            return DateFormat.getMediumDateFormat(context).format(groupUsage.getLastAccessTime());
+            return DateFormat.getMediumDateFormat(context).format(lastAccessTime);
         }
     }
 
     /**
      * Build a string representing the duration of a permission usage.
      *
-     * @return a string representing the amount of time since this app's most recent permission
-     * usage or null if there are no usages.
+     * @return a string representing the duration of this app's usage or null if there are no
+     * usages.
      */
     public static @Nullable String getUsageDurationString(@NonNull Context context,
             @Nullable AppPermissionUsage.GroupUsage groupUsage) {
         if (groupUsage == null) {
             return null;
         }
-        return getTimeDiffStr(context, System.currentTimeMillis()
-                - groupUsage.getAccessDuration());
+        return getTimeDiffStr(context, groupUsage.getAccessDuration());
     }
 
     /**
@@ -662,7 +674,6 @@ public final class Utils {
         }
     }
 
-
     /**
      * Whether the Location Access Check is enabled.
      *
@@ -671,5 +682,15 @@ public final class Utils {
     public static boolean isLocationAccessCheckEnabled() {
         return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
                 DeviceConfig.Privacy.PROPERTY_LOCATION_ACCESS_CHECK_ENABLED));
+    }
+
+    /**
+     * Whether the Permissions Hub is enabled.
+     *
+     * @return whether the Permissions Hub is enabled.
+     */
+    public static boolean isPermissionsHubEnabled() {
+        return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
+                DeviceConfig.Privacy.PROPERTY_PERMISSIONS_HUB_ENABLED));
     }
 }

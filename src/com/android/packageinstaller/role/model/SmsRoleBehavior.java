@@ -19,13 +19,13 @@ package com.android.packageinstaller.role.model;
 import android.content.Context;
 import android.os.Process;
 import android.os.UserHandle;
-import android.os.UserManager;
 import android.telephony.TelephonyManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.packageinstaller.permission.utils.CollectionUtils;
+import com.android.packageinstaller.role.utils.UserUtils;
 
 import java.util.List;
 
@@ -35,15 +35,13 @@ import java.util.List;
  * @see com.android.settings.applications.DefaultAppSettings
  * @see com.android.settings.applications.defaultapps.DefaultSmsPreferenceController
  * @see com.android.settings.applications.defaultapps.DefaultSmsPicker
- *
  */
 public class SmsRoleBehavior implements RoleBehavior {
 
     @Override
     public boolean isAvailableAsUser(@NonNull Role role, @NonNull UserHandle user,
             @NonNull Context context) {
-        UserManager userManager = context.getSystemService(UserManager.class);
-        if (userManager.isManagedProfile(user.getIdentifier())) {
+        if (UserUtils.isWorkProfile(user, context)) {
             return false;
         }
         // FIXME: STOPSHIP: Add an appropriate @SystemApi for this.
@@ -57,29 +55,11 @@ public class SmsRoleBehavior implements RoleBehavior {
         return true;
     }
 
-    @NonNull
-    @Override
-    public List<String> getDefaultHolders(@NonNull Role role, @NonNull Context context) {
-        return CollectionUtils.singletonOrEmpty(getDefaultHolder(role, context));
-    }
-
-    @Nullable
-    private String getDefaultHolder(@NonNull Role role, @NonNull Context context) {
-        String defaultPackageName = CollectionUtils.firstOrNull(DefaultRoleHolders.get(context).get(
-                role.getName()));
-        if (defaultPackageName == null) {
-            return null;
-        }
-        if (!role.isPackageQualified(defaultPackageName, context)) {
-            return null;
-        }
-        return defaultPackageName;
-    }
-
     @Nullable
     @Override
     public String getFallbackHolder(@NonNull Role role, @NonNull Context context) {
-        String defaultPackageName = getDefaultHolder(role, context);
+        String defaultPackageName = ExclusiveDefaultHolderMixin.getDefaultHolder(role,
+                "config_defaultSms", context);
         if (defaultPackageName != null) {
             return defaultPackageName;
         }

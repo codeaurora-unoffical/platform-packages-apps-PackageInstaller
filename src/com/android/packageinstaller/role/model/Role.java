@@ -31,6 +31,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.preference.Preference;
 
 import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.role.utils.PackageUtils;
@@ -246,6 +247,21 @@ public class Role {
     }
 
     /**
+     * Check whether this role should be visible to user.
+     *
+     * @param user the user to check for
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return whether this role should be visible to user
+     */
+    public boolean isVisibleAsUser(@NonNull UserHandle user, @NonNull Context context) {
+        if (mBehavior != null) {
+            return mBehavior.isVisibleAsUser(this, user, context);
+        }
+        return true;
+    }
+
+    /**
      * Get the {@link Intent} to manage this role, or {@code null} to use the default UI.
      *
      * @param user the user to manage this role for
@@ -259,6 +275,23 @@ public class Role {
             return mBehavior.getManageIntentAsUser(this, user, context);
         }
         return null;
+    }
+
+    /**
+     * Prepare a {@link Preference} for an application.
+     *
+     * @param preference the {@link Preference} for the application
+     * @param applicationInfo the {@link ApplicationInfo} for the application
+     * @param user the user for the application
+     * @param context the {@code Context} to retrieve system services
+     */
+    public void prepareApplicationPreferenceAsUser(@NonNull Preference preference,
+            @NonNull ApplicationInfo applicationInfo, @NonNull UserHandle user,
+            @NonNull Context context) {
+        if (mBehavior != null) {
+            mBehavior.prepareApplicationPreferenceAsUser(this, preference, applicationInfo, user,
+                    context);
+        }
     }
 
     /**
@@ -416,7 +449,7 @@ public class Role {
      * Grant this role to an application.
      *
      * @param packageName the package name of the application to be granted this role to
-     * @param mayKillApp whether this application may be killed due to changes
+     * @param dontKillApp whether this application should not be killed despite changes
      * @param overrideDisabledSystemPackageAndUserSetAndFixedPermissions whether to ignore the
      *                                                                   permissions of a disabled
      *                                                                   system package (if this
@@ -428,7 +461,7 @@ public class Role {
      * @param setPermissionsSystemFixed whether the permissions will be granted as system-fixed
      * @param context the {@code Context} to retrieve system services
      */
-    public void grant(@NonNull String packageName, boolean mayKillApp,
+    public void grant(@NonNull String packageName, boolean dontKillApp,
             boolean overrideDisabledSystemPackageAndUserSetAndFixedPermissions,
             boolean setPermissionsSystemFixed, @NonNull Context context) {
         boolean permissionOrAppOpChanged = Permissions.grant(packageName, mPermissions,
@@ -451,8 +484,8 @@ public class Role {
             mBehavior.grant(this, packageName, context);
         }
 
-        if (mayKillApp && !Permissions.isRuntimePermissionsSupported(packageName, context)
-                && permissionOrAppOpChanged) {
+        if (!dontKillApp && permissionOrAppOpChanged && !Permissions.isRuntimePermissionsSupported(
+                packageName, context)) {
             killApp(packageName, context);
         }
     }
@@ -461,11 +494,11 @@ public class Role {
      * Revoke this role from an application.
      *
      * @param packageName the package name of the application to be granted this role to
-     * @param mayKillApp whether this application may be killed due to changes
+     * @param dontKillApp whether this application should not be killed despite changes
      * @param overrideSystemFixedPermissions whether system-fixed permissions can be revoked
      * @param context the {@code Context} to retrieve system services
      */
-    public void revoke(@NonNull String packageName, boolean mayKillApp,
+    public void revoke(@NonNull String packageName, boolean dontKillApp,
             boolean overrideSystemFixedPermissions, @NonNull Context context) {
         RoleManager roleManager = context.getSystemService(RoleManager.class);
         List<String> otherRoleNames = roleManager.getHeldRolesFromController(packageName);
@@ -500,7 +533,7 @@ public class Role {
             mBehavior.revoke(this, packageName, context);
         }
 
-        if (mayKillApp && permissionOrAppOpChanged) {
+        if (!dontKillApp && permissionOrAppOpChanged) {
             killApp(packageName, context);
         }
     }

@@ -198,6 +198,10 @@ public class AppPermissionUsageFragment extends SettingsWithButtonHeader impleme
     }
 
     private void updateUi() {
+        if (!Utils.isPermissionsHubEnabled()) {
+            setLoading(false, true);
+            return;
+        }
         Context context = getPreferenceManager().getContext();
         if (context == null) {
             return;
@@ -271,6 +275,6 @@ public class AppPermissionUsageFragment extends SettingsWithButtonHeader impleme
         mPermissionUsages.load(mAppInfo.uid, mPackageName, null, beginTimeMillis, Long.MAX_VALUE,
                 PermissionUsages.USAGE_FLAG_LAST | PermissionUsages.USAGE_FLAG_HISTORICAL,
                 getActivity().getLoaderManager(),
-                true, this::updateUi, false);
+                true, false, this::updateUi, false);
     }
 }

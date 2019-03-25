@@ -48,7 +48,6 @@
     <dimen name="app_permission_vertical_divider_padding_top">16dp</dimen>
     <dimen name="app_permission_vertical_divider_padding_bottom">16dp</dimen>
 
-    <dimen name="app_permission_detail_margin_top">12dp</dimen>
     <dimen name="app_permission_detail_margin_start">48dp</dimen>
 
     <dimen name="app_permission_divider_margin_top">12dp</dimen>
@@ -56,5 +55,9 @@
 
     <dimen name="preference_usage_title_summary_icon_size">16dp</dimen>
 
-    <dimen name="grant_permissions_dialog_button_height">56dp</dimen>
+    <dimen name="accessibility_service_dialog_text_margin_sides">24dp</dimen>
+    <dimen name="accessibility_service_dialog_text_margin_top_bottom">18dp</dimen>
+    <dimen name="accessibility_service_dialog_app_icon_size">32dp</dimen>
+    <dimen name="accessibility_service_dialog_text_padding">16dp</dimen>
+
 </resources>
