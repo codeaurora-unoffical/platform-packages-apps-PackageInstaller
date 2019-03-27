@@ -18,6 +18,7 @@ package com.android.packageinstaller.permission.model;
 
 import android.app.AppOpsManager;
 import android.app.AppOpsManager.HistoricalOps;
+import android.app.AppOpsManager.HistoricalOpsRequest;
 import android.app.AppOpsManager.HistoricalPackageOps;
 import android.app.AppOpsManager.HistoricalUidOps;
 import android.app.AppOpsManager.PackageOps;
@@ -63,6 +64,8 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
     private static final String KEY_FILTER_END_TIME_MILLIS =  "KEY_FILTER_END_TIME_MILLIS";
     private static final String KEY_USAGE_FLAGS =  "KEY_USAGE_FLAGS";
     private static final String KEY_GET_UI_INFO =  "KEY_GET_UI_INFO";
+    private static final String KEY_GET_NON_PLATFORM_PERMISSIONS =
+            "KEY_GET_NON_PLATFORM_PERMISSIONS";
 
     private @Nullable PermissionsUsagesChangeCallback mCallback;
 
@@ -77,16 +80,18 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
     public void load(@Nullable String filterPackageName, @Nullable String filterPermissionGroup,
             long filterBeginTimeMillis, long filterEndTimeMillis, int usageFlags,
             @NonNull LoaderManager loaderManager, boolean getUiInfo,
-            @NonNull PermissionsUsagesChangeCallback callback, boolean sync) {
+            boolean getNonPlatformPermissions, @NonNull PermissionsUsagesChangeCallback callback,
+            boolean sync) {
         load(Process.INVALID_UID, filterPackageName, filterPermissionGroup, filterBeginTimeMillis,
-                filterEndTimeMillis, usageFlags, loaderManager, getUiInfo, callback, sync);
+                filterEndTimeMillis, usageFlags, loaderManager, getUiInfo,
+                getNonPlatformPermissions, callback, sync);
     }
 
     public void load(int filterUid, @Nullable String filterPackageName,
             @Nullable String filterPermissionGroup, long filterBeginTimeMillis,
             long filterEndTimeMillis, int usageFlags, @NonNull LoaderManager loaderManager,
-            boolean getUiInfo, @NonNull PermissionsUsagesChangeCallback callback,
-            boolean sync) {
+            boolean getUiInfo, boolean getNonPlatformPermissions,
+            @NonNull PermissionsUsagesChangeCallback callback, boolean sync) {
         mCallback = callback;
         final Bundle args = new Bundle();
         args.putInt(KEY_FILTER_UID, filterUid);
@@ -96,6 +101,7 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
         args.putLong(KEY_FILTER_END_TIME_MILLIS, filterEndTimeMillis);
         args.putInt(KEY_USAGE_FLAGS, usageFlags);
         args.putBoolean(KEY_GET_UI_INFO, getUiInfo);
+        args.putBoolean(KEY_GET_NON_PLATFORM_PERMISSIONS, getNonPlatformPermissions);
         if (sync) {
             final UsageLoader loader = new UsageLoader(mContext, args);
             final List<AppPermissionUsage> usages = loader.loadInBackground();
@@ -135,6 +141,9 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
 
     public static @Nullable AppPermissionUsage.GroupUsage loadLastGroupUsage(
             @NonNull Context context, @NonNull AppPermissionGroup group) {
+        if (!Utils.isPermissionsHubEnabled()) {
+            return null;
+        }
         final ArraySet<String> opNames = new ArraySet<>();
         final List<Permission> permissions = group.getPermissions();
         final int permCount = permissions.size();
@@ -163,6 +172,7 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
         private final long mFilterEndTimeMillis;
         private final int mUsageFlags;
         private final boolean mGetUiInfo;
+        private final boolean mGetNonPlatformPermissions;
 
         UsageLoader(@NonNull Context context, @NonNull Bundle args) {
             super(context);
@@ -173,6 +183,7 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
             mFilterEndTimeMillis = args.getLong(KEY_FILTER_END_TIME_MILLIS);
             mUsageFlags = args.getInt(KEY_USAGE_FLAGS);
             mGetUiInfo = args.getBoolean(KEY_GET_UI_INFO);
+            mGetNonPlatformPermissions = args.getBoolean(KEY_GET_NON_PLATFORM_PERMISSIONS);
         }
 
         @Override
@@ -184,7 +195,11 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
         public @NonNull List<AppPermissionUsage> loadInBackground() {
             final List<PermissionGroup> groups = PermissionGroups.getPermissionGroups(
                     getContext(), this::isLoadInBackgroundCanceled, mGetUiInfo,
-                    mFilterPermissionGroup, mFilterPackageName);
+                    mGetNonPlatformPermissions, mFilterPermissionGroup, mFilterPackageName);
+            if (!Utils.isPermissionsHubEnabled()) {
+                return Collections.emptyList();
+            }
+
             if (groups.isEmpty()) {
                 return Collections.emptyList();
             }
@@ -275,9 +290,13 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
             if ((mUsageFlags & USAGE_FLAG_HISTORICAL) != 0) {
                 final AtomicReference<HistoricalOps> historicalOpsRef = new AtomicReference<>();
                 final CountDownLatch latch = new CountDownLatch(1);
-                appOpsManager.getHistoricalOps(mFilterUid,
-                        mFilterPackageName, opNamesArray, mFilterBeginTimeMillis,
-                        mFilterEndTimeMillis, Runnable::run,
+                final HistoricalOpsRequest request = new HistoricalOpsRequest.Builder(
+                        mFilterBeginTimeMillis, mFilterEndTimeMillis)
+                        .setUid(mFilterUid)
+                        .setPackageName(mFilterPackageName)
+                        .setOpNames(new ArrayList<>(opNames))
+                        .build();
+                appOpsManager.getHistoricalOps(request, Runnable::run,
                         (HistoricalOps ops) -> {
                             historicalOpsRef.set(ops);
                             latch.countDown();

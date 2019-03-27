@@ -18,10 +18,12 @@ package com.android.packageinstaller.role.model;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.os.UserHandle;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.preference.Preference;
 
 import java.util.Collections;
 import java.util.List;
@@ -56,6 +58,14 @@ public interface RoleBehavior {
     }
 
     /**
+     * @see Role#isVisibleAsUser(UserHandle, Context)
+     */
+    default boolean isVisibleAsUser(@NonNull Role role, @NonNull UserHandle user,
+            @NonNull Context context) {
+        return true;
+    }
+
+    /**
      * @see Role#getManageIntentAsUser(UserHandle, Context)
      */
     @Nullable
@@ -63,6 +73,14 @@ public interface RoleBehavior {
             @NonNull Context context) {
         return null;
     }
+
+    /**
+     * @see Role#prepareApplicationPreferenceAsUser(Preference, ApplicationInfo, UserHandle,
+     *      Context)
+     */
+    default void prepareApplicationPreferenceAsUser(@NonNull Role role,
+            @NonNull Preference preference, @NonNull ApplicationInfo applicationInfo,
+            @NonNull UserHandle user, @NonNull Context context) {}
 
     /**
      * @see Role#getConfirmationMessage(String, Context)

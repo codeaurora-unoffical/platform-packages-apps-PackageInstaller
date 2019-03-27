@@ -16,6 +16,9 @@
 
 package com.android.packageinstaller.permission.service;
 
+import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_DEFAULT;
+import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_DENIED;
+import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED;
 import static android.content.pm.PackageManager.GET_PERMISSIONS;
 import static android.permission.PermissionControllerManager.COUNT_ONLY_WHEN_GRANTED;
 import static android.permission.PermissionControllerManager.COUNT_WHEN_SYSTEM;
@@ -40,6 +43,7 @@ import android.permission.RuntimePermissionUsageInfo;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
+import android.util.Xml;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -53,10 +57,12 @@ import com.android.packageinstaller.permission.model.PermissionUsages;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.packageinstaller.role.service.PermissionControllerServiceImplRoleMixin;
 
+import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -182,7 +188,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
 
             // Mark the permissions as reviewed as we don't want to use to accidentally grant
             // the permission during review
-            group.resetReviewRequired();
+            group.unsetReviewRequired();
 
             int numPerms = perms.size();
             for (int permNum = 0; permNum < numPerms; permNum++) {
@@ -280,7 +286,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
         if (!doDryRun) {
             int numChangedApps = appsWithRevokedPerms.size();
             for (int i = 0; i < numChangedApps; i++) {
-                appsWithRevokedPerms.get(i).persistChanges();
+                appsWithRevokedPerms.get(i).persistChanges(true);
             }
         }
 
@@ -306,14 +312,25 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
     @Override
     public void onRestoreRuntimePermissionsBackup(@NonNull UserHandle user,
             @NonNull InputStream backup) {
-        // TODO: Implement
+        try {
+            XmlPullParser parser = Xml.newPullParser();
+            parser.setInput(backup, StandardCharsets.UTF_8.name());
+
+            new BackupHelper(this, user).restoreState(parser);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Exception restoring permissions: " + e.getMessage());
+        }
     }
 
     @Override
     public boolean onRestoreDelayedRuntimePermissionsBackup(@NonNull String packageName,
             @NonNull UserHandle user) {
-        // TODO: Implement
-        return true;
+        try {
+            return new BackupHelper(this, user).restoreDelayedState(packageName);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Exception restoring delayed permissions: " + e.getMessage());
+            return false;
+        }
     }
 
     @Override
@@ -438,7 +455,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
         long filterTimeBeginMillis = Math.max(System.currentTimeMillis() - numMillis, 0);
         usages.load(null, null, filterTimeBeginMillis, Long.MAX_VALUE,
                 PermissionUsages.USAGE_FLAG_LAST | PermissionUsages.USAGE_FLAG_HISTORICAL, null,
-                false, null, true);
+                false, false, null, true);
 
         List<AppPermissionUsage> appPermissionUsages = usages.getUsages();
         int numApps = appPermissionUsages.size();
@@ -488,5 +505,64 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
             @NonNull String packageName) {
         return PermissionControllerServiceImplRoleMixin.onIsApplicationQualifiedForRole(roleName,
                 packageName, this);
+    }
+
+    @Override
+    public boolean onSetRuntimePermissionGrantStateByDeviceAdmin(@NonNull String callerPackageName,
+            @NonNull String packageName, @NonNull String unexpandedPermission, int grantState) {
+        PackageInfo callerPkgInfo = getPkgInfo(callerPackageName);
+        if (callerPkgInfo == null) {
+            Log.w(LOG_TAG, "Cannot fix " + unexpandedPermission + " as admin "
+                    + callerPackageName + " cannot be found");
+            return false;
+        }
+
+        PackageInfo pkgInfo = getPkgInfo(packageName);
+        if (pkgInfo == null) {
+            Log.w(LOG_TAG, "Cannot fix " + unexpandedPermission + " as " + packageName
+                    + " cannot be found");
+            return false;
+        }
+
+        ArrayList<String> expandedPermissions = addSplitPermissions(
+                Collections.singletonList(unexpandedPermission),
+                callerPkgInfo.applicationInfo.targetSdkVersion);
+
+        AppPermissions app = new AppPermissions(this, pkgInfo, false, null);
+
+        int numPerms = expandedPermissions.size();
+        for (int i = 0; i < numPerms; i++) {
+            String permName = expandedPermissions.get(i);
+            AppPermissionGroup group = app.getGroupForPermission(permName);
+            if (group == null || group.isSystemFixed()) {
+                continue;
+            }
+
+            Permission perm = group.getPermission(permName);
+            if (perm == null) {
+                continue;
+            }
+
+            switch (grantState) {
+                case PERMISSION_GRANT_STATE_GRANTED:
+                    perm.setPolicyFixed(true);
+                    group.grantRuntimePermissions(false, new String[]{permName});
+                    break;
+                case PERMISSION_GRANT_STATE_DENIED:
+                    perm.setPolicyFixed(true);
+                    group.revokeRuntimePermissions(false, new String[]{permName});
+                    break;
+                case PERMISSION_GRANT_STATE_DEFAULT:
+                    perm.setPolicyFixed(false);
+                    break;
+                default:
+                    return false;
+            }
+        }
+
+        app.persistChanges(grantState == PERMISSION_GRANT_STATE_DENIED
+                || !callerPackageName.equals(packageName));
+
+        return true;
     }
 }
