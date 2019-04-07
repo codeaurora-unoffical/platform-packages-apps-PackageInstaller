@@ -119,9 +119,6 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
     @Override
     public void onLoadFinished(@NonNull Loader<List<AppPermissionUsage>> loader,
             List<AppPermissionUsage> usages) {
-        if (mUsages.equals(usages)) {
-            return;
-        }
         mUsages.clear();
         mUsages.addAll(usages);
         if (mCallback != null) {
@@ -295,6 +292,7 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
                         .setUid(mFilterUid)
                         .setPackageName(mFilterPackageName)
                         .setOpNames(new ArrayList<>(opNames))
+                        .setFlags(AppOpsManager.OP_FLAGS_ALL_TRUSTED)
                         .build();
                 appOpsManager.getHistoricalOps(request, Runnable::run,
                         (HistoricalOps ops) -> {
