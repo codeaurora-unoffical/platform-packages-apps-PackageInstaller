@@ -46,7 +46,6 @@ import static com.android.packageinstaller.Constants.PERIODIC_LOCATION_ACCESS_CH
 import static com.android.packageinstaller.Constants.PERMISSION_REMINDER_CHANNEL_ID;
 import static com.android.packageinstaller.Constants.PREFERENCES_FILE;
 import static com.android.packageinstaller.permission.utils.Utils.OS_PKG;
-import static com.android.packageinstaller.permission.utils.Utils.getGroupOfPlatformPermission;
 import static com.android.packageinstaller.permission.utils.Utils.getParcelableExtraSafe;
 import static com.android.packageinstaller.permission.utils.Utils.getStringExtraSafe;
 import static com.android.packageinstaller.permission.utils.Utils.getSystemServiceSafe;
@@ -54,7 +53,6 @@ import static com.android.packageinstaller.permission.utils.Utils.isLocationAcce
 
 import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.DAYS;
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 import android.app.AppOpsManager;
 import android.app.AppOpsManager.HistoricalOps;
@@ -171,13 +169,13 @@ public class LocationAccessCheck {
     /**
      * Get the delay in between granting a permission and the follow up check.
      *
-     * <p>Default: 10 minutes
+     * <p>Default: 1 day
      *
      * @return The delay in milliseconds
      */
     private long getDelayMillis() {
         return Settings.Secure.getLong(mContentResolver,
-                LOCATION_ACCESS_CHECK_DELAY_MILLIS, MINUTES.toMillis(10));
+                LOCATION_ACCESS_CHECK_DELAY_MILLIS, DAYS.toMillis(1));
     }
 
     /**
@@ -500,8 +498,8 @@ public class LocationAccessCheck {
                     continue;
                 }
 
-                // Do not show notification for apps that have the background permission by default
-                if (bgLocationGroup.hasGrantedByDefaultPermission()) {
+                // Do not show notification for permissions that are not user sensitive
+                if (!bgLocationGroup.isUserSensitive()) {
                     continue;
                 }
 
@@ -509,7 +507,7 @@ public class LocationAccessCheck {
                 for (int opNum = 0; opNum < numOps; opNum++) {
                     AppOpsManager.HistoricalOp op = ops.getOpAt(opNum);
 
-                    if (op.getBackgroundAccessCount() > 0) {
+                    if (op.getBackgroundAccessCount(AppOpsManager.OP_FLAGS_ALL_TRUSTED) > 0) {
                         pkgsWithLocationAccess.add(userPkg);
 
                         break;
@@ -837,8 +835,7 @@ public class LocationAccessCheck {
 
             Intent manageAppPermission = new Intent(context, AppPermissionActivity.class);
             manageAppPermission.addFlags(FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_MULTIPLE_TASK);
-            manageAppPermission.putExtra(EXTRA_PERMISSION_NAME,
-                    getGroupOfPlatformPermission(ACCESS_FINE_LOCATION));
+            manageAppPermission.putExtra(EXTRA_PERMISSION_NAME, ACCESS_FINE_LOCATION);
             manageAppPermission.putExtra(EXTRA_PACKAGE_NAME, pkg);
             manageAppPermission.putExtra(EXTRA_USER, user);
 

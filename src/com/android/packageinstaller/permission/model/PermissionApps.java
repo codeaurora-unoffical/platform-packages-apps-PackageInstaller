@@ -21,13 +21,13 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.pm.PermissionGroupInfo;
 import android.content.pm.PermissionInfo;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.util.ArrayMap;
-import android.util.ArraySet;
 import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
@@ -56,6 +56,7 @@ public class PermissionApps {
 
     private CharSequence mLabel;
     private Drawable mIcon;
+    private @Nullable CharSequence mDescription;
     private List<PermissionApp> mPermApps;
     // Map (pkg|uid) -> AppPermission
     private ArrayMap<String, PermissionApp> mAppLookup;
@@ -114,13 +115,13 @@ public class PermissionApps {
         createMap(loadPermissionApps());
     }
 
-    public int getGrantedCount(ArraySet<String> launcherPkgs) {
+    public int getGrantedCount() {
         int count = 0;
         for (PermissionApp app : mPermApps) {
             if (!Utils.shouldShowPermission(mContext, app.getPermissionGroup())) {
                 continue;
             }
-            if (Utils.isSystem(app, launcherPkgs)) {
+            if (!Utils.isGroupOrBgGroupUserSensitive(app.mAppPermissionGroup)) {
                 // We default to not showing system apps, so hide them from count.
                 continue;
             }
@@ -131,13 +132,13 @@ public class PermissionApps {
         return count;
     }
 
-    public int getTotalCount(ArraySet<String> launcherPkgs) {
+    public int getTotalCount() {
         int count = 0;
         for (PermissionApp app : mPermApps) {
             if (!Utils.shouldShowPermission(mContext, app.getPermissionGroup())) {
                 continue;
             }
-            if (Utils.isSystem(app, launcherPkgs)) {
+            if (!Utils.isGroupOrBgGroupUserSensitive(app.mAppPermissionGroup)) {
                 // We default to not showing system apps, so hide them from count.
                 continue;
             }
@@ -160,6 +161,10 @@ public class PermissionApps {
 
     public Drawable getIcon() {
         return mIcon;
+    }
+
+    public CharSequence getDescription() {
+        return mDescription;
     }
 
     private @NonNull List<PackageInfo> getPackageInfos(@NonNull UserHandle user) {
@@ -322,6 +327,11 @@ public class PermissionApps {
             mIcon = mContext.getDrawable(R.drawable.ic_perm_device_info);
         }
         mIcon = Utils.applyTint(mContext, mIcon, android.R.attr.colorControlNormal);
+        if (info instanceof PermissionGroupInfo) {
+            mDescription = ((PermissionGroupInfo) info).loadDescription(mPm);
+        } else if (info instanceof PermissionInfo) {
+            mDescription = ((PermissionInfo) info).loadDescription(mPm);
+        }
     }
 
     public static class PermissionApp implements Comparable<PermissionApp> {

@@ -21,8 +21,8 @@ import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Process;
 import android.os.UserHandle;
 import android.util.ArrayMap;
@@ -34,6 +34,7 @@ import androidx.annotation.StringRes;
 import androidx.preference.Preference;
 
 import com.android.packageinstaller.Constants;
+import com.android.packageinstaller.permission.utils.Utils;
 import com.android.packageinstaller.role.utils.PackageUtils;
 import com.android.packageinstaller.role.utils.UserUtils;
 
@@ -232,7 +233,7 @@ public class Role {
     /**
      * Get the fallback holder of this role, which will be added whenever there are no role holders.
      * <p>
-     * Should return empty if this role {@link #mShowNone shows a "None" item}.
+     * Should return {@code null} if this role {@link #mShowNone shows a "None" item}.
      *
      * @param context the {@code Context} to retrieve system services
      *
@@ -259,6 +260,17 @@ public class Role {
             return mBehavior.isVisibleAsUser(this, user, context);
         }
         return true;
+    }
+
+    /**
+     * Check whether this role should be visible to user, for current user.
+     *
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return whether this role should be visible to user.
+     */
+    public boolean isVisible(@NonNull Context context) {
+        return isVisibleAsUser(Process.myUserHandle(), context);
     }
 
     /**
@@ -436,9 +448,13 @@ public class Role {
 
         // TODO: STOPSHIP: Check for disabled packages?
 
-        // TODO: STOPSHIP: Add and check PackageManager.getSharedLibraryInfo().
-
         if (applicationInfo.isInstantApp()) {
+            return false;
+        }
+
+        PackageManager userPackageManager = UserUtils.getUserContext(context, user)
+                .getPackageManager();
+        if (!userPackageManager.getDeclaredSharedLibraries(packageName, 0).isEmpty()) {
             return false;
         }
 
@@ -554,47 +570,56 @@ public class Role {
     }
 
     /**
-     * Did the user selected the "none" role holder.
+     * Check whether the "none" role holder is selected.
      *
-     * @param context A context to use
+     * @param context the {@code Context} to retrieve system services
      *
-     * @return {@code true} iff the user selected the "none" role holder
+     * @return whether the "none" role holder is selected
      */
     private boolean isNoneHolderSelected(@NonNull Context context) {
-        return getDeviceProtectedSharedPreferences(context).getBoolean(
+        return Utils.getDeviceProtectedSharedPreferences(context).getBoolean(
                 Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, false);
     }
 
     /**
-     * Indicate that the any other holder than "none" was selected.
+     * Callback when a role holder (other than "none") was added.
      *
-     * @param context A context to use
-     * @param user the user the role belongs to
+     * @param packageName the package name of the role holder
+     * @param user the user for the role
+     * @param context the {@code Context} to retrieve system services
      */
-    public void onHolderSelectedAsUser(@NonNull Context context, @NonNull UserHandle user) {
-        getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
+    public void onHolderAddedAsUser(@NonNull String packageName, @NonNull UserHandle user,
+            @NonNull Context context) {
+        Utils.getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
                 .remove(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName)
                 .apply();
     }
 
     /**
-     * Indicate that the "none" role holder was selected.
+     * Callback when a role holder (other than "none") was selected in the UI and added
+     * successfully.
      *
-     * @param context A context to use
-     * @param user the user the role belongs to
+     * @param packageName the package name of the role holder
+     * @param user the user for the role
+     * @param context the {@code Context} to retrieve system services
      */
-    public void onNoneHolderSelectedAsUser(@NonNull Context context, @NonNull UserHandle user) {
-        getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
-                .putBoolean(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, true)
-                .apply();
+    public void onHolderSelectedAsUser(@NonNull String packageName, @NonNull UserHandle user,
+            @NonNull Context context) {
+        if (mBehavior != null) {
+            mBehavior.onHolderSelectedAsUser(this, packageName, user, context);
+        }
     }
 
-    @NonNull
-    private SharedPreferences getDeviceProtectedSharedPreferences(@NonNull Context context) {
-        if (!context.isDeviceProtectedStorage()) {
-            context = context.createDeviceProtectedStorageContext();
-        }
-        return context.getSharedPreferences(Constants.PREFERENCES_FILE, Context.MODE_PRIVATE);
+    /**
+     * Callback when the "none" role holder was selected in the UI.
+     *
+     * @param user the user for the role
+     * @param context the {@code Context} to retrieve system services
+     */
+    public void onNoneHolderSelectedAsUser(@NonNull UserHandle user, @NonNull Context context) {
+        Utils.getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
+                .putBoolean(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, true)
+                .apply();
     }
 
     @Override
