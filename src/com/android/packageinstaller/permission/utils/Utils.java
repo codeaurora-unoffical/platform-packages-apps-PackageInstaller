@@ -31,10 +31,10 @@ import static android.Manifest.permission_group.SMS;
 import static android.Manifest.permission_group.STORAGE;
 
 import android.Manifest;
-import android.app.AppOpsManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
@@ -67,10 +67,9 @@ import androidx.core.text.BidiFormatter;
 import androidx.core.util.Preconditions;
 
 import com.android.launcher3.icons.IconFactory;
+import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissionUsage;
-import com.android.packageinstaller.permission.model.AppPermissions;
-import com.android.packageinstaller.permission.model.PermissionApps.PermissionApp;
 import com.android.permissioncontroller.R;
 
 import java.util.ArrayList;
@@ -78,6 +77,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class Utils {
 
@@ -406,6 +406,15 @@ public final class Utils {
     }
 
     /**
+     * Get the names of the platform permissions.
+     *
+     * @return the names of the platform permissions.
+     */
+    public static Set<String> getPlatformPermissions() {
+        return PLATFORM_PERMISSIONS.keySet();
+    }
+
+    /**
      * Should UI show this permission.
      *
      * <p>If the user cannot change the group, it should not be shown.
@@ -455,18 +464,16 @@ public final class Utils {
         return context.getPackageManager().getInstalledApplications(0);
     }
 
-    public static boolean isSystem(PermissionApp app, ArraySet<String> launcherPkgs) {
-        return isSystem(app.getAppInfo(), launcherPkgs);
-    }
-
-    public static boolean isSystem(AppPermissions app, ArraySet<String> launcherPkgs) {
-        return isSystem(app.getPackageInfo().applicationInfo, launcherPkgs);
-    }
-
-    public static boolean isSystem(ApplicationInfo info, ArraySet<String> launcherPkgs) {
-        return ((info.flags & ApplicationInfo.FLAG_SYSTEM) != 0)
-                && (info.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
-                && !launcherPkgs.contains(info.packageName);
+    /**
+     * Is the group or background group user sensitive?
+     *
+     * @param group The group that might be user sensitive
+     *
+     * @return {@code true} if the group (or it's subgroup) is user sensitive.
+     */
+    public static boolean isGroupOrBgGroupUserSensitive(AppPermissionGroup group) {
+        return group.isUserSensitive() || (group.getBackgroundPermissions() != null
+                && group.getBackgroundPermissions().isUserSensitive());
     }
 
     public static boolean areGroupPermissionsIndividuallyControlled(Context context, String group) {
@@ -676,6 +683,49 @@ public final class Utils {
     }
 
     /**
+     * Get a string saying what apps with the given permission group can do.
+     *
+     * @param context The context to use
+     * @param groupName The name of the permission group
+     * @param description The description of the permission group
+     *
+     * @return a string saying what apps with the given permission group can do.
+     */
+    public static @NonNull String getPermissionGroupDescriptionString(@NonNull Context context,
+            @NonNull String groupName, @NonNull CharSequence description) {
+        switch (groupName) {
+            case ACTIVITY_RECOGNITION:
+                return context.getString(
+                        R.string.permission_description_summary_activity_recognition);
+            case CALENDAR:
+                return context.getString(R.string.permission_description_summary_calendar);
+            case CALL_LOG:
+                return context.getString(R.string.permission_description_summary_call_log);
+            case CAMERA:
+                return context.getString(R.string.permission_description_summary_camera);
+            case CONTACTS:
+                return context.getString(R.string.permission_description_summary_contacts);
+            case LOCATION:
+                return context.getString(R.string.permission_description_summary_location);
+            case MEDIA_AURAL:
+                return context.getString(R.string.permission_description_summary_media_aural);
+            case MEDIA_VISUAL:
+                return context.getString(R.string.permission_description_summary_media_visual);
+            case MICROPHONE:
+                return context.getString(R.string.permission_description_summary_microphone);
+            case PHONE:
+                return context.getString(R.string.permission_description_summary_phone);
+            case SENSORS:
+                return context.getString(R.string.permission_description_summary_sensors);
+            case SMS:
+                return context.getString(R.string.permission_description_summary_sms);
+            default:
+                return context.getString(R.string.permission_description_summary_generic,
+                        description);
+        }
+    }
+
+    /**
      * Whether the Location Access Check is enabled.
      *
      * @return {@code true} iff the Location Access Check is enabled.
@@ -693,5 +743,19 @@ public final class Utils {
     public static boolean isPermissionsHubEnabled() {
         return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
                 DeviceConfig.Privacy.PROPERTY_PERMISSIONS_HUB_ENABLED));
+    }
+
+    /**
+     * Get a device protected storage based shared preferences. Avoid storing sensitive data in it.
+     *
+     * @param context the context to get the shared preferences
+     * @return a device protected storage based shared preferences
+     */
+    @NonNull
+    public static SharedPreferences getDeviceProtectedSharedPreferences(@NonNull Context context) {
+        if (!context.isDeviceProtectedStorage()) {
+            context = context.createDeviceProtectedStorageContext();
+        }
+        return context.getSharedPreferences(Constants.PREFERENCES_FILE, Context.MODE_PRIVATE);
     }
 }

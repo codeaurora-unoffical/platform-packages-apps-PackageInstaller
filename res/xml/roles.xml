@@ -290,7 +290,6 @@
     </role>
 
     <!-- TODO: STOPSHIP: Intent action sometimes changing dynamically in com.android.phone.EmergencyAssistanceHelper.getIntentAction -->
-    <!-- TODO: STOPSHIP: Make this non-configurable at least by default. -->
     <!---
       ~ @see com.android.settings.applications.defaultapps.DefaultEmergencyPreferenceController
       ~ @see com.android.settings.applications.defaultapps.DefaultEmergencyPicker
@@ -311,8 +310,6 @@
         </required-components>
     </role>
 
-    <!-- TODO: STOPSHIP: Add availability in role behavior. -->
-    <!-- TODO: STOPSHIP: Filter qualifiying apps according to work profile support as in com.android.settings.applications.defaultapps.DefaultHomePicker.getCandidates() -->
     <!---
       ~ @see com.android.settings.applications.defaultapps.DefaultHomePreferenceController
       ~ @see com.android.settings.applications.defaultapps.DefaultHomePicker
@@ -486,35 +483,5 @@
                 </intent-filter>
             </service>
         </required-components>
-    </role>
-
-    <!-- STOPSHIP: Allow any app to access SMS -->
-    <role
-        name="android.app.role.TEMPORARY_SMS_ACCESS"
-        behavior="TemporarySmsAccessRoleBehavior"
-        exclusive="false"
-        label="@string/role_label_temporary_sms_access">
-        <permissions>
-            <permission-set name="sms" />
-        </permissions>
-    </role>
-
-    <role
-        name="android.app.role.CAR_PROJECTION"
-        exclusive="true"
-        label="@string/role_label_car_projection">
-        <required-components>
-            <activity>
-              <intent-filter>
-                  <action name="android.intent.action.MAIN" />
-                  <category name="android.intent.category.CAR_PROJECTION" />
-              </intent-filter>
-            </activity>
-        </required-components>
-        <permissions>
-            <permission name="android.permission.READ_CALL_LOG" />
-            <permission name="android.permission.SEND_SMS" />
-            <permission name="android.permission.RECEIVE_SMS" />
-        </permissions>
     </role>
 </roles>

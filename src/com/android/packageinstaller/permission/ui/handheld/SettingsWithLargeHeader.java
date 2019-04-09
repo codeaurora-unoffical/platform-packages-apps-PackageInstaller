@@ -16,16 +16,16 @@
 
 package com.android.packageinstaller.permission.ui.handheld;
 
+import android.content.Intent;
+import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -33,11 +33,12 @@ import com.android.packageinstaller.DeviceUtils;
 import com.android.permissioncontroller.R;
 
 /**
- * A class that contains a header with a row of buttons.
+ * A class that contains a header.
  */
-public abstract class SettingsWithButtonHeader extends PermissionsFrameFragment  {
+public abstract class SettingsWithLargeHeader extends PermissionsFrameFragment  {
 
     private View mHeader;
+    protected Intent mInfoIntent;
     protected Drawable mIcon;
     protected CharSequence mLabel;
 
@@ -47,7 +48,7 @@ public abstract class SettingsWithButtonHeader extends PermissionsFrameFragment 
         ViewGroup root = (ViewGroup) super.onCreateView(inflater, container, savedInstanceState);
 
         if (!DeviceUtils.isTelevision(getContext())) {
-            mHeader = inflater.inflate(R.layout.button_header, root, false);
+            mHeader = inflater.inflate(R.layout.header_large, root, false);
             getPreferencesContainer().addView(mHeader, 0);
         }
 
@@ -59,22 +60,22 @@ public abstract class SettingsWithButtonHeader extends PermissionsFrameFragment 
      *
      * @param icon the icon
      * @param label the label
-     * @param showButtons whether to show the app action buttons
+     * @param infoIntent the intent to show on click
      */
     public void setHeader(@NonNull Drawable icon, @NonNull CharSequence label,
-            boolean showButtons) {
+            Intent infoIntent) {
         mIcon = icon;
         mLabel = label;
-        updateHeader(mHeader, showButtons);
+        mInfoIntent = infoIntent;
+        updateHeader(mHeader);
     }
 
     /**
-     * Updates the header to use the correct icon, title, and buttons.
+     * Updates the header to use the correct icon and title.
      *
      * @param header the View that contains the components.
-     * @param showButtons whether to show the app action buttons
      */
-    protected void updateHeader(@NonNull View header, boolean showButtons) {
+    protected void updateHeader(@NonNull View header) {
         if (header != null) {
             header.setVisibility(View.VISIBLE);
 
@@ -87,32 +88,6 @@ public abstract class SettingsWithButtonHeader extends PermissionsFrameFragment 
             header.requireViewById(R.id.entity_header_summary).setVisibility(View.GONE);
             header.requireViewById(R.id.entity_header_second_summary).setVisibility(View.GONE);
             header.requireViewById(R.id.header_link).setVisibility(View.GONE);
-
-            if (showButtons) {
-                Button button1 = header.requireViewById(R.id.button1);
-                button1.setText(R.string.launch_app);
-                setButtonIcon(button1, R.drawable.ic_open);
-                button1.setVisibility(View.VISIBLE);
-                button1.setEnabled(false);
-
-                Button button2 = header.requireViewById(R.id.button2);
-                button2.setText(R.string.uninstall_app);
-                setButtonIcon(button2, R.drawable.ic_delete);
-                button2.setVisibility(View.VISIBLE);
-                button2.setEnabled(false);
-
-                Button button3 = header.requireViewById(R.id.button3);
-                button3.setText(R.string.force_stop_app);
-                setButtonIcon(button3, R.drawable.ic_force_stop);
-                button3.setVisibility(View.VISIBLE);
-                button3.setEnabled(false);
-            } else {
-                header.requireViewById(R.id.button1).setVisibility(View.GONE);
-                header.requireViewById(R.id.button2).setVisibility(View.GONE);
-                header.requireViewById(R.id.button3).setVisibility(View.GONE);
-            }
-
-            header.requireViewById(R.id.button4).setVisibility(View.GONE);
         }
     }
 
@@ -129,17 +104,18 @@ public abstract class SettingsWithButtonHeader extends PermissionsFrameFragment 
      * @param summary the text to display
      * @param listener the click listener if the summary should be clickable
      */
-    public void setSummary(@NonNull String summary, @Nullable View.OnClickListener listener) {
+    public void setSummary(@NonNull CharSequence summary, @Nullable View.OnClickListener listener) {
         TextView summaryView = mHeader.requireViewById(R.id.header_link);
         summaryView.setVisibility(View.VISIBLE);
         summaryView.setText(summary);
         if (listener != null) {
             summaryView.setOnClickListener(listener);
+        } else {
+            TypedArray a = getContext().obtainStyledAttributes(
+                    new int[] { android.R.attr.textColorSecondary });
+            int color = a.getColor(0, 0);
+            a.recycle();
+            summaryView.setTextColor(color);
         }
-    }
-
-    private void setButtonIcon(@NonNull Button button, @DrawableRes int iconResId) {
-        button.setCompoundDrawablesWithIntrinsicBounds(null, getContext().getDrawable(iconResId),
-                null, null);
     }
 }

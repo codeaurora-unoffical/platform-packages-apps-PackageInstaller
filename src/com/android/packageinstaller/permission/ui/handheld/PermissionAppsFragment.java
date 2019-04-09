@@ -21,12 +21,12 @@ import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.util.ArrayMap;
-import android.util.ArraySet;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
@@ -52,7 +52,7 @@ import java.util.Map;
  *
  * <p>Shows a list of apps which request at least on permission of this group.
  */
-public final class PermissionAppsFragment extends PermissionsFrameFragment implements Callback {
+public final class PermissionAppsFragment extends SettingsWithLargeHeader implements Callback {
 
     private static final String KEY_SHOW_SYSTEM_PREFS = "_showSystem";
 
@@ -73,8 +73,6 @@ public final class PermissionAppsFragment extends PermissionsFrameFragment imple
     private PermissionApps mPermissionApps;
 
     private PreferenceScreen mExtraScreen;
-
-    private ArraySet<String> mLauncherPkgs;
 
     private boolean mShowSystem;
     private boolean mHasSystemApps;
@@ -99,7 +97,6 @@ public final class PermissionAppsFragment extends PermissionsFrameFragment imple
         if (ab != null) {
             ab.setDisplayHomeAsUpEnabled(true);
         }
-        mLauncherPkgs = Utils.getLauncherPackages(getContext());
 
         String groupName = getArguments().getString(Intent.EXTRA_PERMISSION_NAME);
         mPermissionApps = new PermissionApps(getActivity(), groupName, this);
@@ -166,12 +163,19 @@ public final class PermissionAppsFragment extends PermissionsFrameFragment imple
     @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        bindUi(this, mPermissionApps);
+        bindUi(this, mPermissionApps,
+                getArguments().getString(Intent.EXTRA_PERMISSION_NAME));
     }
 
-    private static void bindUi(Fragment fragment, PermissionApps permissionApps) {
+    private static void bindUi(SettingsWithLargeHeader fragment, PermissionApps permissionApps,
+            @NonNull String groupName) {
         final Drawable icon = permissionApps.getIcon();
         final CharSequence label = permissionApps.getLabel();
+
+        fragment.setHeader(icon, label, null);
+        fragment.setSummary(Utils.getPermissionGroupDescriptionString(fragment.getActivity(),
+                groupName, permissionApps.getDescription()), null);
+
         final ActionBar ab = fragment.getActivity().getActionBar();
         if (ab != null) {
             ab.setTitle(label);
@@ -252,7 +256,7 @@ public final class PermissionAppsFragment extends PermissionsFrameFragment imple
                 existingPref.setOrder(Preference.DEFAULT_ORDER);
             }
 
-            boolean isSystemApp = Utils.isSystem(app, mLauncherPkgs);
+            boolean isSystemApp = !Utils.isGroupOrBgGroupUserSensitive(group);
 
             if (isSystemApp && !menuOptionsInvalided) {
                 mHasSystemApps = true;
@@ -368,16 +372,15 @@ public final class PermissionAppsFragment extends PermissionsFrameFragment imple
         }
         String lastAccessStr = Utils.getAbsoluteLastUsageString(context,
                 PermissionUsages.loadLastGroupUsage(context, group));
-        // STOPSHIP: Ignore {READ,WRITE}_EXTERNAL_STORAGE since they're going away.
-        if (lastAccessStr != null && !group.getLabel().equals("Storage")) {
+        if (lastAccessStr != null) {
             pref.setSummary(context.getString(R.string.app_permission_most_recent_summary,
                     lastAccessStr));
-        } else {
+        } else if (Utils.isPermissionsHubEnabled()) {
             pref.setSummary(context.getString(R.string.app_permission_never_accessed_summary));
         }
     }
 
-    public static class SystemAppsFragment extends PermissionsFrameFragment implements Callback {
+    public static class SystemAppsFragment extends SettingsWithLargeHeader implements Callback {
         PermissionAppsFragment mOuterFragment;
 
         @Override
@@ -385,6 +388,7 @@ public final class PermissionAppsFragment extends PermissionsFrameFragment imple
             mOuterFragment = (PermissionAppsFragment) getTargetFragment();
             setLoading(true /* loading */, false /* animate */);
             super.onCreate(savedInstanceState);
+            setHeader(mOuterFragment.mIcon, mOuterFragment.mLabel, null);
             if (mOuterFragment.mExtraScreen != null) {
                 setPreferenceScreen();
             } else {
@@ -398,7 +402,7 @@ public final class PermissionAppsFragment extends PermissionsFrameFragment imple
             String groupName = getArguments().getString(Intent.EXTRA_PERMISSION_NAME);
             PermissionApps permissionApps = new PermissionApps(getActivity(),
                     groupName, (Callback) null);
-            bindUi(this, permissionApps);
+            bindUi(this, permissionApps, groupName);
         }
 
         @Override
