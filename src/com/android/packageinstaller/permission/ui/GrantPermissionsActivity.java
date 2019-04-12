@@ -86,6 +86,13 @@ public class GrantPermissionsActivity extends Activity
     private static final String KEY_REQUEST_ID = GrantPermissionsActivity.class.getName()
             + "_REQUEST_ID";
 
+    public static int NUM_BUTTONS = 5;
+    public static int LABEL_ALLOW_BUTTON = 0;
+    public static int LABEL_ALLOW_ALWAYS_BUTTON = 1;
+    public static int LABEL_ALLOW_FOREGROUND_BUTTON = 2;
+    public static int LABEL_DENY_BUTTON = 3;
+    public static int LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON = 4;
+
     /** Unique Id of a request */
     private long mRequestId;
 
@@ -147,7 +154,7 @@ public class GrantPermissionsActivity extends Activity
             reportRequestResult(permission,
                     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_USER_FIXED);
             return;
-        } else if (group.isPolicyFixed()) {
+        } else if (group.isPolicyFixed() && !group.areRuntimePermissionsGranted()) {
             reportRequestResult(permission,
                     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_POLICY_FIXED);
             return;
@@ -167,9 +174,7 @@ public class GrantPermissionsActivity extends Activity
         boolean skipGroup = false;
         switch (getPermissionPolicy()) {
             case DevicePolicyManager.PERMISSION_POLICY_AUTO_GRANT: {
-                if (!group.areRuntimePermissionsGranted()) {
-                    group.grantRuntimePermissions(false, new String[]{permission});
-                }
+                group.grantRuntimePermissions(false, new String[]{permission});
                 state.mState = GroupState.STATE_ALLOWED;
                 group.setPolicyFixed();
                 skipGroup = true;
@@ -179,9 +184,6 @@ public class GrantPermissionsActivity extends Activity
             } break;
 
             case DevicePolicyManager.PERMISSION_POLICY_AUTO_DENY: {
-                if (group.areRuntimePermissionsGranted()) {
-                    group.revokeRuntimePermissions(false, new String[]{permission});
-                }
                 state.mState = GroupState.STATE_DENIED;
                 group.setPolicyFixed();
                 skipGroup = true;
@@ -628,23 +630,44 @@ public class GrantPermissionsActivity extends Activity
                     }
                 }
 
-                boolean showForegroundChooser = false;
+                // The button doesn't show when its label is null
+                CharSequence[] buttonLabels = new CharSequence[NUM_BUTTONS];
+                buttonLabels[LABEL_ALLOW_BUTTON] = getString(R.string.grant_dialog_button_allow);
+                buttonLabels[LABEL_ALLOW_ALWAYS_BUTTON] = null;
+                buttonLabels[LABEL_ALLOW_FOREGROUND_BUTTON] = null;
+                buttonLabels[LABEL_DENY_BUTTON] = getString(R.string.grant_dialog_button_deny);
+                if (isForegroundPermissionUserSet || isBackgroundPermissionUserSet) {
+                    buttonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] =
+                            getString(R.string.grant_dialog_button_deny_and_dont_ask_again);
+                } else {
+                    buttonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] = null;
+                }
+
                 int messageId;
                 int detailMessageId = 0;
                 if (needForegroundPermission) {
                     messageId = groupState.mGroup.getRequest();
 
                     if (needBackgroundPermission) {
-                        showForegroundChooser = true;
+                        buttonLabels[LABEL_ALLOW_BUTTON] = null;
+                        buttonLabels[LABEL_ALLOW_ALWAYS_BUTTON] =
+                                getString(R.string.grant_dialog_button_allow_always);
+                        buttonLabels[LABEL_ALLOW_FOREGROUND_BUTTON] =
+                                getString(R.string.grant_dialog_button_allow_foreground);
                     } else {
-                        if (foregroundGroupState.mGroup.hasPermissionWithBackgroundMode()) {
-                            detailMessageId = groupState.mGroup.getRequestDetail();
-                        }
+                        detailMessageId = groupState.mGroup.getRequestDetail();
                     }
                 } else {
                     if (needBackgroundPermission) {
                         messageId = groupState.mGroup.getBackgroundRequest();
                         detailMessageId = groupState.mGroup.getBackgroundRequestDetail();
+                        buttonLabels[LABEL_ALLOW_BUTTON] =
+                                getString(R.string.grant_dialog_button_allow_background);
+                        buttonLabels[LABEL_DENY_BUTTON] =
+                                getString(R.string.grant_dialog_button_deny_background);
+                        buttonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] =
+                                getString(R.string
+                                        .grant_dialog_button_deny_background_and_dont_ask_again);
                     } else {
                         // Not reached as the permissions should be auto-granted
                         return false;
@@ -669,8 +692,7 @@ public class GrantPermissionsActivity extends Activity
                 setTitle(message);
 
                 mViewHandler.updateUi(groupState.mGroup.getName(), numGrantRequests, currentIndex,
-                        icon, message, detailMessage, showForegroundChooser,
-                        isForegroundPermissionUserSet || isBackgroundPermissionUserSet);
+                        icon, message, detailMessage, buttonLabels);
 
                 return true;
             }
