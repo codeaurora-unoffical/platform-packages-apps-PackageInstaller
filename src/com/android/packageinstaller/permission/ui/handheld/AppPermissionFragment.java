@@ -178,28 +178,33 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         }
 
         String appLabel = Utils.getFullAppLabel(mGroup.getApp().applicationInfo, context);
-        setHeader(getAppIcon(), appLabel, null);
+        setHeader(getAppIcon(), appLabel, null, false);
         updateHeader(root.requireViewById(R.id.large_header));
 
         ((TextView) root.requireViewById(R.id.permission_message)).setText(
                 context.getString(R.string.app_permission_header, mGroup.getLabel()));
 
         if (Utils.isModernPermissionGroup(mGroup.getName())) {
-            String timeDiffStr = Utils.getRelativeLastUsageString(context,
-                    PermissionUsages.loadLastGroupUsage(context, mGroup));
-            if (timeDiffStr == null) {
+            if (!Utils.shouldShowPermissionUsage(mGroup.getName())) {
                 ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                        context.getString(
-                                R.string.app_permission_footer_no_usages,
-                                appLabel,
-                                mGroup.getLabel().toString().toLowerCase()));
+                        context.getString(R.string.app_permission_footer_not_available));
             } else {
-                ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                        context.getString(
-                                R.string.app_permission_footer_usage_summary,
-                                appLabel,
-                                mGroup.getLabel().toString().toLowerCase(),
-                                timeDiffStr));
+                String timeDiffStr = Utils.getRelativeLastUsageString(context,
+                        PermissionUsages.loadLastGroupUsage(context, mGroup));
+                if (timeDiffStr == null) {
+                    ((TextView) root.requireViewById(R.id.usage_summary)).setText(
+                            context.getString(
+                                    R.string.app_permission_footer_no_usages,
+                                    appLabel,
+                                    mGroup.getLabel().toString().toLowerCase()));
+                } else {
+                    ((TextView) root.requireViewById(R.id.usage_summary)).setText(
+                            context.getString(
+                                    R.string.app_permission_footer_usage_summary,
+                                    appLabel,
+                                    mGroup.getLabel().toString().toLowerCase(),
+                                    timeDiffStr));
+                }
             }
         } else {
             root.requireViewById(R.id.usage_summary).setVisibility(View.GONE);
@@ -237,8 +242,6 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         if (!Utils.isPermissionsHubEnabled()) {
             root.requireViewById(R.id.footer_all).setVisibility(View.GONE);
         }
-
-        updateButtons();
 
         return root;
     }
@@ -293,6 +296,10 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
             ab.setElevation(0);
         }
         ActionBarShadowController.attachToView(activity, getLifecycle(), mNestedScrollView);
+
+        // Re-create the permission group in case permissions have changed and update the UI.
+        createAppPermissionGroup();
+        updateButtons();
     }
 
     @Override
@@ -366,13 +373,7 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         }
 
         // Handle the UI for various special cases.
-        if (mGroup.isGrandfatheredModernStorageGroup()) {
-            mAlwaysButton.setClickable(false);
-            mDenyButton.setClickable(false);
-
-            mRadioGroup.setClickable(true);
-            mRadioGroup.setOnClickListener(v -> showGrandfatheredModernStorageGroupWarningDialog());
-        } else if (isSystemFixed() || isPolicyFullyFixed() || isForegroundDisabledByPolicy()) {
+        if (isSystemFixed() || isPolicyFullyFixed() || isForegroundDisabledByPolicy()) {
             // Disable changing permissions and potentially show administrator message.
             mAlwaysButton.setEnabled(false);
             mForegroundOnlyButton.setEnabled(false);

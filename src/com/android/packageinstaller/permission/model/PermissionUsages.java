@@ -136,6 +136,10 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
         return mUsages;
     }
 
+    public void stopLoader(@NonNull LoaderManager loaderManager) {
+        loaderManager.destroyLoader(1);
+    }
+
     public static @Nullable AppPermissionUsage.GroupUsage loadLastGroupUsage(
             @NonNull Context context, @NonNull AppPermissionGroup group) {
         if (!Utils.isPermissionsHubEnabled()) {
@@ -211,6 +215,9 @@ public final class PermissionUsages implements LoaderCallbacks<List<AppPermissio
                 final PermissionGroup group = groups.get(groupIdx);
                 // Filter out third party permissions
                 if (!group.getDeclaringPackage().equals(Utils.OS_PKG)) {
+                    continue;
+                }
+                if (!Utils.shouldShowPermissionUsage(group.getName())) {
                     continue;
                 }
 
