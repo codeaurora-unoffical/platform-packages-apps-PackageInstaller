@@ -16,24 +16,35 @@
 
 package com.android.packageinstaller.permission.utils;
 
+import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission_group.ACTIVITY_RECOGNITION;
 import static android.Manifest.permission_group.CALENDAR;
 import static android.Manifest.permission_group.CALL_LOG;
 import static android.Manifest.permission_group.CAMERA;
 import static android.Manifest.permission_group.CONTACTS;
 import static android.Manifest.permission_group.LOCATION;
-import static android.Manifest.permission_group.MEDIA_AURAL;
-import static android.Manifest.permission_group.MEDIA_VISUAL;
 import static android.Manifest.permission_group.MICROPHONE;
 import static android.Manifest.permission_group.PHONE;
 import static android.Manifest.permission_group.SENSORS;
 import static android.Manifest.permission_group.SMS;
 import static android.Manifest.permission_group.STORAGE;
+import static android.app.role.RoleManager.ROLE_ASSISTANT;
+import static android.content.Context.MODE_PRIVATE;
+import static android.content.pm.PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_DENIED;
+import static android.content.pm.PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_GRANTED;
+import static android.os.UserHandle.myUserId;
+
+import static com.android.packageinstaller.Constants.ASSISTANT_RECORD_AUDIO_IS_USER_SENSITIVE_KEY;
+import static com.android.packageinstaller.Constants.FORCED_USER_SENSITIVE_UIDS_KEY;
+import static com.android.packageinstaller.Constants.PREFERENCES_FILE;
 
 import android.Manifest;
+import android.app.Application;
+import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
@@ -47,6 +58,7 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Parcelable;
 import android.os.UserHandle;
+import android.os.UserManager;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
 import android.text.Html;
@@ -55,6 +67,7 @@ import android.text.format.DateFormat;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
+import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -66,10 +79,10 @@ import androidx.core.text.BidiFormatter;
 import androidx.core.util.Preconditions;
 
 import com.android.launcher3.icons.IconFactory;
+import com.android.packageinstaller.Constants;
+import com.android.packageinstaller.permission.data.PerUserUidToSensitivityLiveData;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissionUsage;
-import com.android.packageinstaller.permission.model.AppPermissions;
-import com.android.packageinstaller.permission.model.PermissionApps.PermissionApp;
 import com.android.permissioncontroller.R;
 
 import java.util.ArrayList;
@@ -77,6 +90,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public final class Utils {
 
@@ -94,6 +108,10 @@ public final class Utils {
 
     private static final Intent LAUNCHER_INTENT = new Intent(Intent.ACTION_MAIN, null)
             .addCategory(Intent.CATEGORY_LAUNCHER);
+
+    public static final int FLAGS_ALWAYS_USER_SENSITIVE =
+            FLAG_PERMISSION_USER_SENSITIVE_WHEN_GRANTED
+                    | FLAG_PERMISSION_USER_SENSITIVE_WHEN_DENIED;
 
     static {
         PLATFORM_PERMISSIONS = new ArrayMap<>();
@@ -114,12 +132,7 @@ public final class Utils {
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_EXTERNAL_STORAGE, STORAGE);
         PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, STORAGE);
-
-        PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_AUDIO, MEDIA_AURAL);
-
-        PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_IMAGES, MEDIA_VISUAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_VIDEO, MEDIA_VISUAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_MEDIA_LOCATION, MEDIA_VISUAL);
+        PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_MEDIA_LOCATION, STORAGE);
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_FINE_LOCATION, LOCATION);
         PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_COARSE_LOCATION, LOCATION);
@@ -405,6 +418,15 @@ public final class Utils {
     }
 
     /**
+     * Get the names of the platform permissions.
+     *
+     * @return the names of the platform permissions.
+     */
+    public static Set<String> getPlatformPermissions() {
+        return PLATFORM_PERMISSIONS.keySet();
+    }
+
+    /**
      * Should UI show this permission.
      *
      * <p>If the user cannot change the group, it should not be shown.
@@ -454,18 +476,16 @@ public final class Utils {
         return context.getPackageManager().getInstalledApplications(0);
     }
 
-    public static boolean isSystem(PermissionApp app, ArraySet<String> launcherPkgs) {
-        return isSystem(app.getAppInfo(), launcherPkgs);
-    }
-
-    public static boolean isSystem(AppPermissions app, ArraySet<String> launcherPkgs) {
-        return isSystem(app.getPackageInfo().applicationInfo, launcherPkgs);
-    }
-
-    public static boolean isSystem(ApplicationInfo info, ArraySet<String> launcherPkgs) {
-        return ((info.flags & ApplicationInfo.FLAG_SYSTEM) != 0)
-                && (info.flags & ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) == 0
-                && !launcherPkgs.contains(info.packageName);
+    /**
+     * Is the group or background group user sensitive?
+     *
+     * @param group The group that might be user sensitive
+     *
+     * @return {@code true} if the group (or it's subgroup) is user sensitive.
+     */
+    public static boolean isGroupOrBgGroupUserSensitive(AppPermissionGroup group) {
+        return group.isUserSensitive() || (group.getBackgroundPermissions() != null
+                && group.getBackgroundPermissions().isUserSensitive());
     }
 
     public static boolean areGroupPermissionsIndividuallyControlled(Context context, String group) {
@@ -524,7 +544,7 @@ public final class Utils {
      */
     public static @Nullable String getRelativeLastUsageString(@NonNull Context context,
             @Nullable AppPermissionUsage.GroupUsage groupUsage) {
-        if (groupUsage == null) {
+        if (groupUsage == null || groupUsage.getLastAccessTime() == 0) {
             return null;
         }
         return getTimeDiffStr(context, System.currentTimeMillis()
@@ -675,6 +695,47 @@ public final class Utils {
     }
 
     /**
+     * Get a string saying what apps with the given permission group can do.
+     *
+     * @param context The context to use
+     * @param groupName The name of the permission group
+     * @param description The description of the permission group
+     *
+     * @return a string saying what apps with the given permission group can do.
+     */
+    public static @NonNull String getPermissionGroupDescriptionString(@NonNull Context context,
+            @NonNull String groupName, @NonNull CharSequence description) {
+        switch (groupName) {
+            case ACTIVITY_RECOGNITION:
+                return context.getString(
+                        R.string.permission_description_summary_activity_recognition);
+            case CALENDAR:
+                return context.getString(R.string.permission_description_summary_calendar);
+            case CALL_LOG:
+                return context.getString(R.string.permission_description_summary_call_log);
+            case CAMERA:
+                return context.getString(R.string.permission_description_summary_camera);
+            case CONTACTS:
+                return context.getString(R.string.permission_description_summary_contacts);
+            case LOCATION:
+                return context.getString(R.string.permission_description_summary_location);
+            case MICROPHONE:
+                return context.getString(R.string.permission_description_summary_microphone);
+            case PHONE:
+                return context.getString(R.string.permission_description_summary_phone);
+            case SENSORS:
+                return context.getString(R.string.permission_description_summary_sensors);
+            case SMS:
+                return context.getString(R.string.permission_description_summary_sms);
+            case STORAGE:
+                return context.getString(R.string.permission_description_summary_storage);
+            default:
+                return context.getString(R.string.permission_description_summary_generic,
+                        description);
+        }
+    }
+
+    /**
      * Whether the Location Access Check is enabled.
      *
      * @return {@code true} iff the Location Access Check is enabled.
@@ -692,5 +753,133 @@ public final class Utils {
     public static boolean isPermissionsHubEnabled() {
         return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
                 DeviceConfig.Privacy.PROPERTY_PERMISSIONS_HUB_ENABLED));
+    }
+
+    /**
+     * Whether we should show permission usages for the specified permission group.
+     *
+     * @param permissionGroup The name of the permission group.
+     *
+     * @return whether or not to show permission usages for the given permission group.
+     */
+    public static boolean shouldShowPermissionUsage(@NonNull String permissionGroup) {
+        return true;
+    }
+
+    /**
+     * Get a device protected storage based shared preferences. Avoid storing sensitive data in it.
+     *
+     * @param context the context to get the shared preferences
+     * @return a device protected storage based shared preferences
+     */
+    @NonNull
+    public static SharedPreferences getDeviceProtectedSharedPreferences(@NonNull Context context) {
+        if (!context.isDeviceProtectedStorage()) {
+            context = context.createDeviceProtectedStorageContext();
+        }
+        return context.getSharedPreferences(Constants.PREFERENCES_FILE, MODE_PRIVATE);
+    }
+
+    /**
+     * Update the {@link PackageManager#FLAG_PERMISSION_USER_SENSITIVE_WHEN_GRANTED} and
+     * {@link PackageManager#FLAG_PERMISSION_USER_SENSITIVE_WHEN_DENIED} for all apps of this user.
+     *
+     * @see PerUserUidToSensitivityLiveData#loadValueInBackground()
+     */
+    public static void updateUserSensitive(@NonNull Application application,
+            @NonNull UserHandle user) {
+        Context userContext = getParentUserContext(application);
+        PackageManager pm = userContext.getPackageManager();
+        RoleManager rm = userContext.getSystemService(RoleManager.class);
+        SharedPreferences prefs = userContext.getSharedPreferences(PREFERENCES_FILE, MODE_PRIVATE);
+
+        boolean showAssistantRecordAudio = prefs.getBoolean(
+                ASSISTANT_RECORD_AUDIO_IS_USER_SENSITIVE_KEY, false);
+        Set<String> overriddenUids = prefs.getStringSet(FORCED_USER_SENSITIVE_UIDS_KEY,
+                Collections.emptySet());
+
+        List<String> assistants = rm.getRoleHolders(ROLE_ASSISTANT);
+        String assistant = null;
+        if (!assistants.isEmpty()) {
+            if (assistants.size() > 1) {
+                Log.wtf(LOG_TAG, "Assistant role is not exclusive");
+            }
+
+            // Assistant is an exclusive role
+            assistant = assistants.get(0);
+        }
+
+        PerUserUidToSensitivityLiveData appUserSensitivityLiveData =
+                PerUserUidToSensitivityLiveData.get(user, application);
+
+        // uid -> permission -> flags
+        SparseArray<ArrayMap<String, Integer>> uidUserSensitivity =
+                appUserSensitivityLiveData.loadValueInBackground();
+
+        // Apply the update
+        int numUids = uidUserSensitivity.size();
+        for (int uidNum = 0; uidNum < numUids; uidNum++) {
+            int uid = uidUserSensitivity.keyAt(uidNum);
+
+            String[] uidPkgs = pm.getPackagesForUid(uid);
+            if (uidPkgs == null) {
+                continue;
+            }
+
+            boolean isOverridden = overriddenUids.contains(String.valueOf(uid));
+            boolean isAssistantUid = ArrayUtils.contains(uidPkgs, assistant);
+
+            ArrayMap<String, Integer> uidPermissions = uidUserSensitivity.valueAt(uidNum);
+
+            int numPerms = uidPermissions.size();
+            for (int permNum = 0; permNum < numPerms; permNum++) {
+                String perm = uidPermissions.keyAt(permNum);
+
+                for (String uidPkg : uidPkgs) {
+                    int flags = isOverridden ? FLAGS_ALWAYS_USER_SENSITIVE : uidPermissions.valueAt(
+                            permNum);
+
+                    if (isAssistantUid && perm.equals(RECORD_AUDIO)) {
+                        flags = showAssistantRecordAudio ? FLAGS_ALWAYS_USER_SENSITIVE : 0;
+                    }
+
+                    try {
+                        pm.updatePermissionFlags(perm, uidPkg, FLAGS_ALWAYS_USER_SENSITIVE, flags,
+                                user);
+                        break;
+                    } catch (IllegalArgumentException e) {
+                        Log.e(LOG_TAG, "Unexpected exception while updating flags for "
+                                + uidPkg + " permission " + perm, e);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Get context of the parent user of the profile group (i.e. usually the 'personal' profile,
+     * not the 'work' profile).
+     *
+     * @param context The context of a user of the profile user group.
+     *
+     * @return The context of the parent user
+     */
+    public static Context getParentUserContext(@NonNull Context context) {
+        UserHandle parentUser = getSystemServiceSafe(context, UserManager.class)
+                .getProfileParent(UserHandle.of(myUserId()));
+
+        if (parentUser == null) {
+            return context;
+        }
+
+        // In a multi profile environment perform all operations as the parent user of the
+        // current profile
+        try {
+            return context.createPackageContextAsUser(context.getPackageName(), 0,
+                    parentUser);
+        } catch (PackageManager.NameNotFoundException e) {
+            // cannot happen
+            throw new IllegalStateException("Could not switch to parent user " + parentUser, e);
+        }
     }
 }

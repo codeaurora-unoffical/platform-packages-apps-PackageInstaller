@@ -16,15 +16,17 @@
 
 package com.android.packageinstaller.permission.model;
 
+import android.app.AppOpsManager;
 import android.app.AppOpsManager.HistoricalOp;
 import android.app.AppOpsManager.HistoricalPackageOps;
 import android.app.AppOpsManager.OpEntry;
-
 import android.app.AppOpsManager.PackageOps;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+
 import com.android.packageinstaller.permission.model.PermissionApps.PermissionApp;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -104,7 +106,66 @@ public final class AppPermissionUsage {
             if (mLastUsage == null) {
                 return 0;
             }
-            long lastAccessTime = 0;
+            return lastAccessAggregate(
+                    (op) -> op.getLastAccessTime(AppOpsManager.OP_FLAGS_ALL_TRUSTED));
+        }
+
+        public long getLastAccessForegroundTime() {
+            if (mLastUsage == null) {
+                return 0;
+            }
+            return lastAccessAggregate(
+                    (op) -> op.getLastAccessForegroundTime(AppOpsManager.OP_FLAGS_ALL_TRUSTED));
+        }
+
+        public long getLastAccessBackgroundTime() {
+            if (mLastUsage == null) {
+                return 0;
+            }
+            return lastAccessAggregate(
+                    (op) -> op.getLastAccessBackgroundTime(AppOpsManager.OP_FLAGS_ALL_TRUSTED));
+        }
+
+        public long getForegroundAccessCount() {
+            if (mHistoricalUsage == null) {
+                return 0;
+            }
+            return extractAggregate((HistoricalOp op)
+                    -> op.getForegroundAccessCount(AppOpsManager.OP_FLAGS_ALL_TRUSTED));
+        }
+
+        public long getBackgroundAccessCount() {
+            if (mHistoricalUsage == null) {
+                return 0;
+            }
+            return extractAggregate((HistoricalOp op)
+                    -> op.getBackgroundAccessCount(AppOpsManager.OP_FLAGS_ALL_TRUSTED));
+        }
+
+        public long getAccessCount() {
+            if (mHistoricalUsage == null) {
+                return 0;
+            }
+            return extractAggregate((HistoricalOp op) ->
+                op.getForegroundAccessCount(AppOpsManager.OP_FLAGS_ALL_TRUSTED)
+                        + op.getBackgroundAccessCount(AppOpsManager.OP_FLAGS_ALL_TRUSTED)
+            );
+        }
+
+        public long getAccessDuration() {
+            if (mHistoricalUsage == null) {
+                return 0;
+            }
+            return extractAggregate((HistoricalOp op) ->
+                    op.getForegroundAccessDuration(AppOpsManager.OP_FLAGS_ALL_TRUSTED)
+                            + op.getBackgroundAccessDuration(AppOpsManager.OP_FLAGS_ALL_TRUSTED)
+            );
+        }
+
+        public boolean isRunning() {
+            if (mLastUsage == null) {
+                return false;
+            }
             final ArrayList<Permission> permissions = mGroup.getPermissions();
             final int permissionCount = permissions.size();
             for (int i = 0; i < permissionCount; i++) {
@@ -114,45 +175,12 @@ public final class AppPermissionUsage {
                 final int opCount = ops.size();
                 for (int j = 0; j < opCount; j++) {
                     final OpEntry op = ops.get(j);
-                    if (op.getOpStr().equals(opName)) {
-                        lastAccessTime = Math.max(lastAccessTime, op.getLastAccessTime());
+                    if (op.getOpStr().equals(opName) && op.isRunning()) {
+                        return true;
                     }
                 }
             }
-            return lastAccessTime;
-        }
-
-
-        public long getForegroundAccessCount() {
-            if (mHistoricalUsage == null) {
-                return 0;
-            }
-            return extractAggregate(HistoricalOp::getForegroundAccessCount);
-        }
-
-        public long getBackgroundAccessCount() {
-            if (mHistoricalUsage == null) {
-                return 0;
-            }
-            return extractAggregate(HistoricalOp::getBackgroundAccessCount);
-        }
-
-        public long getAccessCount() {
-            if (mHistoricalUsage == null) {
-                return 0;
-            }
-            return extractAggregate((HistoricalOp op) ->
-                op.getForegroundAccessCount() + op.getBackgroundAccessCount()
-            );
-        }
-
-        public long getAccessDuration() {
-            if (mHistoricalUsage == null) {
-                return 0;
-            }
-            return extractAggregate((HistoricalOp op) ->
-                    op.getForegroundAccessDuration() + op.getBackgroundAccessDuration()
-            );
+            return false;
         }
 
         private long extractAggregate(@NonNull Function<HistoricalOp, Long> extractor) {
@@ -165,6 +193,25 @@ public final class AppPermissionUsage {
                 final HistoricalOp historicalOp = mHistoricalUsage.getOp(opName);
                 if (historicalOp != null) {
                     aggregate += extractor.apply(historicalOp);
+                }
+            }
+            return aggregate;
+        }
+
+        private long lastAccessAggregate(@NonNull Function<OpEntry, Long> extractor) {
+            long aggregate = 0;
+            final ArrayList<Permission> permissions = mGroup.getPermissions();
+            final int permissionCount = permissions.size();
+            for (int permissionNum = 0; permissionNum < permissionCount; permissionNum++) {
+                final Permission permission = permissions.get(permissionNum);
+                final String opName = permission.getAppOp();
+                final List<OpEntry> ops = mLastUsage.getOps();
+                final int opCount = ops.size();
+                for (int opNum = 0; opNum < opCount; opNum++) {
+                    final OpEntry op = ops.get(opNum);
+                    if (op.getOpStr().equals(opName)) {
+                        aggregate = Math.max(aggregate, extractor.apply(op));
+                    }
                 }
             }
             return aggregate;
@@ -200,8 +247,7 @@ public final class AppPermissionUsage {
             return this;
         }
 
-        public @NonNull
-        AppPermissionUsage build() {
+        public @NonNull AppPermissionUsage build() {
             if (mGroups.isEmpty()) {
                 throw new IllegalStateException("mGroups cannot be empty.");
             }
