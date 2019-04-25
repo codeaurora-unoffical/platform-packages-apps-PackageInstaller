@@ -32,6 +32,8 @@ import static android.app.role.RoleManager.ROLE_ASSISTANT;
 import static android.content.Context.MODE_PRIVATE;
 import static android.content.pm.PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_DENIED;
 import static android.content.pm.PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_GRANTED;
+import static android.content.pm.PackageManager.MATCH_DIRECT_BOOT_AWARE;
+import static android.content.pm.PackageManager.MATCH_DIRECT_BOOT_UNAWARE;
 import static android.os.UserHandle.myUserId;
 
 import static com.android.packageinstaller.Constants.ASSISTANT_RECORD_AUDIO_IS_USER_SENSITIVE_KEY;
@@ -99,6 +101,19 @@ public final class Utils {
     public static final String OS_PKG = "android";
 
     public static final float DEFAULT_MAX_LABEL_SIZE_PX = 500f;
+
+    /** Whether to show the Permissions Hub. */
+    private static final String PROPERTY_PERMISSIONS_HUB_ENABLED = "permissions_hub_enabled";
+
+    /** Whether to show location access check notifications. */
+    private static final String PROPERTY_LOCATION_ACCESS_CHECK_ENABLED =
+            "location_access_check_enabled";
+
+    /** All permission whitelists. */
+    public static final int FLAGS_PERMISSION_WHITELIST_ALL =
+            PackageManager.FLAG_PERMISSION_WHITELIST_SYSTEM
+                    | PackageManager.FLAG_PERMISSION_WHITELIST_UPGRADE
+                    | PackageManager.FLAG_PERMISSION_WHITELIST_INSTALLER;
 
     /** Mapping permission -> group for all dangerous platform permissions */
     private static final ArrayMap<String, String> PLATFORM_PERMISSIONS;
@@ -247,6 +262,19 @@ public final class Utils {
     }
 
     /**
+     * Get the names for all platform permissions belonging to a group.
+     *
+     * @param group the group
+     *
+     * @return The permission names  or an empty list if the
+     *         group is not does not have platform runtime permissions
+     */
+    public static @NonNull List<String> getPlatformPermissionNamesOfGroup(@NonNull String group) {
+        final ArrayList<String> permissions = PLATFORM_PERMISSION_GROUPS.get(group);
+        return (permissions != null) ? permissions : Collections.emptyList();
+    }
+
+    /**
      * Get the {@link PermissionInfo infos} for all platform permissions belonging to a group.
      *
      * @param pm    Package manager to use to resolve permission infos
@@ -293,7 +321,7 @@ public final class Utils {
             @NonNull PackageManager pm, @NonNull String group)
             throws PackageManager.NameNotFoundException {
         List<PermissionInfo> permissions = pm.queryPermissionsByGroup(group, 0);
-        permissions.addAll(Utils.getPlatformPermissionsOfGroup(pm, group));
+        permissions.addAll(getPlatformPermissionsOfGroup(pm, group));
 
         return permissions;
     }
@@ -464,8 +492,8 @@ public final class Utils {
 
     public static ArraySet<String> getLauncherPackages(Context context) {
         ArraySet<String> launcherPkgs = new ArraySet<>();
-        for (ResolveInfo info :
-            context.getPackageManager().queryIntentActivities(LAUNCHER_INTENT, 0)) {
+        for (ResolveInfo info : context.getPackageManager().queryIntentActivities(LAUNCHER_INTENT,
+                MATCH_DIRECT_BOOT_AWARE | MATCH_DIRECT_BOOT_UNAWARE)) {
             launcherPkgs.add(info.activityInfo.packageName);
         }
 
@@ -741,8 +769,8 @@ public final class Utils {
      * @return {@code true} iff the Location Access Check is enabled.
      */
     public static boolean isLocationAccessCheckEnabled() {
-        return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
-                DeviceConfig.Privacy.PROPERTY_LOCATION_ACCESS_CHECK_ENABLED));
+        return DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_PRIVACY,
+                PROPERTY_LOCATION_ACCESS_CHECK_ENABLED, false);
     }
 
     /**
@@ -751,8 +779,8 @@ public final class Utils {
      * @return whether the Permissions Hub is enabled.
      */
     public static boolean isPermissionsHubEnabled() {
-        return Boolean.parseBoolean(DeviceConfig.getProperty(DeviceConfig.Privacy.NAMESPACE,
-                DeviceConfig.Privacy.PROPERTY_PERMISSIONS_HUB_ENABLED));
+        return DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_PRIVACY,
+                PROPERTY_PERMISSIONS_HUB_ENABLED, false);
     }
 
     /**
