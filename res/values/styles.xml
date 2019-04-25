@@ -144,6 +144,12 @@
         <item name="android:layout_marginEnd">8dp</item>
     </style>
 
+    <style name="PermissionReviewSwitchStyle"
+           parent="@android:style/Widget.Material.CompoundButton.Switch">
+        <item name="android:minWidth">48dp</item>
+        <item name="android:minHeight">48dp</item>
+    </style>
+
     <style name="PermissionReviewButtonBar">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
@@ -241,6 +247,16 @@
         <item name="android:layout_height">wrap_content</item>
         <item name="android:orientation">vertical</item>
         <item name="android:gravity">center</item>
+    </style>
+
+    <style name="LargeHeaderText">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">16dp</item>
+        <item name="android:gravity">center_horizontal</item>
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+        <item name="android:paddingStart">48dp</item>
+        <item name="android:paddingEnd">48dp</item>
     </style>
 
     <style name="LargeHeaderLink"
@@ -445,8 +461,10 @@
     </style>
 
     <style name="PreferenceUsageImageFrame">
-        <item name="android:layout_width">48dp</item>
-        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:maxWidth">48dp</item>
+        <item name="android:maxHeight">48dp</item>
         <item name="android:gravity">center</item>
     </style>
 
@@ -517,34 +535,6 @@
     </style>
 
     <!-- END LOADING CONTAINER -->
-
-    <!-- START GRANDFATHERED MODERN STORAGE GROUP WARNING DIALOG -->
-
-    <style name="GrandfatheredModernStorageGroupWarningDialogHeader">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:orientation">vertical</item>
-        <item name="android:gravity">center</item>
-        <item name="android:paddingTop">16dp</item>
-        <item name="android:paddingStart">24dp</item>
-        <item name="android:paddingEnd">24dp</item>
-    </style>
-
-    <style name="GrandfatheredModernStorageGroupWarningDialogTitleIcon">
-        <item name="android:layout_width">24dp</item>
-        <item name="android:layout_height">24dp</item>
-        <item name="android:layout_marginBottom">12dp</item>
-        <item name="android:scaleType">fitCenter</item>
-    </style>
-
-    <style name="GrandfatheredModernStorageGroupWarningDialogTitleMessage"
-           parent="@android:style/TextAppearance.DeviceDefault.DialogWindowTitle">
-        <item name="android:layout_width">match_parent</item>
-        <item name="android:layout_height">wrap_content</item>
-        <item name="android:gravity">center</item>
-    </style>
-
-    <!-- END GRANDFATHERED MODERN STORAGE GROUP WARNING DIALOG -->
 
     <!-- START ONGOING USAGE DIALOG -->
 
@@ -629,6 +619,8 @@
     <!-- START REQUEST ROLE DIALOG TITLE -->
 
     <style name="RequestRoleTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
         <item name="android:paddingStart">?android:dialogPreferredPadding</item>
         <item name="android:paddingEnd">?android:dialogPreferredPadding</item>
         <item name="android:paddingTop">18dp</item>
@@ -654,11 +646,12 @@
     <!-- START REQUEST ROLE DIALOG ITEM -->
 
     <style name="RequestRoleItem">
-        <item name="android:paddingStart">?android:dialogPreferredPadding</item>
-        <item name="android:paddingEnd">?android:dialogPreferredPadding</item>
-        <item name="android:paddingTop">18dp</item>
-        <item name="android:gravity">center_horizontal</item>
-        <item name="android:orientation">vertical</item>
+        <item name="android:minHeight">?android:listPreferredItemHeight</item>
+        <item name="android:paddingStart">?android:listPreferredItemPaddingStart</item>
+        <item name="android:paddingEnd">?android:listPreferredItemPaddingEnd</item>
+        <item name="android:clipChildren">false</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
     </style>
 
     <style name="RequestRoleItemIcon">
@@ -698,6 +691,27 @@
     </style>
 
     <!-- END REQUEST ROLE DIALOG ITEM -->
+
+    <!-- START REQUEST ROLE VIEW -->
+
+    <style name="RequestRoleView">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingStart">?android:dialogPreferredPadding</item>
+        <item name="android:paddingEnd">?android:dialogPreferredPadding</item>
+        <item name="android:clipChildren">false</item>
+        <item name="android:clipToPadding">false</item>
+    </style>
+
+    <style name="RequestRoleViewCheckbox">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:minHeight">?android:listPreferredItemHeightSmall</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:textAppearance">@style/android:TextAppearance.Material.Subhead</item>
+    </style>
+
+    <!-- END REQUEST ROLE VIEW -->
 
     <!-- START SETTINGS BUTTON PREFERENCE WIDGET -->
 
