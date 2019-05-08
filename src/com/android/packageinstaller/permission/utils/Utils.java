@@ -552,7 +552,12 @@ public final class Utils {
      */
     public static CharSequence getRequestMessage(CharSequence appLabel, AppPermissionGroup group,
             Context context, @StringRes int requestRes) {
-        if (requestRes != 0) {
+        if (group.getName().equals(STORAGE) && !group.isNonIsolatedStorage()) {
+            return Html.fromHtml(
+                    String.format(context.getResources().getConfiguration().getLocales().get(0),
+                            context.getString(R.string.permgrouprequest_storage_isolated),
+                            appLabel), 0);
+        } else if (requestRes != 0) {
             try {
                 return Html.fromHtml(context.getPackageManager().getResourcesForApplication(
                         group.getDeclaringPackage()).getString(requestRes, appLabel), 0);
@@ -770,7 +775,7 @@ public final class Utils {
      */
     public static boolean isLocationAccessCheckEnabled() {
         return DeviceConfig.getBoolean(DeviceConfig.NAMESPACE_PRIVACY,
-                PROPERTY_LOCATION_ACCESS_CHECK_ENABLED, false);
+                PROPERTY_LOCATION_ACCESS_CHECK_ENABLED, true);
     }
 
     /**
@@ -791,7 +796,7 @@ public final class Utils {
      * @return whether or not to show permission usages for the given permission group.
      */
     public static boolean shouldShowPermissionUsage(@NonNull String permissionGroup) {
-        return true;
+        return !permissionGroup.equals(STORAGE);
     }
 
     /**
