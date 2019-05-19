@@ -18,14 +18,10 @@ package com.android.packageinstaller.permission.model;
 
 import static android.Manifest.permission.ACCESS_BACKGROUND_LOCATION;
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
-import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
-import static android.Manifest.permission.READ_MEDIA_AUDIO;
-import static android.Manifest.permission.READ_MEDIA_IMAGES;
-import static android.Manifest.permission.READ_MEDIA_VIDEO;
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 import static android.app.AppOpsManager.MODE_ALLOWED;
 import static android.app.AppOpsManager.MODE_FOREGROUND;
 import static android.app.AppOpsManager.MODE_IGNORED;
+import static android.app.AppOpsManager.OPSTR_LEGACY_STORAGE;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 
 import android.app.ActivityManager;
@@ -39,9 +35,7 @@ import android.content.pm.PermissionGroupInfo;
 import android.content.pm.PermissionInfo;
 import android.os.Build;
 import android.os.UserHandle;
-import android.os.storage.StorageManager;
 import android.permission.PermissionManager;
-import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.ArrayMap;
 import android.util.Log;
@@ -50,6 +44,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 
+import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.permission.service.LocationAccessCheck;
 import com.android.packageinstaller.permission.utils.ArrayUtils;
 import com.android.packageinstaller.permission.utils.LocationUtils;
@@ -59,6 +54,7 @@ import com.android.permissioncontroller.R;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * All permissions of a permission group that are requested by an app.
@@ -110,6 +106,7 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
 
     private final boolean mAppSupportsRuntimePermissions;
     private final boolean mIsEphemeralApp;
+    private final boolean mIsNonIsolatedStorage;
     private boolean mContainsEphemeralPermission;
     private boolean mContainsPreRuntimePermission;
 
@@ -188,6 +185,31 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
      */
     public static AppPermissionGroup create(Context context, PackageInfo packageInfo,
             PackageItemInfo groupInfo, List<PermissionInfo> permissionInfos, boolean delayChanges) {
+        PackageManager packageManager = context.getPackageManager();
+        CharSequence groupLabel = groupInfo.loadLabel(packageManager);
+        CharSequence fullGroupLabel = groupInfo.loadSafeLabel(packageManager, 0,
+                TextUtils.SAFE_STRING_FLAG_TRIM | TextUtils.SAFE_STRING_FLAG_FIRST_LINE);
+        return create(context, packageInfo, groupInfo, permissionInfos, groupLabel,
+                fullGroupLabel, delayChanges);
+    }
+
+    /**
+     * Create the app permission group.
+     *
+     * @param context the {@code Context} to retrieve system services.
+     * @param packageInfo package information about the app.
+     * @param groupInfo the information about the group created.
+     * @param permissionInfos the information about the permissions belonging to the group.
+     * @param groupLabel the label of the group.
+     * @param fullGroupLabel the untruncated label of the group.
+     * @param delayChanges whether to delay changes until {@link #persistChanges} is called.
+     *
+     * @return the AppPermissionGroup.
+     */
+    public static AppPermissionGroup create(Context context, PackageInfo packageInfo,
+            PackageItemInfo groupInfo, List<PermissionInfo> permissionInfos,
+            CharSequence groupLabel, CharSequence fullGroupLabel, boolean delayChanges) {
+        PackageManager packageManager = context.getPackageManager();
         UserHandle userHandle = UserHandle.getUserHandleForUid(packageInfo.applicationInfo.uid);
 
         if (groupInfo instanceof PermissionInfo) {
@@ -199,20 +221,18 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
             return null;
         }
 
-        CharSequence groupLabel = groupInfo.loadLabel(context.getPackageManager());
-        String[] permissionNames = new String[permissionInfos.size()];
-        int numPermissionInfos = permissionInfos.size();
-        for (int i = 0; i < numPermissionInfos; i++) {
-            permissionNames[i] = permissionInfos.get(i).name;
-        }
-        CharSequence fullGroupLabel = groupInfo.loadSafeLabel(context.getPackageManager(), 0,
-                TextUtils.SAFE_STRING_FLAG_TRIM | TextUtils.SAFE_STRING_FLAG_FIRST_LINE);
+        AppOpsManager appOpsManager = context.getSystemService(AppOpsManager.class);
+
         AppPermissionGroup group = new AppPermissionGroup(context, packageInfo, groupInfo.name,
                 groupInfo.packageName, groupLabel, fullGroupLabel,
-                loadGroupDescription(context, groupInfo), getRequest(groupInfo),
+                loadGroupDescription(context, groupInfo, packageManager), getRequest(groupInfo),
                 getRequestDetail(groupInfo), getBackgroundRequest(groupInfo),
                 getBackgroundRequestDetail(groupInfo), groupInfo.packageName, groupInfo.icon,
-                userHandle, delayChanges);
+                userHandle, delayChanges, appOpsManager);
+
+        final Set<String> whitelistedRestrictedPermissions = context.getPackageManager()
+                .getWhitelistedRestrictedPermissions(packageInfo.packageName,
+                        Utils.FLAGS_PERMISSION_WHITELIST_ALL);
 
         // Parse and create permissions reqested by the app
         ArrayMap<String, Permission> allPermissions = new ArrayMap<>();
@@ -257,12 +277,12 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
             if (appOp == null) {
                 appOpAllowed = false;
             } else {
-                int appOpsMode = context.getSystemService(AppOpsManager.class).unsafeCheckOpRaw(
-                        appOp, packageInfo.applicationInfo.uid, packageName);
+                int appOpsMode = appOpsManager.unsafeCheckOpRaw(appOp,
+                        packageInfo.applicationInfo.uid, packageName);
                 appOpAllowed = appOpsMode == MODE_ALLOWED || appOpsMode == MODE_FOREGROUND;
             }
 
-            final int flags = context.getPackageManager().getPermissionFlags(
+            final int flags = packageManager.getPermissionFlags(
                     requestedPermission, packageName, userHandle);
 
             Permission permission = new Permission(requestedPermission, requestedPermissionInfo,
@@ -317,26 +337,21 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                             group.getRequest(), group.getRequestDetail(),
                             group.getBackgroundRequest(), group.getBackgroundRequestDetail(),
                             group.getIconPkg(), group.getIconResId(), group.getUser(),
-                            delayChanges);
+                            delayChanges, appOpsManager);
                 }
 
                 group.getBackgroundPermissions().addPermission(permission);
             } else {
-                boolean smsAccessRestrictionEnabled = Settings.Global.getInt(
-                        group.mContext.getContentResolver(),
-                        Settings.Global.SMS_ACCESS_RESTRICTION_ENABLED, 0) == 1;
-                if (!smsAccessRestrictionEnabled) {
+                if (!Constants.RESTRICTED_PERMISSIONS_ENABLED
+                        || (!permission.isHardRestricted()
+                            || whitelistedRestrictedPermissions.contains(permission.getName()))) {
                     group.addPermission(permission);
-                } else {
-                    String appOp = permission.getAppOp();
-                    boolean appOpDefault = appOp != null && group.mAppOps.unsafeCheckOpNoThrow(
-                            appOp, packageInfo.applicationInfo.uid, packageName)
-                            == AppOpsManager.MODE_DEFAULT;
-                    if (!appOpDefault) {
-                        group.addPermission(permission);
-                    }
                 }
             }
+        }
+
+        if (group.getPermissions().isEmpty()) {
+            return null;
         }
 
         return group;
@@ -352,14 +367,13 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         }
     }
 
-    private static CharSequence loadGroupDescription(Context context, PackageItemInfo group) {
+    private static CharSequence loadGroupDescription(Context context, PackageItemInfo group,
+                                                     @NonNull PackageManager packageManager) {
         CharSequence description = null;
         if (group instanceof PermissionGroupInfo) {
-            description = ((PermissionGroupInfo) group).loadDescription(
-                    context.getPackageManager());
+            description = ((PermissionGroupInfo) group).loadDescription(packageManager);
         } else if (group instanceof PermissionInfo) {
-            description = ((PermissionInfo) group).loadDescription(
-                    context.getPackageManager());
+            description = ((PermissionInfo) group).loadDescription(packageManager);
         }
 
         if (description == null || description.length() <= 0) {
@@ -373,16 +387,17 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
             String declaringPackage, CharSequence label, CharSequence fullLabel,
             CharSequence description, @StringRes int request, @StringRes int requestDetail,
             @StringRes int backgroundRequest, @StringRes int backgroundRequestDetail,
-            String iconPkg, int iconResId,
-            UserHandle userHandle, boolean delayChanges) {
+            String iconPkg, int iconResId, UserHandle userHandle, boolean delayChanges,
+            @NonNull AppOpsManager appOpsManager) {
+        int targetSDK = packageInfo.applicationInfo.targetSdkVersion;
+
         mContext = context;
         mUserHandle = userHandle;
         mPackageManager = mContext.getPackageManager();
         mPackageInfo = packageInfo;
-        mAppSupportsRuntimePermissions = packageInfo.applicationInfo
-                .targetSdkVersion > Build.VERSION_CODES.LOLLIPOP_MR1;
+        mAppSupportsRuntimePermissions = targetSDK > Build.VERSION_CODES.LOLLIPOP_MR1;
         mIsEphemeralApp = packageInfo.applicationInfo.isInstantApp();
-        mAppOps = context.getSystemService(AppOpsManager.class);
+        mAppOps = appOpsManager;
         mActivityManager = context.getSystemService(ActivityManager.class);
         mDeclaringPackage = declaringPackage;
         mName = name;
@@ -403,6 +418,9 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
             mIconPkg = context.getPackageName();
             mIconResId = R.drawable.ic_perm_device_info;
         }
+
+        mIsNonIsolatedStorage = mAppOps.unsafeCheckOpNoThrow(OPSTR_LEGACY_STORAGE,
+                        packageInfo.applicationInfo.uid, packageInfo.packageName) == MODE_ALLOWED;
     }
 
     public boolean doesSupportRuntimePermissions() {
@@ -422,6 +440,22 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         for (int i = 0; i < permissionCount; i++) {
             Permission permission = mPermissions.valueAt(i);
             if (permission.isReviewRequired()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Are any of the permissions in this group user sensitive.
+     *
+     * @return {@code true} if any of the permissions in the group is user sensitive.
+     */
+    public boolean isUserSensitive() {
+        final int permissionCount = mPermissions.size();
+        for (int i = 0; i < permissionCount; i++) {
+            Permission permission = mPermissions.valueAt(i);
+            if (permission.isUserSensitive()) {
                 return true;
             }
         }
@@ -607,7 +641,7 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         // the controller package itself.
         if (LocationUtils.isLocationGroupAndControllerExtraPackage(
                 mContext, mName, mPackageInfo.packageName)) {
-            return LocationUtils.isLocationControllerExtraPackageEnabled(mContext);
+            return LocationUtils.isExtraLocationControllerPackageEnabled(mContext);
         }
         final int permissionCount = mPermissions.size();
         for (int i = 0; i < permissionCount; i++) {
@@ -1039,6 +1073,17 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
     }
 
     /**
+     * Is the group a storage permission group that is referring to an app that does not have
+     * isolated storage
+     *
+     * @return {@code true} iff this is a storage group on an app that does not have isolated
+     * storage
+     */
+    public boolean isNonIsolatedStorage() {
+        return mIsNonIsolatedStorage;
+    }
+
+    /**
      * Whether this is group that contains all the background permission for regular permission
      * group.
      *
@@ -1170,7 +1215,6 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
 
         int numPermissions = mPermissions.size();
         boolean shouldKillApp = false;
-        boolean shouldUpdateStorage = false;
 
         for (int i = 0; i < numPermissions; i++) {
             Permission permission = mPermissions.valueAt(i);
@@ -1216,50 +1260,6 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
                         shouldKillApp |= allowAppOp(permission, uid);
                     } else {
                         shouldKillApp |= disallowAppOp(permission, uid);
-                    }
-                }
-            }
-
-            switch (permission.getName()) {
-                case READ_MEDIA_AUDIO:
-                case READ_MEDIA_VIDEO:
-                case READ_MEDIA_IMAGES:
-                    shouldUpdateStorage = true;
-                    break;
-            }
-        }
-
-        // Starting in Q, the legacy "Storage" permission has been split into
-        // new strongly-typed runtime permissions. When older apps request
-        // the "Storage" permission, we already translate that into requests for
-        // the new split permissions, but those older apps may be confused if
-        // the legacy permission isn't actually granted. Thus, as a special
-        // case, whenever any of the new split permissions are granted to an
-        // app, we also grant them the legacy "Storage" permission.
-        if (StorageManager.hasIsolatedStorage() && shouldUpdateStorage) {
-            boolean audioGranted = mContext.checkPermission(READ_MEDIA_AUDIO,
-                    -1, uid) == PERMISSION_GRANTED;
-            boolean videoGranted = mContext.checkPermission(READ_MEDIA_VIDEO,
-                    -1, uid) == PERMISSION_GRANTED;
-            boolean imagesGranted = mContext.checkPermission(READ_MEDIA_IMAGES,
-                    -1, uid) == PERMISSION_GRANTED;
-
-            if (!ArrayUtils.isEmpty(mPackageInfo.requestedPermissions)) {
-                for (String permission : mPackageInfo.requestedPermissions) {
-                    if (READ_EXTERNAL_STORAGE.equals(permission)
-                            || WRITE_EXTERNAL_STORAGE.equals(permission)) {
-                        if (audioGranted || videoGranted || imagesGranted) {
-                            mPackageManager.grantRuntimePermission(mPackageInfo.packageName,
-                                    permission, mUserHandle);
-                        } else {
-                            boolean isCurrentlyGranted = mContext.checkPermission(permission, -1,
-                                    uid) == PERMISSION_GRANTED;
-
-                            if (isCurrentlyGranted) {
-                                mPackageManager.revokeRuntimePermission(mPackageInfo.packageName,
-                                        permission, mUserHandle);
-                            }
-                        }
                     }
                 }
             }

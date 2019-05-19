@@ -18,6 +18,7 @@ package com.android.packageinstaller.permission.ui.handheld;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
+import android.Manifest;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -71,7 +72,7 @@ import java.util.List;
  *
  * <p>Allows the user to control whether the app is granted the permission.
  */
-public class AppPermissionFragment extends SettingsWithButtonHeader {
+public class AppPermissionFragment extends SettingsWithLargeHeader {
     private static final String LOG_TAG = "AppPermissionFragment";
 
     @Retention(SOURCE)
@@ -110,11 +111,15 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
      * @return A new fragment
      */
     public static @NonNull AppPermissionFragment newInstance(@NonNull String packageName,
-            @NonNull String permissionName, @NonNull UserHandle userHandle) {
+            @NonNull String permName, @Nullable String groupName, @NonNull UserHandle userHandle) {
         AppPermissionFragment fragment = new AppPermissionFragment();
         Bundle arguments = new Bundle();
         arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
-        arguments.putString(Intent.EXTRA_PERMISSION_NAME, permissionName);
+        if (groupName == null) {
+            arguments.putString(Intent.EXTRA_PERMISSION_NAME, permName);
+        } else {
+            arguments.putString(Intent.EXTRA_PERMISSION_GROUP_NAME, groupName);
+        }
         arguments.putParcelable(Intent.EXTRA_USER, userHandle);
         fragment.setArguments(arguments);
         return fragment;
@@ -145,7 +150,10 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
         Context context = getPreferenceManager().getContext();
 
         String packageName = getArguments().getString(Intent.EXTRA_PACKAGE_NAME);
-        String groupName = getArguments().getString(Intent.EXTRA_PERMISSION_NAME);
+        String groupName = getArguments().getString(Intent.EXTRA_PERMISSION_GROUP_NAME);
+        if (groupName == null) {
+            groupName = getArguments().getString(Intent.EXTRA_PERMISSION_NAME);
+        }
         PackageItemInfo groupInfo = Utils.getGroupInfo(groupName, context);
         List<PermissionInfo> groupPermInfos = Utils.getGroupPermissionInfos(groupName, context);
         if (groupInfo == null || groupPermInfos == null) {
@@ -178,34 +186,40 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
         }
 
         String appLabel = Utils.getFullAppLabel(mGroup.getApp().applicationInfo, context);
-        setHeader(getAppIcon(), appLabel, true);
-        updateHeader(root.requireViewById(R.id.button_header), true);
+        setHeader(getAppIcon(), appLabel, null, false);
+        updateHeader(root.requireViewById(R.id.large_header));
 
         ((TextView) root.requireViewById(R.id.permission_message)).setText(
-                context.getString(R.string.app_permission_header, mGroup.getLabel(), appLabel));
+                context.getString(R.string.app_permission_header, mGroup.getLabel()));
 
-        String timeDiffStr = Utils.getRelativeLastUsageString(context,
-                PermissionUsages.loadLastGroupUsage(context, mGroup));
-        if (timeDiffStr == null) {
-            ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                    context.getString(
-                            R.string.app_permission_footer_no_usages,
-                            appLabel,
-                            mGroup.getLabel().toString().toLowerCase()));
+        if (Utils.isModernPermissionGroup(mGroup.getName())) {
+            if (!Utils.shouldShowPermissionUsage(mGroup.getName())) {
+                ((TextView) root.requireViewById(R.id.usage_summary)).setText(
+                        context.getString(R.string.app_permission_footer_not_available));
+            } else {
+                ((TextView) root.requireViewById(R.id.usage_summary)).setText(
+                        getUsageSummary(context, appLabel));
+            }
         } else {
-            ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                    context.getString(
-                            R.string.app_permission_footer_usage_summary,
-                            appLabel,
-                            mGroup.getLabel().toString().toLowerCase(),
-                            timeDiffStr));
+            root.requireViewById(R.id.usage_summary).setVisibility(View.GONE);
         }
 
-        root.requireViewById(R.id.usage_link).setOnClickListener((v) -> {
-            Intent intent = new Intent(Intent.ACTION_REVIEW_APP_PERMISSION_USAGE);
+        TextView footer1Link = root.requireViewById(R.id.footer_link_1);
+        footer1Link.setText(context.getString(R.string.app_permission_footer_app_permissions_link,
+                appLabel));
+        footer1Link.setOnClickListener((v) -> {
+            UserHandle user = UserHandle.getUserHandleForUid(mGroup.getApp().applicationInfo.uid);
+            Intent intent = new Intent(Intent.ACTION_MANAGE_APP_PERMISSIONS);
             intent.putExtra(Intent.EXTRA_PACKAGE_NAME, mGroup.getApp().packageName);
-            intent.putExtra(Intent.EXTRA_USER,
-                    UserHandle.getUserHandleForUid(mGroup.getApp().applicationInfo.uid));
+            intent.putExtra(Intent.EXTRA_USER, user);
+            context.startActivity(intent);
+        });
+
+        TextView footer2Link = root.requireViewById(R.id.footer_link_2);
+        footer2Link.setText(context.getString(R.string.app_permission_footer_permission_apps_link));
+        footer2Link.setOnClickListener((v) -> {
+            Intent intent = new Intent(Intent.ACTION_MANAGE_PERMISSION_APPS);
+            intent.putExtra(Intent.EXTRA_PERMISSION_NAME, mGroup.getName());
             context.startActivity(intent);
         });
 
@@ -223,9 +237,94 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
             root.requireViewById(R.id.footer_all).setVisibility(View.GONE);
         }
 
-        updateButtons();
-
         return root;
+    }
+
+    private @NonNull String getUsageSummary(@NonNull Context context, @NonNull String appLabel) {
+        String timeDiffStr = Utils.getRelativeLastUsageString(context,
+                PermissionUsages.loadLastGroupUsage(context, mGroup));
+        int strResId;
+        if (timeDiffStr == null) {
+            switch (mGroup.getName()) {
+                case Manifest.permission_group.ACTIVITY_RECOGNITION:
+                    strResId = R.string.app_permission_footer_no_usages_activity_recognition;
+                    break;
+                case Manifest.permission_group.CALENDAR:
+                    strResId = R.string.app_permission_footer_no_usages_calendar;
+                    break;
+                case Manifest.permission_group.CALL_LOG:
+                    strResId = R.string.app_permission_footer_no_usages_call_log;
+                    break;
+                case Manifest.permission_group.CAMERA:
+                    strResId = R.string.app_permission_footer_no_usages_camera;
+                    break;
+                case Manifest.permission_group.CONTACTS:
+                    strResId = R.string.app_permission_footer_no_usages_contacts;
+                    break;
+                case Manifest.permission_group.LOCATION:
+                    strResId = R.string.app_permission_footer_no_usages_location;
+                    break;
+                case Manifest.permission_group.MICROPHONE:
+                    strResId = R.string.app_permission_footer_no_usages_microphone;
+                    break;
+                case Manifest.permission_group.PHONE:
+                    strResId = R.string.app_permission_footer_no_usages_phone;
+                    break;
+                case Manifest.permission_group.SENSORS:
+                    strResId = R.string.app_permission_footer_no_usages_sensors;
+                    break;
+                case Manifest.permission_group.SMS:
+                    strResId = R.string.app_permission_footer_no_usages_sms;
+                    break;
+                case Manifest.permission_group.STORAGE:
+                    strResId = R.string.app_permission_footer_no_usages_storage;
+                    break;
+                default:
+                    return context.getString(R.string.app_permission_footer_no_usages_generic,
+                            appLabel, mGroup.getLabel().toString().toLowerCase());
+            }
+            return context.getString(strResId, appLabel);
+        } else {
+            switch (mGroup.getName()) {
+                case Manifest.permission_group.ACTIVITY_RECOGNITION:
+                    strResId = R.string.app_permission_footer_usage_summary_activity_recognition;
+                    break;
+                case Manifest.permission_group.CALENDAR:
+                    strResId = R.string.app_permission_footer_usage_summary_calendar;
+                    break;
+                case Manifest.permission_group.CALL_LOG:
+                    strResId = R.string.app_permission_footer_usage_summary_call_log;
+                    break;
+                case Manifest.permission_group.CAMERA:
+                    strResId = R.string.app_permission_footer_usage_summary_camera;
+                    break;
+                case Manifest.permission_group.CONTACTS:
+                    strResId = R.string.app_permission_footer_usage_summary_contacts;
+                    break;
+                case Manifest.permission_group.LOCATION:
+                    strResId = R.string.app_permission_footer_usage_summary_location;
+                    break;
+                case Manifest.permission_group.MICROPHONE:
+                    strResId = R.string.app_permission_footer_usage_summary_microphone;
+                    break;
+                case Manifest.permission_group.PHONE:
+                    strResId = R.string.app_permission_footer_usage_summary_phone;
+                    break;
+                case Manifest.permission_group.SENSORS:
+                    strResId = R.string.app_permission_footer_usage_summary_sensors;
+                    break;
+                case Manifest.permission_group.SMS:
+                    strResId = R.string.app_permission_footer_usage_summary_sms;
+                    break;
+                case Manifest.permission_group.STORAGE:
+                    strResId = R.string.app_permission_footer_usage_summary_storage;
+                    break;
+                default:
+                    return context.getString(R.string.app_permission_footer_usage_summary_generic,
+                            appLabel, mGroup.getLabel().toString().toLowerCase(), timeDiffStr);
+            }
+            return context.getString(strResId, appLabel, timeDiffStr);
+        }
     }
 
     @Override
@@ -278,6 +377,10 @@ public class AppPermissionFragment extends SettingsWithButtonHeader {
             ab.setElevation(0);
         }
         ActionBarShadowController.attachToView(activity, getLifecycle(), mNestedScrollView);
+
+        // Re-create the permission group in case permissions have changed and update the UI.
+        createAppPermissionGroup();
+        updateButtons();
     }
 
     @Override

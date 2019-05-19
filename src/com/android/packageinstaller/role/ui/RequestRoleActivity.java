@@ -31,6 +31,7 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.android.packageinstaller.role.model.Role;
 import com.android.packageinstaller.role.model.Roles;
+import com.android.packageinstaller.role.model.UserDeniedManager;
 import com.android.packageinstaller.role.utils.PackageUtils;
 
 import java.util.List;
@@ -83,6 +84,24 @@ public class RequestRoleActivity extends FragmentActivity {
             return;
         }
 
+        if (!role.isVisible(this)) {
+            Log.e(LOG_TAG, "Role is invisible: " + mRoleName);
+            finish();
+            return;
+        }
+
+        if (!role.isRequestable()) {
+            Log.e(LOG_TAG, "Role is not requestable: " + mRoleName);
+            finish();
+            return;
+        }
+
+        if (!role.isExclusive()) {
+            Log.e(LOG_TAG, "Role is not exclusive: " + mRoleName);
+            finish();
+            return;
+        }
+
         if (PackageUtils.getApplicationInfo(mPackageName, this) == null) {
             Log.w(LOG_TAG, "Unknown application: " + mPackageName);
             finish();
@@ -101,6 +120,13 @@ public class RequestRoleActivity extends FragmentActivity {
 
         if (!role.isPackageQualified(mPackageName, this)) {
             Log.w(LOG_TAG, "Application doesn't qualify for role, role: " + mRoleName
+                    + ", package: " + mPackageName);
+            finish();
+            return;
+        }
+
+        if (UserDeniedManager.getInstance(this).isDeniedAlways(mRoleName, mPackageName)) {
+            Log.w(LOG_TAG, "Application is denied always for role, role: " + mRoleName
                     + ", package: " + mPackageName);
             finish();
             return;

@@ -30,6 +30,7 @@ import static android.content.Intent.EXTRA_UID;
 import static android.content.Intent.EXTRA_USER;
 import static android.content.Intent.FLAG_ACTIVITY_MULTIPLE_TASK;
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
+import static android.content.Intent.FLAG_RECEIVER_FOREGROUND;
 import static android.content.pm.PackageManager.GET_PERMISSIONS;
 import static android.graphics.Bitmap.Config.ARGB_8888;
 import static android.graphics.Bitmap.createBitmap;
@@ -46,15 +47,14 @@ import static com.android.packageinstaller.Constants.PERIODIC_LOCATION_ACCESS_CH
 import static com.android.packageinstaller.Constants.PERMISSION_REMINDER_CHANNEL_ID;
 import static com.android.packageinstaller.Constants.PREFERENCES_FILE;
 import static com.android.packageinstaller.permission.utils.Utils.OS_PKG;
-import static com.android.packageinstaller.permission.utils.Utils.getGroupOfPlatformPermission;
 import static com.android.packageinstaller.permission.utils.Utils.getParcelableExtraSafe;
+import static com.android.packageinstaller.permission.utils.Utils.getParentUserContext;
 import static com.android.packageinstaller.permission.utils.Utils.getStringExtraSafe;
 import static com.android.packageinstaller.permission.utils.Utils.getSystemServiceSafe;
 import static com.android.packageinstaller.permission.utils.Utils.isLocationAccessCheckEnabled;
 
 import static java.lang.System.currentTimeMillis;
 import static java.util.concurrent.TimeUnit.DAYS;
-import static java.util.concurrent.TimeUnit.MINUTES;
 
 import android.app.AppOpsManager;
 import android.app.AppOpsManager.HistoricalOps;
@@ -75,12 +75,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Bundle;
 import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.Settings;
@@ -109,6 +111,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -128,6 +132,8 @@ import java.util.function.BooleanSupplier;
 public class LocationAccessCheck {
     private static final String LOG_TAG = LocationAccessCheck.class.getSimpleName();
     private static final boolean DEBUG = false;
+
+    private static final long GET_HISTORIAL_OPS_TIMEOUT_MILLIS = TimeUnit.SECONDS.toMillis(3);
 
     /** Lock required for all methods called {@code ...Locked} */
     private static final Object sLock = new Object();
@@ -171,13 +177,13 @@ public class LocationAccessCheck {
     /**
      * Get the delay in between granting a permission and the follow up check.
      *
-     * <p>Default: 10 minutes
+     * <p>Default: 1 day
      *
      * @return The delay in milliseconds
      */
     private long getDelayMillis() {
         return Settings.Secure.getLong(mContentResolver,
-                LOCATION_ACCESS_CHECK_DELAY_MILLIS, MINUTES.toMillis(10));
+                LOCATION_ACCESS_CHECK_DELAY_MILLIS, DAYS.toMillis(1));
     }
 
     /**
@@ -311,22 +317,7 @@ public class LocationAccessCheck {
      * @param shouldCancel If supplied, can be used to interrupt long running operations
      */
     public LocationAccessCheck(@NonNull Context context, @Nullable BooleanSupplier shouldCancel) {
-        UserHandle parentUser = getSystemServiceSafe(context, UserManager.class)
-                .getProfileParent(UserHandle.of(myUserId()));
-
-        if (parentUser != null) {
-            // In a multi profile environment perform all operations as the parent user of the
-            // current profile
-            try {
-                mContext = context.createPackageContextAsUser(context.getPackageName(), 0,
-                        parentUser);
-            } catch (PackageManager.NameNotFoundException e) {
-                // cannot happen
-                throw new IllegalStateException("Could not switch to parent user " + parentUser, e);
-            }
-        } else {
-            mContext = context;
-        }
+        mContext = getParentUserContext(context);
 
         mJobScheduler = getSystemServiceSafe(mContext, JobScheduler.class);
         mAppOpsManager = getSystemServiceSafe(mContext, AppOpsManager.class);
@@ -348,6 +339,7 @@ public class LocationAccessCheck {
     private void addLocationNotificationIfNeeded(@NonNull JobParameters params,
             @NonNull LocationAccessCheckJobService service) {
         if (!isLocationAccessCheckEnabled()) {
+            service.jobFinished(params, false);
             return;
         }
 
@@ -369,25 +361,14 @@ public class LocationAccessCheck {
                         Instant.EPOCH.toEpochMilli(), Long.MAX_VALUE)
                         .setOpNames(CollectionUtils.singletonOrEmpty(OPSTR_FINE_LOCATION))
                         .build();
-                HistoricalOps[] ops = new HistoricalOps[1];
-                mAppOpsManager.getHistoricalOps(request,
-                        mContext.getMainExecutor(), (h) -> {
-                            synchronized (ops) {
-                                ops[0] = h;
-                                ops.notifyAll();
-                            }
-                        }
-                );
+                CompletableFuture<HistoricalOps> ops = new CompletableFuture<>();
+                mAppOpsManager.getHistoricalOps(request, mContext.getMainExecutor(), ops::complete);
 
-                synchronized (ops) {
-                    while (ops[0] == null) {
-                        ops.wait();
-                    }
-                }
-
-                addLocationNotificationIfNeeded(ops[0]);
+                addLocationNotificationIfNeeded(
+                        ops.get(GET_HISTORIAL_OPS_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS));
                 service.jobFinished(params, false);
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Could not check for location access", e);
                 service.jobFinished(params, true);
             } finally {
                 synchronized (sLock) {
@@ -420,8 +401,8 @@ public class LocationAccessCheck {
 
                     LocationManager locationManager = getSystemServiceSafe(mContext,
                             LocationManager.class, pkg.user);
-                    if (locationManager.isLocationControllerExtraPackageEnabled() && pkg.pkg.equals(
-                            locationManager.getLocationControllerExtraPackage())) {
+                    if (locationManager.isExtraLocationControllerPackageEnabled() && pkg.pkg.equals(
+                            locationManager.getExtraLocationControllerPackage())) {
                         packageToNotifyFor = pkg;
                         break;
                     }
@@ -481,14 +462,7 @@ public class LocationAccessCheck {
 
                 UserPackage userPkg = new UserPackage(mContext, pkg, user);
 
-                AppPermissionGroup bgLocationGroup;
-                try {
-                    bgLocationGroup = userPkg.getBackgroundLocationGroup();
-                } catch (PackageManager.NameNotFoundException e) {
-                    // Package was uninstalled
-                    continue;
-                }
-
+                AppPermissionGroup bgLocationGroup = userPkg.getBackgroundLocationGroup();
                 // Do not show notification that do not request the background permission anymore
                 if (bgLocationGroup == null) {
                     continue;
@@ -500,8 +474,16 @@ public class LocationAccessCheck {
                     continue;
                 }
 
-                // Do not show notification for apps that have the background permission by default
-                if (bgLocationGroup.hasGrantedByDefaultPermission()) {
+                // Do not show notification for permissions that are not user sensitive
+                if (!bgLocationGroup.isUserSensitive()) {
+                    continue;
+                }
+
+                // Never show notification for pregranted permissions as warning the user via the
+                // notification and then warning the user again when revoking the permission is
+                // confusing
+                if (userPkg.getLocationGroup().hasGrantedByDefaultPermission()
+                    && bgLocationGroup.hasGrantedByDefaultPermission()) {
                     continue;
                 }
 
@@ -509,7 +491,7 @@ public class LocationAccessCheck {
                 for (int opNum = 0; opNum < numOps; opNum++) {
                     AppOpsManager.HistoricalOp op = ops.getOpAt(opNum);
 
-                    if (op.getBackgroundAccessCount() > 0) {
+                    if (op.getBackgroundAccessCount(AppOpsManager.OP_FLAGS_ALL_TRUSTED) > 0) {
                         pkgsWithLocationAccess.add(userPkg);
 
                         break;
@@ -551,10 +533,14 @@ public class LocationAccessCheck {
         Intent deleteIntent = new Intent(mContext, NotificationDeleteHandler.class);
         deleteIntent.putExtra(EXTRA_PACKAGE_NAME, pkgName);
         deleteIntent.putExtra(EXTRA_USER, user);
+        deleteIntent.setFlags(FLAG_RECEIVER_FOREGROUND);
 
         Intent clickIntent = new Intent(mContext, NotificationClickHandler.class);
         clickIntent.putExtra(EXTRA_PACKAGE_NAME, pkgName);
         clickIntent.putExtra(EXTRA_USER, user);
+        clickIntent.setFlags(FLAG_RECEIVER_FOREGROUND);
+
+        CharSequence appName = getNotificationAppName();
 
         Notification.Builder b = (new Notification.Builder(mContext,
                 PERMISSION_REMINDER_CHANNEL_ID))
@@ -564,7 +550,7 @@ public class LocationAccessCheck {
                         R.string.background_location_access_reminder_notification_content))
                 .setStyle(new Notification.BigTextStyle().bigText(mContext.getString(
                         R.string.background_location_access_reminder_notification_content)))
-                .setSmallIcon(R.drawable.ic_signal_location)
+                .setSmallIcon(R.drawable.ic_pin_drop)
                 .setLargeIcon(pkgIconBmp)
                 .setColor(mContext.getColor(android.R.color.system_notification_accent_color))
                 .setAutoCancel(true)
@@ -572,12 +558,30 @@ public class LocationAccessCheck {
                         FLAG_ONE_SHOT | FLAG_UPDATE_CURRENT))
                 .setContentIntent(getBroadcast(mContext, 0, clickIntent,
                         FLAG_ONE_SHOT | FLAG_UPDATE_CURRENT));
+
+        if (appName != null) {
+            Bundle extras = new Bundle();
+            extras.putString(Notification.EXTRA_SUBSTITUTE_APP_NAME, appName.toString());
+            b.addExtras(extras);
+        }
+
         notificationManager.notify(pkgName, LOCATION_ACCESS_CHECK_NOTIFICATION_ID, b.build());
 
         if (DEBUG) Log.i(LOG_TAG, "Notified " + pkgName);
 
         mSharedPrefs.edit().putLong(KEY_LAST_LOCATION_ACCESS_NOTIFICATION_SHOWN,
                 currentTimeMillis()).apply();
+    }
+
+    @Nullable
+    private CharSequence getNotificationAppName() {
+        // We pretend we're the Settings app sending the notification, so figure out its name.
+        Intent openSettingsIntent = new Intent(Settings.ACTION_SETTINGS);
+        ResolveInfo resolveInfo = mPackageManager.resolveActivity(openSettingsIntent, 0);
+        if (resolveInfo == null) {
+            return null;
+        }
+        return mPackageManager.getApplicationLabel(resolveInfo.activityInfo.applicationInfo);
     }
 
     /**
@@ -624,12 +628,8 @@ public class LocationAccessCheck {
         for (UserPackage userPkg : alreadyNotifiedPkgs) {
             throwInterruptedExceptionIfTaskIsCanceled();
 
-            try {
-                AppPermissionGroup bgLocationGroup = userPkg.getBackgroundLocationGroup();
-                if (bgLocationGroup == null || !bgLocationGroup.areRuntimePermissionsGranted()) {
-                    packagesToRemove.add(userPkg);
-                }
-            } catch (PackageManager.NameNotFoundException e) {
+            AppPermissionGroup bgLocationGroup = userPkg.getBackgroundLocationGroup();
+            if (bgLocationGroup == null || !bgLocationGroup.areRuntimePermissionsGranted()) {
                 packagesToRemove.add(userPkg);
             }
         }
@@ -837,8 +837,7 @@ public class LocationAccessCheck {
 
             Intent manageAppPermission = new Intent(context, AppPermissionActivity.class);
             manageAppPermission.addFlags(FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_MULTIPLE_TASK);
-            manageAppPermission.putExtra(EXTRA_PERMISSION_NAME,
-                    getGroupOfPlatformPermission(ACCESS_FINE_LOCATION));
+            manageAppPermission.putExtra(EXTRA_PERMISSION_NAME, ACCESS_FINE_LOCATION);
             manageAppPermission.putExtra(EXTRA_PACKAGE_NAME, pkg);
             manageAppPermission.putExtra(EXTRA_USER, user);
 
@@ -853,6 +852,12 @@ public class LocationAccessCheck {
     public static class PackageResetHandler extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (!(Objects.equals(action, Intent.ACTION_PACKAGE_DATA_CLEARED)
+                    || Objects.equals(action, Intent.ACTION_PACKAGE_FULLY_REMOVED))) {
+                return;
+            }
+
             Uri data = Preconditions.checkNotNull(intent.getData());
             UserHandle user = getUserHandleForUid(intent.getIntExtra(EXTRA_UID, 0));
 
@@ -906,13 +911,14 @@ public class LocationAccessCheck {
          * {@link android.Manifest.permission#ACCESS_FINE_LOCATION} and this user package.
          *
          * @return The app permission group or {@code null} if the app does not request location
-         *
-         * @throws PackageManager.NameNotFoundException if package/user does not exist
          */
-        @Nullable AppPermissionGroup getLocationGroup()
-                throws PackageManager.NameNotFoundException {
-            return AppPermissionGroup.create(mContext, getPackageInfo(), ACCESS_FINE_LOCATION,
+        @Nullable AppPermissionGroup getLocationGroup() {
+            try {
+                return AppPermissionGroup.create(mContext, getPackageInfo(), ACCESS_FINE_LOCATION,
                     false);
+            } catch (PackageManager.NameNotFoundException e) {
+                return null;
+            }
         }
 
         /**
@@ -921,11 +927,8 @@ public class LocationAccessCheck {
          *
          * @return The app permission group or {@code null} if the app does not request background
          *         location
-         *
-         * @throws PackageManager.NameNotFoundException if package/user does not exist
          */
-        @Nullable AppPermissionGroup getBackgroundLocationGroup()
-                throws PackageManager.NameNotFoundException {
+        @Nullable AppPermissionGroup getBackgroundLocationGroup() {
             AppPermissionGroup locationGroup = getLocationGroup();
             if (locationGroup == null) {
                 return null;

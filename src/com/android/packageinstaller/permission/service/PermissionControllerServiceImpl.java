@@ -26,8 +26,6 @@ import static android.permission.PermissionControllerManager.REASON_INSTALLER_PO
 import static android.permission.PermissionControllerManager.REASON_MALWARE;
 import static android.util.Xml.newSerializer;
 
-import static com.android.packageinstaller.permission.utils.Utils.getLauncherPackages;
-import static com.android.packageinstaller.permission.utils.Utils.isSystem;
 import static com.android.packageinstaller.permission.utils.Utils.shouldShowPermission;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -35,13 +33,13 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.os.UserHandle;
 import android.permission.PermissionControllerService;
 import android.permission.PermissionManager;
 import android.permission.RuntimePermissionPresentationInfo;
 import android.permission.RuntimePermissionUsageInfo;
 import android.util.ArrayMap;
-import android.util.ArraySet;
 import android.util.Log;
 import android.util.Xml;
 
@@ -55,7 +53,6 @@ import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.model.PermissionUsages;
 import com.android.packageinstaller.permission.utils.Utils;
-import com.android.packageinstaller.role.service.PermissionControllerServiceImplRoleMixin;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlSerializer;
@@ -67,9 +64,15 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 /**
- * Calls from the system into the permission controller
+ * Calls from the system into the permission controller.
+ *
+ * All methods are called async beside the backup related method. For these we force to use the
+ * async-task single thread executor so that multiple parallel backups don't override the delayed
+ * the backup state racily.
  */
 public final class PermissionControllerServiceImpl extends PermissionControllerService {
     private static final String LOG_TAG = PermissionControllerServiceImpl.class.getSimpleName();
@@ -207,7 +210,14 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
     }
 
     @Override
-    public @NonNull Map<String, List<String>> onRevokeRuntimePermissions(
+    public void onRevokeRuntimePermissions(@NonNull Map<String, List<String>> request,
+            boolean doDryRun, int reason, @NonNull String callerPackageName,
+            @NonNull Consumer<Map<String, List<String>>> callback) {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(() -> callback.accept(
+                onRevokeRuntimePermissions(request, doDryRun, reason, callerPackageName)));
+    }
+
+    private @NonNull Map<String, List<String>> onRevokeRuntimePermissions(
             @NonNull Map<String, List<String>> request, boolean doDryRun,
             int reason, @NonNull String callerPackageName) {
         // The reason parameter is not checked by platform code as this might need to be updated
@@ -295,7 +305,15 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
 
     @Override
     public void onGetRuntimePermissionsBackup(@NonNull UserHandle user,
-            @NonNull OutputStream backup) {
+            @NonNull OutputStream backup, @NonNull Runnable callback) {
+        AsyncTask.execute(() -> {
+            onGetRuntimePermissionsBackup(user, backup);
+            callback.run();
+        });
+    }
+
+    private void onGetRuntimePermissionsBackup(@NonNull UserHandle user,
+                @NonNull OutputStream backup) {
         BackupHelper backupHelper = new BackupHelper(this, user);
 
         try {
@@ -311,6 +329,14 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
 
     @Override
     public void onRestoreRuntimePermissionsBackup(@NonNull UserHandle user,
+            @NonNull InputStream backup, Runnable callback) {
+        AsyncTask.execute(() -> {
+            onRestoreRuntimePermissionsBackup(user, backup);
+            callback.run();
+        });
+    }
+
+    private void onRestoreRuntimePermissionsBackup(@NonNull UserHandle user,
             @NonNull InputStream backup) {
         try {
             XmlPullParser parser = Xml.newPullParser();
@@ -323,7 +349,13 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
     }
 
     @Override
-    public boolean onRestoreDelayedRuntimePermissionsBackup(@NonNull String packageName,
+    public void onRestoreDelayedRuntimePermissionsBackup(@NonNull String packageName,
+            @NonNull UserHandle user, @NonNull Consumer<Boolean> callback) {
+        AsyncTask.execute(() -> callback.accept(
+                onRestoreDelayedRuntimePermissionsBackup(packageName, user)));
+    }
+
+    private boolean onRestoreDelayedRuntimePermissionsBackup(@NonNull String packageName,
             @NonNull UserHandle user) {
         try {
             return new BackupHelper(this, user).restoreDelayedState(packageName);
@@ -334,9 +366,10 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
     }
 
     @Override
-    public @NonNull List<RuntimePermissionPresentationInfo> onGetAppPermissions(
-            @NonNull String packageName) {
-        return onGetAppPermissions(this, packageName);
+    public void onGetAppPermissions(@NonNull String packageName,
+            @NonNull Consumer<List<RuntimePermissionPresentationInfo>> callback) {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(() -> callback.accept(
+                onGetAppPermissions(this, packageName)));
     }
 
     /**
@@ -372,6 +405,14 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
 
     @Override
     public void onRevokeRuntimePermission(@NonNull String packageName,
+            @NonNull String permissionName, @NonNull Runnable callback) {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(() -> {
+            onRevokeRuntimePermission(packageName, permissionName);
+            callback.run();
+        });
+    }
+
+    private void onRevokeRuntimePermission(@NonNull String packageName,
             @NonNull String permissionName) {
         try {
             final PackageInfo packageInfo = getPackageManager().getPackageInfo(packageName,
@@ -391,22 +432,23 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
     }
 
     @Override
-    public int onCountPermissionApps(@NonNull List<String> permissionNames, int flags) {
+    public void onCountPermissionApps(@NonNull List<String> permissionNames, int flags,
+            @NonNull IntConsumer callback) {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(() -> callback.accept(
+                onCountPermissionApps(permissionNames, flags)));
+    }
+
+    private int onCountPermissionApps(@NonNull List<String> permissionNames, int flags) {
         boolean countSystem = (flags & COUNT_WHEN_SYSTEM) != 0;
         boolean countOnlyGranted = (flags & COUNT_ONLY_WHEN_GRANTED) != 0;
 
         List<PackageInfo> pkgs = getPackageManager().getInstalledPackages(GET_PERMISSIONS);
-        ArraySet<String> launcherPkgs = getLauncherPackages(this);
 
         int numApps = 0;
 
         int numPkgs = pkgs.size();
         for (int pkgNum = 0; pkgNum < numPkgs; pkgNum++) {
             PackageInfo pkg = pkgs.get(pkgNum);
-
-            if (!countSystem && isSystem(pkg.applicationInfo, launcherPkgs)) {
-                continue;
-            }
 
             int numPerms = permissionNames.size();
             for (int permNum = 0; permNum < numPerms; permNum++) {
@@ -424,11 +466,15 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
                 } else {
                     AppPermissionGroup bgGroup = group.getBackgroundPermissions();
                     if (bgGroup != null && bgGroup.hasPermission(perm)) {
-                        subGroup = group;
+                        subGroup = bgGroup;
                     }
                 }
 
                 if (subGroup != null) {
+                    if (!countSystem && !subGroup.isUserSensitive()) {
+                        continue;
+                    }
+
                     if (!countOnlyGranted || subGroup.areRuntimePermissionsGranted()) {
                         // The permission might not be granted, but some permissions of the group
                         // are granted. In this case the permission is granted silently when the app
@@ -444,11 +490,16 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
         return numApps;
     }
 
-    @Override public @NonNull List<RuntimePermissionUsageInfo> onGetPermissionUsages(
-            boolean countSystem, long numMillis) {
-        ArraySet<String> launcherPkgs = getLauncherPackages(this);
+    @Override
+    public void onGetPermissionUsages(boolean countSystem, long numMillis,
+            @NonNull Consumer<List<RuntimePermissionUsageInfo>> callback) {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(
+                () -> callback.accept(onGetPermissionUsages(countSystem, numMillis)));
+    }
 
-        ArrayMap<CharSequence, Integer> groupUsers = new ArrayMap<>();
+    private @NonNull List<RuntimePermissionUsageInfo> onGetPermissionUsages(
+            boolean countSystem, long numMillis) {
+        ArrayMap<String, Integer> groupUsers = new ArrayMap<>();
 
         long curTime = System.currentTimeMillis();
         PermissionUsages usages = new PermissionUsages(this);
@@ -462,31 +513,28 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
         for (int appNum = 0; appNum < numApps; appNum++) {
             AppPermissionUsage appPermissionUsage = appPermissionUsages.get(appNum);
 
-            if (appPermissionUsage.getAccessCount() <= 0) {
-                continue;
-            }
-            if (!countSystem && isSystem(appPermissionUsage.getApp(), launcherPkgs)) {
-                continue;
-            }
-
             List<GroupUsage> appGroups = appPermissionUsage.getGroupUsages();
             int numGroups = appGroups.size();
             for (int groupNum = 0; groupNum < numGroups; groupNum++) {
                 GroupUsage groupUsage = appGroups.get(groupNum);
 
-                if (groupUsage.getAccessCount() <= 0) {
+                if (groupUsage.getAccessCount() <= 0
+                        || groupUsage.getLastAccessTime() < filterTimeBeginMillis) {
                     continue;
                 }
                 if (!shouldShowPermission(this, groupUsage.getGroup())) {
                     continue;
                 }
+                if (!countSystem && !Utils.isGroupOrBgGroupUserSensitive(groupUsage.getGroup())) {
+                    continue;
+                }
 
-                CharSequence groupLabel = groupUsage.getGroup().getName();
-                Integer numUsers = groupUsers.get(groupLabel);
+                String groupName = groupUsage.getGroup().getName();
+                Integer numUsers = groupUsers.get(groupName);
                 if (numUsers == null) {
-                    groupUsers.put(groupLabel, 1);
+                    groupUsers.put(groupName, 1);
                 } else {
-                    groupUsers.put(groupLabel, numUsers + 1);
+                    groupUsers.put(groupName, numUsers + 1);
                 }
             }
         }
@@ -501,14 +549,15 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
     }
 
     @Override
-    public boolean onIsApplicationQualifiedForRole(@NonNull String roleName,
-            @NonNull String packageName) {
-        return PermissionControllerServiceImplRoleMixin.onIsApplicationQualifiedForRole(roleName,
-                packageName, this);
+    public void onSetRuntimePermissionGrantStateByDeviceAdmin(@NonNull String callerPackageName,
+            @NonNull String packageName, @NonNull String unexpandedPermission, int grantState,
+            @NonNull Consumer<Boolean> callback) {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(() -> callback.accept(
+                onSetRuntimePermissionGrantStateByDeviceAdmin(callerPackageName, packageName,
+                        unexpandedPermission, grantState)));
     }
 
-    @Override
-    public boolean onSetRuntimePermissionGrantStateByDeviceAdmin(@NonNull String callerPackageName,
+    private boolean onSetRuntimePermissionGrantStateByDeviceAdmin(@NonNull String callerPackageName,
             @NonNull String packageName, @NonNull String unexpandedPermission, int grantState) {
         PackageInfo callerPkgInfo = getPkgInfo(callerPackageName);
         if (callerPkgInfo == null) {
@@ -528,7 +577,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
                 Collections.singletonList(unexpandedPermission),
                 callerPkgInfo.applicationInfo.targetSdkVersion);
 
-        AppPermissions app = new AppPermissions(this, pkgInfo, false, null);
+        AppPermissions app = new AppPermissions(this, pkgInfo, false, true, null);
 
         int numPerms = expandedPermissions.size();
         for (int i = 0; i < numPerms; i++) {
@@ -564,5 +613,18 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
                 || !callerPackageName.equals(packageName));
 
         return true;
+    }
+
+    @Override
+    public void onGrantOrUpgradeDefaultRuntimePermissions(@NonNull Runnable callback) {
+        AsyncTask.THREAD_POOL_EXECUTOR.execute(() -> {
+            onGrantOrUpgradeDefaultRuntimePermissions();
+            callback.run();
+        });
+    }
+
+    private void onGrantOrUpgradeDefaultRuntimePermissions() {
+        // TODO: Default permission grants should go here
+        RuntimePermissionsUpgradeController.upgradeIfNeeded(this);
     }
 }
