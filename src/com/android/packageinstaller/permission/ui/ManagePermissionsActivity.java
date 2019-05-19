@@ -18,8 +18,6 @@ package com.android.packageinstaller.permission.ui;
 
 import static android.view.WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS;
 
-import static com.android.packageinstaller.permission.service.PermissionSearchIndexablesProvider.verifyIntent;
-
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.UserHandle;
@@ -30,7 +28,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 
 import com.android.packageinstaller.DeviceUtils;
-import com.android.packageinstaller.permission.service.PermissionSearchIndexablesProvider;
 import com.android.packageinstaller.permission.ui.handheld.ManageStandardPermissionsFragment;
 import com.android.packageinstaller.permission.ui.handheld.PermissionUsageFragment;
 import com.android.packageinstaller.permission.ui.wear.AppPermissionsFragmentWear;
@@ -46,13 +43,18 @@ public final class ManagePermissionsActivity extends FragmentActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // If there is a previous instance, re-use its Fragment instead of making a new one.
+        if (savedInstanceState != null) {
+            return;
+        }
+
         android.app.Fragment fragment = null;
         Fragment androidXFragment = null;
         String action = getIntent().getAction();
 
         getWindow().addSystemFlags(SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
 
-        String permissionName = null;
+        String permissionName;
         switch (action) {
             case Intent.ACTION_MANAGE_PERMISSIONS:
                 if (DeviceUtils.isTelevision(this)) {
@@ -64,11 +66,9 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                 }
                 break;
 
-            case PermissionSearchIndexablesProvider.ACTION_REVIEW_PERMISSION_USAGE:
-                verifyIntent(this, getIntent());
-                // fall through
             case Intent.ACTION_REVIEW_PERMISSION_USAGE: {
                 if (!Utils.isPermissionsHubEnabled()) {
+                    finish();
                     return;
                 }
 
@@ -118,19 +118,18 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                         androidXFragment = com.android.packageinstaller.permission.ui.handheld
                                 .AllAppPermissionsFragment.newInstance(packageName);
                     } else {
+                        UserHandle userHandle = getIntent().getParcelableExtra(Intent.EXTRA_USER);
+                        if (userHandle == null) {
+                            userHandle = UserHandle.of(UserHandle.myUserId());
+                        }
                         androidXFragment = com.android.packageinstaller.permission.ui.handheld
-                                .AppPermissionsFragment.newInstance(packageName);
+                                .AppPermissionsFragment.newInstance(packageName, userHandle);
                     }
                 }
             } break;
 
-            case PermissionSearchIndexablesProvider.ACTION_MANAGE_PERMISSION_APPS:
-                permissionName = verifyIntent(this, getIntent());
-                // fall through
             case Intent.ACTION_MANAGE_PERMISSION_APPS: {
-                if (permissionName == null) {
-                    permissionName = getIntent().getStringExtra(Intent.EXTRA_PERMISSION_NAME);
-                }
+                permissionName = getIntent().getStringExtra(Intent.EXTRA_PERMISSION_NAME);
 
                 if (permissionName == null) {
                     Log.i(LOG_TAG, "Missing mandatory argument EXTRA_PERMISSION_NAME");
@@ -144,27 +143,6 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                     androidXFragment = com.android.packageinstaller.permission.ui.handheld
                             .PermissionAppsFragment.newInstance(permissionName);
                 }
-            } break;
-
-            case Intent.ACTION_REVIEW_APP_PERMISSION_USAGE: {
-                if (!Utils.isPermissionsHubEnabled()) {
-                    return;
-                }
-
-                String packageName = getIntent().getStringExtra(Intent.EXTRA_PACKAGE_NAME);
-                if (packageName == null) {
-                    Log.i(LOG_TAG, "Missing mandatory argument EXTRA_PACKAGE_NAME");
-                    finish();
-                    return;
-                }
-                UserHandle userHandle = getIntent().getParcelableExtra(Intent.EXTRA_USER);
-                if (userHandle == null) {
-                    Log.i(LOG_TAG, "Missing mandatory argument EXTRA_USER");
-                    finish();
-                    return;
-                }
-                androidXFragment = com.android.packageinstaller.permission.ui.handheld
-                        .AppPermissionUsageFragment.newInstance(packageName, userHandle);
             } break;
 
             default: {

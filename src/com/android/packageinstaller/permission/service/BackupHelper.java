@@ -42,6 +42,7 @@ import android.util.Xml;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.os.BuildCompat;
 
 import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
@@ -252,8 +253,15 @@ public class BackupHelper {
         serializer.startDocument(null, true);
 
         serializer.startTag(null, TAG_PERMISSION_BACKUP);
-        serializer.attribute(null, ATTR_PLATFORM_VERSION,
-                Integer.valueOf(Build.VERSION.SDK_INT).toString());
+
+        if (BuildCompat.isAtLeastQ()) {
+            // STOPSHIP: Remove compatibility code once Q SDK level is declared
+            serializer.attribute(null, ATTR_PLATFORM_VERSION,
+                    Integer.valueOf(Build.VERSION_CODES.Q).toString());
+        } else {
+            serializer.attribute(null, ATTR_PLATFORM_VERSION,
+                    Integer.valueOf(Build.VERSION.SDK_INT).toString());
+        }
 
         serializer.startTag(null, TAG_ALL_GRANTS);
 
@@ -392,7 +400,7 @@ public class BackupHelper {
          *
          * @return The state
          */
-        static @NonNull ArrayList<BackupPermissionState> parseFromXml(@NonNull XmlPullParser parser,
+        static @NonNull List<BackupPermissionState> parseFromXml(@NonNull XmlPullParser parser,
                 @NonNull Context context, int backupPlatformVersion)
                 throws XmlPullParserException {
             String permName = parser.getAttributeValue(null, ATTR_PERMISSION_NAME);
@@ -428,8 +436,6 @@ public class BackupHelper {
                         "true".equals(parser.getAttributeValue(null, ATTR_USER_FIXED)),
                         "true".equals(parser.getAttributeValue(null, ATTR_WAS_REVIEWED))));
             }
-
-            // TODO: Implement special behavior for location
 
             return parsedPermissions;
         }

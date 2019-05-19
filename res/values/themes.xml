@@ -20,6 +20,14 @@
     <style name="Settings"
            parent="@android:style/Theme.DeviceDefault.Settings">
         <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+        <item name="preferenceCategoryTitleTextAppearance">@style/TextAppearance.CategoryTitle</item>
+    </style>
+    <style name="TextAppearance.CategoryTitle"
+           parent="@android:style/TextAppearance.DeviceDefault.Medium">
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textSize">11sp</item>
+        <!-- 0.8 Spacing, 0.8/11 = 0.072727273 -->
+        <item name="android:letterSpacing">0.072727273</item>
     </style>
     <style name="PagedListTheme" parent="Theme.Car.NoActionBar">
         <item name="listItemPrimaryIconTint">?android:attr/textColorPrimary</item>
@@ -30,28 +38,44 @@
            parent="@android:style/Theme.DeviceDefault.Settings">
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
+        <item name="android:switchStyle">@style/PermissionReviewSwitchStyle</item>
         <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
     </style>
 
     <style name="GrantPermissions"
            parent="@android:style/Theme.DeviceDefault.Light.Dialog.Alert">
         <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
         <!-- The following attributes change the behavior of the dialog, hence they should not be
              themed -->
         <item name="android:windowIsTranslucent">true</item>
-        <item name="android:windowCloseOnTouchOutside">@*android:bool/config_closeDialogWhenTouchOutside</item>
     </style>
 
     <style name="Header.Settings"
             parent="@android:style/Theme.DeviceDefault.Settings">
     </style>
 
-    <style name="RequestRole" parent="android:Theme.DeviceDefault.Light.NoActionBar.TranslucentDecor">
-        <!-- TODO: STOPSHIP: Make themeable? -->
+    <!-- TODO: STOPSHIP: Make themeable? -->
+    <style name="RequestRole" parent="android:Theme.DeviceDefault.Settings">
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
 
     <style name="Theme.PermissionGrantDialog"
            parent="@android:style/Theme.DeviceDefault.Light.Dialog">
+        <item name="android:divider">@drawable/list_divider</item>
+    </style>
+
+    <style name="PermissionDialog"
+           parent="@android:style/Theme.DeviceDefault.Light.Dialog.NoActionBar">
     </style>
 
 </resources>

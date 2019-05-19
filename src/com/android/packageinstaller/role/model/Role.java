@@ -21,8 +21,8 @@ import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Process;
 import android.os.UserHandle;
 import android.util.ArrayMap;
@@ -34,6 +34,8 @@ import androidx.annotation.StringRes;
 import androidx.preference.Preference;
 
 import com.android.packageinstaller.Constants;
+import com.android.packageinstaller.permission.utils.Utils;
+import com.android.packageinstaller.role.ui.SettingsButtonPreference;
 import com.android.packageinstaller.role.utils.PackageUtils;
 import com.android.packageinstaller.role.utils.UserUtils;
 
@@ -79,6 +81,12 @@ public class Role {
     private final RoleBehavior mBehavior;
 
     /**
+     * The string resource for the description of this role.
+     */
+    @StringRes
+    private final int mDescriptionResource;
+
+    /**
      * Whether this role is exclusive, i.e. allows at most one holder.
      */
     private final boolean mExclusive;
@@ -88,6 +96,32 @@ public class Role {
      */
     @StringRes
     private final int mLabelResource;
+
+    /**
+     * The string resource for the request description of this role, shown below the selected app in
+     * the request role dialog.
+     */
+    @StringRes
+    private final int mRequestDescriptionResource;
+
+    /**
+     * The string resource for the request title of this role, shown as the title of the request
+     * role dialog.
+     */
+    @StringRes
+    private final int mRequestTitleResource;
+
+    /**
+     * Whether this role is requestable by applications with
+     * {@link android.app.role.RoleManager#createRequestRoleIntent(String)}.
+     */
+    private final boolean mRequestable;
+
+    /**
+     * The string resource for the short label of this role, currently used when in a list of roles.
+     */
+    @StringRes
+    private final int mShortLabelResource;
 
     /**
      * Whether the UI for this role will show the "None" item. Only valid if this role is
@@ -125,14 +159,22 @@ public class Role {
     @NonNull
     private final List<PreferredActivity> mPreferredActivities;
 
-    public Role(@NonNull String name, @Nullable RoleBehavior behavior, boolean exclusive,
-            @StringRes int labelResource, boolean showNone, boolean systemOnly,
-            @NonNull List<RequiredComponent> requiredComponents, @NonNull List<String> permissions,
-            @NonNull List<AppOp> appOps, @NonNull List<PreferredActivity> preferredActivities) {
+    public Role(@NonNull String name, @Nullable RoleBehavior behavior,
+            @StringRes int descriptionResource, boolean exclusive, @StringRes int labelResource,
+            @StringRes int requestDescriptionResource, @StringRes int requestTitleResource,
+            boolean requestable, @StringRes int shortLabelResource, boolean showNone,
+            boolean systemOnly, @NonNull List<RequiredComponent> requiredComponents,
+            @NonNull List<String> permissions, @NonNull List<AppOp> appOps,
+            @NonNull List<PreferredActivity> preferredActivities) {
         mName = name;
         mBehavior = behavior;
+        mDescriptionResource = descriptionResource;
         mExclusive = exclusive;
         mLabelResource = labelResource;
+        mRequestDescriptionResource = requestDescriptionResource;
+        mRequestTitleResource = requestTitleResource;
+        mRequestable = requestable;
+        mShortLabelResource = shortLabelResource;
         mShowNone = showNone;
         mSystemOnly = systemOnly;
         mRequiredComponents = requiredComponents;
@@ -151,6 +193,11 @@ public class Role {
         return mBehavior;
     }
 
+    @StringRes
+    public int getDescriptionResource() {
+        return mDescriptionResource;
+    }
+
     public boolean isExclusive() {
         return mExclusive;
     }
@@ -158,6 +205,25 @@ public class Role {
     @StringRes
     public int getLabelResource() {
         return mLabelResource;
+    }
+
+    @StringRes
+    public int getRequestDescriptionResource() {
+        return mRequestDescriptionResource;
+    }
+
+    @StringRes
+    public int getRequestTitleResource() {
+        return mRequestTitleResource;
+    }
+
+    public boolean isRequestable() {
+        return mRequestable;
+    }
+
+    @StringRes
+    public int getShortLabelResource() {
+        return mShortLabelResource;
     }
 
     /**
@@ -232,7 +298,7 @@ public class Role {
     /**
      * Get the fallback holder of this role, which will be added whenever there are no role holders.
      * <p>
-     * Should return empty if this role {@link #mShowNone shows a "None" item}.
+     * Should return {@code null} if this role {@link #mShowNone shows a "None" item}.
      *
      * @param context the {@code Context} to retrieve system services
      *
@@ -262,6 +328,17 @@ public class Role {
     }
 
     /**
+     * Check whether this role should be visible to user, for current user.
+     *
+     * @param context the {@code Context} to retrieve system services
+     *
+     * @return whether this role should be visible to user.
+     */
+    public boolean isVisible(@NonNull Context context) {
+        return isVisibleAsUser(Process.myUserHandle(), context);
+    }
+
+    /**
      * Get the {@link Intent} to manage this role, or {@code null} to use the default UI.
      *
      * @param user the user to manage this role for
@@ -275,6 +352,20 @@ public class Role {
             return mBehavior.getManageIntentAsUser(this, user, context);
         }
         return null;
+    }
+
+    /**
+     * Prepare a {@link Preference} for this role.
+     *
+     * @param preference the {@link Preference} for this role
+     * @param user the user for this role
+     * @param context the {@code Context} to retrieve system services
+     */
+    public void preparePreferenceAsUser(@NonNull SettingsButtonPreference preference,
+            @NonNull UserHandle user, @NonNull Context context) {
+        if (mBehavior != null) {
+            mBehavior.preparePreferenceAsUser(this, preference, user, context);
+        }
     }
 
     /**
@@ -436,9 +527,13 @@ public class Role {
 
         // TODO: STOPSHIP: Check for disabled packages?
 
-        // TODO: STOPSHIP: Add and check PackageManager.getSharedLibraryInfo().
-
         if (applicationInfo.isInstantApp()) {
+            return false;
+        }
+
+        PackageManager userPackageManager = UserUtils.getUserContext(context, user)
+                .getPackageManager();
+        if (!userPackageManager.getDeclaredSharedLibraries(packageName, 0).isEmpty()) {
             return false;
         }
 
@@ -450,23 +545,14 @@ public class Role {
      *
      * @param packageName the package name of the application to be granted this role to
      * @param dontKillApp whether this application should not be killed despite changes
-     * @param overrideDisabledSystemPackageAndUserSetAndFixedPermissions whether to ignore the
-     *                                                                   permissions of a disabled
-     *                                                                   system package (if this
-     *                                                                   package is an updated
-     *                                                                   system package), and
-     *                                                                   whether to override user
-     *                                                                   set and fixed flags on the
-     *                                                                   permission
-     * @param setPermissionsSystemFixed whether the permissions will be granted as system-fixed
+     * @param overrideUserSetAndFixedPermissions whether to override user set and fixed flags on
+     *                                           permissions
      * @param context the {@code Context} to retrieve system services
      */
     public void grant(@NonNull String packageName, boolean dontKillApp,
-            boolean overrideDisabledSystemPackageAndUserSetAndFixedPermissions,
-            boolean setPermissionsSystemFixed, @NonNull Context context) {
-        boolean permissionOrAppOpChanged = Permissions.grant(packageName, mPermissions,
-                overrideDisabledSystemPackageAndUserSetAndFixedPermissions,
-                setPermissionsSystemFixed, context);
+            boolean overrideUserSetAndFixedPermissions, @NonNull Context context) {
+        boolean permissionOrAppOpChanged = Permissions.grant(packageName, mPermissions, true,
+                overrideUserSetAndFixedPermissions, true, false, false, context);
 
         int appOpsSize = mAppOps.size();
         for (int i = 0; i < appOpsSize; i++) {
@@ -513,7 +599,7 @@ public class Role {
             permissionsToRevoke.removeAll(role.getPermissions());
         }
         boolean permissionOrAppOpChanged = Permissions.revoke(packageName, permissionsToRevoke,
-                overrideSystemFixedPermissions, context);
+                true, false, overrideSystemFixedPermissions, context);
 
         List<AppOp> appOpsToRevoke = new ArrayList<>(mAppOps);
         for (int i = 0; i < otherRoleNamesSize; i++) {
@@ -554,47 +640,69 @@ public class Role {
     }
 
     /**
-     * Did the user selected the "none" role holder.
+     * Check whether the "none" role holder is selected.
      *
-     * @param context A context to use
+     * @param context the {@code Context} to retrieve system services
      *
-     * @return {@code true} iff the user selected the "none" role holder
+     * @return whether the "none" role holder is selected
      */
     private boolean isNoneHolderSelected(@NonNull Context context) {
-        return getDeviceProtectedSharedPreferences(context).getBoolean(
+        return Utils.getDeviceProtectedSharedPreferences(context).getBoolean(
                 Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, false);
     }
 
     /**
-     * Indicate that the any other holder than "none" was selected.
+     * Callback when a role holder (other than "none") was added.
      *
-     * @param context A context to use
-     * @param user the user the role belongs to
+     * @param packageName the package name of the role holder
+     * @param user the user for the role
+     * @param context the {@code Context} to retrieve system services
      */
-    public void onHolderSelectedAsUser(@NonNull Context context, @NonNull UserHandle user) {
-        getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
+    public void onHolderAddedAsUser(@NonNull String packageName, @NonNull UserHandle user,
+            @NonNull Context context) {
+        Utils.getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
                 .remove(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName)
                 .apply();
     }
 
     /**
-     * Indicate that the "none" role holder was selected.
+     * Callback when a role holder (other than "none") was selected in the UI and added
+     * successfully.
      *
-     * @param context A context to use
-     * @param user the user the role belongs to
+     * @param packageName the package name of the role holder
+     * @param user the user for the role
+     * @param context the {@code Context} to retrieve system services
      */
-    public void onNoneHolderSelectedAsUser(@NonNull Context context, @NonNull UserHandle user) {
-        getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
-                .putBoolean(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, true)
-                .apply();
+    public void onHolderSelectedAsUser(@NonNull String packageName, @NonNull UserHandle user,
+            @NonNull Context context) {
+        if (mBehavior != null) {
+            mBehavior.onHolderSelectedAsUser(this, packageName, user, context);
+        }
     }
 
-    @NonNull
-    private SharedPreferences getDeviceProtectedSharedPreferences(@NonNull Context context) {
-        if (!context.isDeviceProtectedStorage()) {
-            context = context.createDeviceProtectedStorageContext();
+    /**
+     * Callback when a role holder changed.
+     *
+     * @param user the user for the role
+     * @param context the {@code Context} to retrieve system services
+     */
+    public void onHolderChangedAsUser(@NonNull UserHandle user,
+            @NonNull Context context) {
+        if (mBehavior != null) {
+            mBehavior.onHolderChangedAsUser(this, user, context);
         }
-        return context.getSharedPreferences(Constants.PREFERENCES_FILE, Context.MODE_PRIVATE);
+    }
+
+    /**
+     * Callback when the "none" role holder was selected in the UI.
+     *
+     * @param user the user for the role
+     * @param context the {@code Context} to retrieve system services
+     */
+    public void onNoneHolderSelectedAsUser(@NonNull UserHandle user, @NonNull Context context) {
+        Utils.getDeviceProtectedSharedPreferences(UserUtils.getUserContext(context, user)).edit()
+                .putBoolean(Constants.IS_NONE_ROLE_HOLDER_SELECTED_KEY + mName, true)
+                .apply();
     }
 
     @Override

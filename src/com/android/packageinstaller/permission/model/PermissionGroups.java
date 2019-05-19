@@ -16,8 +16,8 @@
 
 package com.android.packageinstaller.permission.model;
 
-import static android.content.pm.PackageItemInfo.SAFE_LABEL_FLAG_FIRST_LINE;
-import static android.content.pm.PackageItemInfo.SAFE_LABEL_FLAG_TRIM;
+import static android.text.TextUtils.SAFE_STRING_FLAG_FIRST_LINE;
+import static android.text.TextUtils.SAFE_STRING_FLAG_TRIM;
 
 import android.Manifest;
 import android.app.LoaderManager;
@@ -112,7 +112,7 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
     private static @NonNull CharSequence loadItemInfoLabel(@NonNull Context context,
             @NonNull PackageItemInfo itemInfo) {
         CharSequence label = itemInfo.loadSafeLabel(context.getPackageManager(), 0,
-                SAFE_LABEL_FLAG_FIRST_LINE | SAFE_LABEL_FLAG_TRIM);
+                SAFE_STRING_FLAG_FIRST_LINE | SAFE_STRING_FLAG_TRIM);
         if (label == null) {
             label = itemInfo.name;
         }
@@ -156,16 +156,15 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
      * @param isCanceled callback checked if the group resolution should be aborted
      * @param getAppUiInfo If the UI info for apps should be updated
      * @param getNonPlatformPermissions If we should get non-platform permission groups
-     * @param groupName Optional group to filter for.
+     * @param groupNames Optional groups to filter for.
      * @param packageName Optional package to filter for.
      *
      * @return the list of all groups int the system
      */
     public static @NonNull List<PermissionGroup> getPermissionGroups(@NonNull Context context,
             @Nullable Supplier<Boolean> isCanceled, boolean getAppUiInfo,
-            boolean getNonPlatformPermissions, @Nullable String groupName,
+            boolean getNonPlatformPermissions, @Nullable String[] groupNames,
             @Nullable String packageName) {
-        ArraySet<String> launcherPkgs = Utils.getLauncherPackages(context);
         PermissionApps.PmCache pmCache = new PermissionApps.PmCache(
                 context.getPackageManager());
         PermissionApps.AppDataCache appDataCache = new PermissionApps.AppDataCache(
@@ -175,7 +174,7 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
         Set<String> seenPermissions = new ArraySet<>();
 
         PackageManager packageManager = context.getPackageManager();
-        List<PermissionGroupInfo> groupInfos = getPermissionGroupInfos(context, groupName);
+        List<PermissionGroupInfo> groupInfos = getPermissionGroupInfos(context, groupNames);
 
         for (PermissionGroupInfo groupInfo : groupInfos) {
             // Mare sure we respond to cancellation.
@@ -222,8 +221,8 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
 
             // Create the group and add to the list.
             PermissionGroup group = new PermissionGroup(groupInfo.name,
-                    groupInfo.packageName, label, icon, permApps.getTotalCount(launcherPkgs),
-                    permApps.getGrantedCount(launcherPkgs), permApps);
+                    groupInfo.packageName, label, icon, permApps.getTotalCount(),
+                    permApps.getGrantedCount(), permApps);
             groups.add(group);
         }
 
@@ -282,8 +281,8 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
                 // Create the group and add to the list.
                 PermissionGroup group = new PermissionGroup(permissionInfo.name,
                         permissionInfo.packageName, label, icon,
-                        permApps.getTotalCount(launcherPkgs),
-                        permApps.getGrantedCount(launcherPkgs), permApps);
+                        permApps.getTotalCount(),
+                        permApps.getGrantedCount(), permApps);
                 groups.add(group);
             }
         }
@@ -304,15 +303,17 @@ public final class PermissionGroups implements LoaderCallbacks<List<PermissionGr
     }
 
     private static @NonNull List<PermissionGroupInfo> getPermissionGroupInfos(
-            @NonNull Context context, @Nullable String groupName) {
-        if (groupName == null) {
+            @NonNull Context context, @Nullable String[] groupNames) {
+        if (groupNames == null) {
             return context.getPackageManager().getAllPermissionGroups(0);
         }
         try {
-            final PermissionGroupInfo groupInfo = context.getPackageManager()
-                    .getPermissionGroupInfo(groupName, 0);
-            final List<PermissionGroupInfo> groupInfos = new ArrayList<>(1);
-            groupInfos.add(groupInfo);
+            final List<PermissionGroupInfo> groupInfos = new ArrayList<>(groupNames.length);
+            for (int i = 0; i < groupNames.length; i++) {
+                final PermissionGroupInfo groupInfo = context.getPackageManager()
+                        .getPermissionGroupInfo(groupNames[i], 0);
+                groupInfos.add(groupInfo);
+            }
             return groupInfos;
         } catch (PackageManager.NameNotFoundException e) {
             return Collections.emptyList();

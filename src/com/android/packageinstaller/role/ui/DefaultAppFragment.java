@@ -53,8 +53,11 @@ public class DefaultAppFragment extends SettingsFragment
 
     private static final String LOG_TAG = DefaultAppFragment.class.getSimpleName();
 
-    private static final String PREFERENCE_KEY_NONE =
-            DefaultAppFragment.class.getPackage().getName() + ".preference.NONE";
+    private static final String PREFERENCE_KEY_NONE = DefaultAppFragment.class.getName()
+            + ".preference.NONE";
+
+    private static final String PREFERENCE_KEY_DESCRIPTION = DefaultAppFragment.class.getName()
+            + ".preference.DESCRIPTION";
 
     private String mRoleName;
 
@@ -119,11 +122,13 @@ public class DefaultAppFragment extends SettingsFragment
         Context context = preferenceManager.getContext();
 
         PreferenceScreen preferenceScreen = getPreferenceScreen();
+        Preference oldDescriptionPreference = null;
         ArrayMap<String, Preference> oldPreferences = new ArrayMap<>();
         if (preferenceScreen == null) {
             preferenceScreen = preferenceManager.createPreferenceScreen(context);
             setPreferenceScreen(preferenceScreen);
         } else {
+            oldDescriptionPreference = preferenceScreen.findPreference(PREFERENCE_KEY_DESCRIPTION);
             for (int i = preferenceScreen.getPreferenceCount() - 1; i >= 0; --i) {
                 Preference preference = preferenceScreen.getPreference(i);
 
@@ -134,7 +139,7 @@ public class DefaultAppFragment extends SettingsFragment
 
         if (mRole.shouldShowNone()) {
             Drawable icon = AppCompatResources.getDrawable(context, R.drawable.ic_remove_circle);
-            String title = context.getString(R.string.default_app_none);
+            String title = getString(R.string.default_app_none);
             boolean noHolderApplication = !hasHolderApplication(qualifyingApplications);
             addPreference(PREFERENCE_KEY_NONE, icon, title, noHolderApplication, null,
                     oldPreferences, preferenceScreen, context);
@@ -152,6 +157,14 @@ public class DefaultAppFragment extends SettingsFragment
             addPreference(key, icon, title, isHolderApplication, qualifyingApplicationInfo,
                     oldPreferences, preferenceScreen, context);
         }
+
+        Preference descriptionPreference = oldDescriptionPreference;
+        if (descriptionPreference == null) {
+            descriptionPreference = new FooterPreference(context);
+            descriptionPreference.setKey(PREFERENCE_KEY_DESCRIPTION);
+            descriptionPreference.setSummary(mRole.getDescriptionResource());
+        }
+        preferenceScreen.addPreference(descriptionPreference);
 
         updateState();
     }
@@ -185,11 +198,12 @@ public class DefaultAppFragment extends SettingsFragment
             preference.setOnPreferenceChangeListener((preference2, newValue) -> false);
             preference.setOnPreferenceClickListener(this);
         }
+
         preference.setChecked(checked);
         if (applicationInfo != null) {
             mRole.prepareApplicationPreferenceAsUser(preference, applicationInfo, mUser, context);
         }
-        // TODO: Ordering?
+
         preferenceScreen.addPreference(preference);
     }
 
@@ -197,6 +211,11 @@ public class DefaultAppFragment extends SettingsFragment
         ManageRoleHolderStateLiveData liveData = mViewModel.getManageRoleHolderStateLiveData();
         switch (state) {
             case ManageRoleHolderStateLiveData.STATE_SUCCESS:
+                String packageName = liveData.getLastPackageName();
+                if (packageName != null) {
+                    mRole.onHolderSelectedAsUser(packageName, liveData.getLastUser(),
+                            requireContext());
+                }
                 liveData.resetState();
                 break;
             case ManageRoleHolderStateLiveData.STATE_FAILURE:
@@ -235,7 +254,7 @@ public class DefaultAppFragment extends SettingsFragment
     }
 
     private void setNoneDefaultApp() {
-        mRole.onNoneHolderSelectedAsUser(requireContext(), mUser);
+        mRole.onNoneHolderSelectedAsUser(mUser, requireContext());
 
         ManageRoleHolderStateLiveData liveData = mViewModel.getManageRoleHolderStateLiveData();
         if (liveData.getValue() != ManageRoleHolderStateLiveData.STATE_IDLE) {

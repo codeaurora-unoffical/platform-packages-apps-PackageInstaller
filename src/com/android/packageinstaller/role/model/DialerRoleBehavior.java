@@ -17,13 +17,18 @@
 package com.android.packageinstaller.role.model;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.os.UserHandle;
+import android.telecom.TelecomManager;
 import android.telephony.TelephonyManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.preference.Preference;
 
-import java.util.List;
+import com.android.permissioncontroller.R;
+
+import java.util.Objects;
 
 /**
  * Class for behavior of the dialer role.
@@ -41,6 +46,19 @@ public class DialerRoleBehavior implements RoleBehavior {
         return telephonyManager.isVoiceCapable();
     }
 
+    @Override
+    public void prepareApplicationPreferenceAsUser(@NonNull Role role,
+            @NonNull Preference preference, @NonNull ApplicationInfo applicationInfo,
+            @NonNull UserHandle user, @NonNull Context context) {
+        TelecomManager telecomManager = context.getSystemService(TelecomManager.class);
+        String systemPackageName = telecomManager.getSystemDialerPackage();
+        if (Objects.equals(applicationInfo.packageName, systemPackageName)) {
+            preference.setSummary(R.string.default_app_system_default);
+        } else {
+            preference.setSummary(null);
+        }
+    }
+
     @Nullable
     @Override
     public CharSequence getConfirmationMessage(@NonNull Role role, @NonNull String packageName,
@@ -49,9 +67,9 @@ public class DialerRoleBehavior implements RoleBehavior {
                 context);
     }
 
-    @NonNull
+    @Nullable
     @Override
-    public List<String> getDefaultHolders(@NonNull Role role, @NonNull Context context) {
-        return ExclusiveDefaultHolderMixin.getDefaultHolders(role, "config_defaultDialer", context);
+    public String getFallbackHolder(@NonNull Role role, @NonNull Context context) {
+        return ExclusiveDefaultHolderMixin.getDefaultHolder(role, "config_defaultDialer", context);
     }
 }

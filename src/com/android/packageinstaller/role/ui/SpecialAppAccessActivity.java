@@ -20,6 +20,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -53,11 +54,24 @@ public class SpecialAppAccessActivity extends FragmentActivity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        getWindow().addSystemFlags(
+                WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+
         String roleName = getIntent().getStringExtra(Intent.EXTRA_ROLE_NAME);
 
         Role role = Roles.get(this).get(roleName);
         if (role == null) {
             Log.e(LOG_TAG, "Unknown role: " + roleName);
+            finish();
+            return;
+        }
+        if (!role.isAvailable(this)) {
+            Log.e(LOG_TAG, "Role is unavailable: " + roleName);
+            finish();
+            return;
+        }
+        if (!role.isVisible(this)) {
+            Log.e(LOG_TAG, "Role is invisible: " + roleName);
             finish();
             return;
         }

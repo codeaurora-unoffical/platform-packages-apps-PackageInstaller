@@ -24,13 +24,27 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Process;
-import android.text.Html;
+import android.os.UserHandle;
+import android.text.TextUtils;
 import android.util.Log;
+import android.util.Pair;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.CheckBox;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.fragment.app.DialogFragment;
 import androidx.lifecycle.ViewModelProviders;
 
@@ -38,10 +52,13 @@ import com.android.packageinstaller.permission.utils.PackageRemovalMonitor;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.packageinstaller.role.model.Role;
 import com.android.packageinstaller.role.model.Roles;
+import com.android.packageinstaller.role.model.UserDeniedManager;
 import com.android.packageinstaller.role.utils.PackageUtils;
 import com.android.permissioncontroller.R;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * {@code Fragment} for a role request.
@@ -50,8 +67,16 @@ public class RequestRoleFragment extends DialogFragment {
 
     private static final String LOG_TAG = RequestRoleFragment.class.getSimpleName();
 
+    private static final String STATE_DONT_ASK_AGAIN = RequestRoleFragment.class.getName()
+            + ".state.DONT_ASK_AGAIN";
+
     private String mRoleName;
     private String mPackageName;
+
+    private Role mRole;
+
+    private Adapter mAdapter;
+    private CheckBox mDontAskAgainCheck;
 
     private RequestRoleViewModel mViewModel;
 
@@ -83,19 +108,24 @@ public class RequestRoleFragment extends DialogFragment {
         Bundle arguments = getArguments();
         mPackageName = arguments.getString(Intent.EXTRA_PACKAGE_NAME);
         mRoleName = arguments.getString(Intent.EXTRA_ROLE_NAME);
+
+        mRole = Roles.get(requireContext()).get(mRoleName);
     }
 
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        Context context = requireContext();
-        Role role = Roles.get(context).get(mRoleName);
-        if (role == null) {
-            Log.w(LOG_TAG, "Unknown role: " + mRoleName);
-            finish();
+        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext(), getTheme());
+        Context context = builder.getContext();
+
+        RoleManager roleManager = context.getSystemService(RoleManager.class);
+        List<String> currentPackageNames = roleManager.getRoleHolders(mRoleName);
+        if (currentPackageNames.contains(mPackageName)) {
+            Log.i(LOG_TAG, "Application is already a role holder, role: " + mRoleName
+                    + ", package: " + mPackageName);
+            clearDeniedSetResultOkAndFinish();
             return super.onCreateDialog(savedInstanceState);
         }
-        String roleLabel = getString(role.getLabelResource());
 
         ApplicationInfo applicationInfo = PackageUtils.getApplicationInfo(mPackageName, context);
         if (applicationInfo == null) {
@@ -103,45 +133,54 @@ public class RequestRoleFragment extends DialogFragment {
             finish();
             return super.onCreateDialog(savedInstanceState);
         }
+        Drawable icon = Utils.getBadgedIcon(context, applicationInfo);
         String applicationLabel = Utils.getAppLabel(applicationInfo, context);
+        String title = getString(mRole.getRequestTitleResource(), applicationLabel);
 
-        RoleManager roleManager = context.getSystemService(RoleManager.class);
-        List<String> currentPackageNames = roleManager.getRoleHolders(mRoleName);
-        if (currentPackageNames.contains(mPackageName)) {
-            Log.i(LOG_TAG, "Application is already a role holder, role: " + mRoleName
-                    + ", package: " + mPackageName);
-            setResultOkAndFinish();
-            return super.onCreateDialog(savedInstanceState);
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View titleLayout = inflater.inflate(R.layout.request_role_title, null);
+        ImageView iconImage = titleLayout.findViewById(R.id.icon);
+        iconImage.setImageDrawable(icon);
+        TextView titleText = titleLayout.findViewById(R.id.title);
+        titleText.setText(title);
+
+        mAdapter = new Adapter(mRole);
+        if (savedInstanceState != null) {
+            mAdapter.onRestoreInstanceState(savedInstanceState);
         }
-        String currentApplicationLabel = role.isExclusive() ? getCurrentApplicationLabel(
-                currentPackageNames, context) : null;
 
-        String messageHtml;
-        if (currentApplicationLabel == null) {
-            messageHtml = getString(R.string.role_request_message_add, applicationLabel, roleLabel);
-        } else {
-            messageHtml = getString(R.string.role_request_message_replace, applicationLabel,
-                    currentApplicationLabel, roleLabel);
+        View viewLayout = null;
+        if (UserDeniedManager.getInstance(context).isDeniedOnce(mRoleName, mPackageName)) {
+            viewLayout = inflater.inflate(R.layout.request_role_view, null);
+            mDontAskAgainCheck = viewLayout.findViewById(R.id.dont_ask_again);
+            mDontAskAgainCheck.setOnClickListener(view -> updateUi());
+            if (savedInstanceState != null) {
+                boolean dontAskAgain = savedInstanceState.getBoolean(STATE_DONT_ASK_AGAIN);
+                mDontAskAgainCheck.setChecked(dontAskAgain);
+                mAdapter.setDontAskAgain(dontAskAgain);
+            }
         }
-        CharSequence message = Html.fromHtml(messageHtml, Html.FROM_HTML_MODE_LEGACY);
 
-        AlertDialog dialog = new AlertDialog.Builder(context, getTheme())
-                .setMessage(message)
+        AlertDialog dialog = builder
+                .setCustomTitle(titleLayout)
+                .setSingleChoiceItems(mAdapter, AdapterView.INVALID_POSITION, (dialog2, which) ->
+                        onItemClicked(which))
+                .setView(viewLayout)
                 // Set the positive button listener later to avoid the automatic dismiss behavior.
-                .setPositiveButton(android.R.string.ok, null)
-                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.request_role_set_as_default, null)
+                // The default behavior for a null listener is to dismiss the dialog, not cancel.
+                .setNegativeButton(android.R.string.cancel, (dialog2, which) -> dialog2.cancel())
                 .create();
+        dialog.getWindow().addSystemFlags(
+                WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
         dialog.setOnShowListener(dialog2 -> dialog.getButton(Dialog.BUTTON_POSITIVE)
-                .setOnClickListener(view -> addRoleHolder()));
+                .setOnClickListener(view -> onSetAsDefault()));
         return dialog;
     }
 
     @Override
-    public void onActivityCreated(@Nullable Bundle savedInstanceState) {
-        super.onActivityCreated(savedInstanceState);
-
-        mViewModel = ViewModelProviders.of(this).get(RequestRoleViewModel.class);
-        mViewModel.getLiveData().observe(this, this::onManageRoleHolderStateChanged);
+    public AlertDialog getDialog() {
+        return (AlertDialog) super.getDialog();
     }
 
     @Override
@@ -164,6 +203,25 @@ public class RequestRoleFragment extends DialogFragment {
             }
         };
         mPackageRemovalMonitor.register();
+
+        mAdapter.setListView(getDialog().getListView());
+
+        // Postponed to onStart() so that the list view in dialog is created.
+        mViewModel = ViewModelProviders.of(this, new RequestRoleViewModel.Factory(mRole,
+                requireActivity().getApplication())).get(RequestRoleViewModel.class);
+        mViewModel.getRoleLiveData().observe(this, mAdapter::replace);
+        mViewModel.getManageRoleHolderStateLiveData().observe(this,
+                this::onManageRoleHolderStateChanged);
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        mAdapter.onSaveInstanceState(outState);
+        if (mDontAskAgainCheck != null) {
+            outState.putBoolean(STATE_DONT_ASK_AGAIN, mDontAskAgainCheck.isChecked());
+        }
     }
 
     @Override
@@ -177,44 +235,100 @@ public class RequestRoleFragment extends DialogFragment {
     }
 
     @Override
-    public void onDismiss(@NonNull DialogInterface dialog) {
-        super.onDismiss(dialog);
+    public void onCancel(@NonNull DialogInterface dialog) {
+        super.onCancel(dialog);
 
-        Log.i(LOG_TAG, "Dialog dismissed, role: " + mRoleName + ", package: "
-                + mPackageName);
-        if (getActivity() != null) {
-            finish();
+        Log.i(LOG_TAG, "Dialog cancelled, role: " + mRoleName + ", package: " + mPackageName);
+        setDeniedOnceAndFinish();
+    }
+
+    private void onItemClicked(int position) {
+        mAdapter.onItemClicked(position);
+        updateUi();
+    }
+
+    private void onSetAsDefault() {
+        if (mDontAskAgainCheck != null && mDontAskAgainCheck.isChecked()) {
+            Log.i(LOG_TAG, "Request denied with don't ask again, role: " + mRoleName + ", package: "
+                    + mPackageName);
+            setDeniedAlwaysAndFinish();
+        } else {
+            setRoleHolder();
+        }
+    }
+
+    private void setRoleHolder() {
+        String packageName = mAdapter.getCheckedPackageName();
+        Context context = requireContext();
+        UserHandle user = Process.myUserHandle();
+        if (packageName == null) {
+            mRole.onNoneHolderSelectedAsUser(user, context);
+            mViewModel.getManageRoleHolderStateLiveData().clearRoleHoldersAsUser(mRoleName, 0, user,
+                    context);
+        } else {
+            int flags = Objects.equals(packageName, mPackageName)
+                    ? RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP : 0;
+            mViewModel.getManageRoleHolderStateLiveData().setRoleHolderAsUser(mRoleName,
+                    packageName, true, flags, user, context);
         }
     }
 
     private void onManageRoleHolderStateChanged(int state) {
-        AlertDialog dialog = (AlertDialog) getDialog();
         switch (state) {
             case ManageRoleHolderStateLiveData.STATE_IDLE:
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(true);
-                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(true);
-                break;
             case ManageRoleHolderStateLiveData.STATE_WORKING:
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(false);
-                dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(false);
+                updateUi();
                 break;
-            case ManageRoleHolderStateLiveData.STATE_SUCCESS:
-                setResultOkAndFinish();
+            case ManageRoleHolderStateLiveData.STATE_SUCCESS: {
+                ManageRoleHolderStateLiveData liveData =
+                        mViewModel.getManageRoleHolderStateLiveData();
+                String packageName = liveData.getLastPackageName();
+                if (packageName != null) {
+                    mRole.onHolderSelectedAsUser(packageName, liveData.getLastUser(),
+                            requireContext());
+                }
+                if (Objects.equals(packageName, mPackageName)) {
+                    Log.i(LOG_TAG, "Application added as a role holder, role: " + mRoleName
+                            + ", package: " + mPackageName);
+                    clearDeniedSetResultOkAndFinish();
+                } else {
+                    Log.i(LOG_TAG, "Request denied with another application added as a role holder,"
+                            + " role: " + mRoleName + ", package: " + mPackageName);
+                    setDeniedOnceAndFinish();
+                }
                 break;
+            }
             case ManageRoleHolderStateLiveData.STATE_FAILURE:
                 finish();
                 break;
         }
     }
 
-    private void addRoleHolder() {
-        mViewModel.getLiveData().setRoleHolderAsUser(mRoleName, mPackageName, true,
-                RoleManager.MANAGE_HOLDERS_FLAG_DONT_KILL_APP, Process.myUserHandle(),
-                requireContext());
+    private void updateUi() {
+        AlertDialog dialog = getDialog();
+        boolean enabled = mViewModel.getManageRoleHolderStateLiveData().getValue()
+                == ManageRoleHolderStateLiveData.STATE_IDLE;
+        dialog.getListView().setEnabled(enabled);
+        boolean dontAskAgain = mDontAskAgainCheck != null && mDontAskAgainCheck.isChecked();
+        mAdapter.setDontAskAgain(dontAskAgain);
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setEnabled(enabled && (dontAskAgain
+                || !mAdapter.isHolderApplicationChecked()));
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE).setEnabled(enabled);
     }
 
-    private void setResultOkAndFinish() {
+    private void clearDeniedSetResultOkAndFinish() {
+        UserDeniedManager.getInstance(requireContext()).clearDenied(mRoleName, mPackageName);
         requireActivity().setResult(Activity.RESULT_OK);
+        finish();
+    }
+
+    private void setDeniedOnceAndFinish() {
+        UserDeniedManager.getInstance(requireContext()).setDeniedOnce(mRoleName, mPackageName);
+        finish();
+    }
+
+    private void setDeniedAlwaysAndFinish() {
+        UserDeniedManager.getInstance(requireContext()).setDeniedAlways(mRoleName, mPackageName);
         finish();
     }
 
@@ -222,19 +336,289 @@ public class RequestRoleFragment extends DialogFragment {
         requireActivity().finish();
     }
 
-    private static String getCurrentApplicationLabel(@NonNull List<String> currentPackageNames,
-            @NonNull Context context) {
-        if (currentPackageNames.isEmpty()) {
-            return null;
-        }
-        String currentPackageName = currentPackageNames.get(0);
+    private static class Adapter extends BaseAdapter {
 
-        ApplicationInfo currentApplicationInfo = PackageUtils.getApplicationInfo(
-                currentPackageName, context);
-        if (currentApplicationInfo == null) {
-            return null;
+        private static final String STATE_USER_CHECKED = Adapter.class.getName()
+                + ".state.USER_CHECKED";
+        private static final String STATE_USER_CHECKED_PACKAGE_NAME = Adapter.class.getName()
+                + ".state.USER_CHECKED_PACKAGE_NAME";
+
+        private static final int LAYOUT_TRANSITION_DURATION_MILLIS = 150;
+
+        @NonNull
+        private final Role mRole;
+
+        // We'll use a null to represent the "None" item.
+        @NonNull
+        private final List<Pair<ApplicationInfo, Boolean>> mQualifyingApplications =
+                new ArrayList<>();
+
+        private boolean mHasHolderApplication;
+
+        private ListView mListView;
+
+        private boolean mDontAskAgain;
+
+        // If user has ever clicked an item to mark it as checked, we no longer automatically mark
+        // the current holder as checked.
+        private boolean mUserChecked;
+
+        private boolean mPendingUserChecked;
+        // We may use a null to represent the "None" item.
+        @Nullable
+        private String mPendingUserCheckedPackageName;
+
+        Adapter(@NonNull Role role) {
+            mRole = role;
         }
 
-        return Utils.getAppLabel(currentApplicationInfo, context);
+        public void onSaveInstanceState(@NonNull Bundle outState) {
+            outState.putBoolean(STATE_USER_CHECKED, mUserChecked);
+            if (mUserChecked) {
+                outState.putString(STATE_USER_CHECKED_PACKAGE_NAME, getCheckedPackageName());
+            }
+        }
+
+        public void onRestoreInstanceState(@NonNull Bundle savedInstanceState) {
+            mPendingUserChecked = savedInstanceState.getBoolean(STATE_USER_CHECKED);
+            if (mPendingUserChecked) {
+                mPendingUserCheckedPackageName = savedInstanceState.getString(
+                        STATE_USER_CHECKED_PACKAGE_NAME);
+            }
+        }
+
+        public void setListView(@NonNull ListView listView) {
+            mListView = listView;
+        }
+
+        public void setDontAskAgain(boolean dontAskAgain) {
+            if (mDontAskAgain == dontAskAgain) {
+                return;
+            }
+            mDontAskAgain = dontAskAgain;
+            if (mDontAskAgain) {
+                mUserChecked = false;
+                updateItemChecked();
+            }
+            notifyDataSetChanged();
+        }
+
+        public void onItemClicked(int position) {
+            mUserChecked = true;
+            // We may need to change description based on checked state.
+            notifyDataSetChanged();
+        }
+
+        public void replace(@NonNull List<Pair<ApplicationInfo, Boolean>> qualifyingApplications) {
+            mQualifyingApplications.clear();
+            if (mRole.shouldShowNone()) {
+                mQualifyingApplications.add(0, null);
+            }
+            mQualifyingApplications.addAll(qualifyingApplications);
+            mHasHolderApplication = hasHolderApplication(qualifyingApplications);
+            notifyDataSetChanged();
+
+            if (mPendingUserChecked) {
+                restoreItemChecked();
+                mPendingUserChecked = false;
+                mPendingUserCheckedPackageName = null;
+            }
+
+            if (!mUserChecked) {
+                updateItemChecked();
+            }
+        }
+
+        private static boolean hasHolderApplication(
+                @NonNull List<Pair<ApplicationInfo, Boolean>> qualifyingApplications) {
+            int qualifyingApplicationsSize = qualifyingApplications.size();
+            for (int i = 0; i < qualifyingApplicationsSize; i++) {
+                Pair<ApplicationInfo, Boolean> qualifyingApplication = qualifyingApplications.get(
+                        i);
+                boolean isHolderApplication = qualifyingApplication.second;
+
+                if (isHolderApplication) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void restoreItemChecked() {
+            if (mPendingUserCheckedPackageName == null) {
+                if (mRole.shouldShowNone()) {
+                    mUserChecked = true;
+                    mListView.setItemChecked(0, true);
+                }
+            } else {
+                int count = getCount();
+                for (int i = 0; i < count; i++) {
+                    Pair<ApplicationInfo, Boolean> qualifyingApplication = getItem(i);
+                    if (qualifyingApplication == null) {
+                        continue;
+                    }
+                    String packageName = qualifyingApplication.first.packageName;
+
+                    if (Objects.equals(packageName, mPendingUserCheckedPackageName)) {
+                        mUserChecked = true;
+                        mListView.setItemChecked(i, true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void updateItemChecked() {
+            if (!mHasHolderApplication) {
+                if (mRole.shouldShowNone()) {
+                    mListView.setItemChecked(0, true);
+                } else {
+                    mListView.clearChoices();
+                }
+            } else {
+                int count = getCount();
+                for (int i = 0; i < count; i++) {
+                    Pair<ApplicationInfo, Boolean> qualifyingApplication = getItem(i);
+                    if (qualifyingApplication == null) {
+                        continue;
+                    }
+                    boolean isHolderApplication = qualifyingApplication.second;
+
+                    if (isHolderApplication) {
+                        mListView.setItemChecked(i, true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        @Nullable
+        public Pair<ApplicationInfo, Boolean> getCheckedItem() {
+            int position = mListView.getCheckedItemPosition();
+            return position != AdapterView.INVALID_POSITION ? getItem(position) : null;
+        }
+
+        @Nullable
+        public String getCheckedPackageName() {
+            Pair<ApplicationInfo, Boolean> qualifyingApplication = getCheckedItem();
+            return qualifyingApplication == null ? null : qualifyingApplication.first.packageName;
+        }
+
+        public boolean isHolderApplicationChecked() {
+            Pair<ApplicationInfo, Boolean> qualifyingApplication = getCheckedItem();
+            return qualifyingApplication == null ? !mHasHolderApplication
+                    : qualifyingApplication.second;
+        }
+
+        @Override
+        public boolean hasStableIds() {
+            return true;
+        }
+
+        @Override
+        public boolean areAllItemsEnabled() {
+            return false;
+        }
+
+        @Override
+        public int getCount() {
+            return mQualifyingApplications.size();
+        }
+
+        @Nullable
+        @Override
+        public Pair<ApplicationInfo, Boolean> getItem(int position) {
+            return mQualifyingApplications.get(position);
+        }
+
+        @Override
+        public long getItemId(int position) {
+            Pair<ApplicationInfo, Boolean> qualifyingApplication = getItem(position);
+            return qualifyingApplication == null ? 0
+                    : qualifyingApplication.first.packageName.hashCode();
+        }
+
+        @Override
+        public boolean isEnabled(int position) {
+            if (!mDontAskAgain) {
+                return true;
+            }
+            Pair<ApplicationInfo, Boolean> qualifyingApplication = getItem(position);
+            if (qualifyingApplication == null) {
+                return !mHasHolderApplication;
+            } else {
+                boolean isHolderApplication = qualifyingApplication.second;
+                return isHolderApplication;
+            }
+        }
+
+        @NonNull
+        @Override
+        public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+            Context context = parent.getContext();
+            View view = convertView;
+            ViewHolder holder;
+            if (view != null) {
+                holder = (ViewHolder) view.getTag();
+            } else {
+                view = LayoutInflater.from(context).inflate(R.layout.request_role_item, parent,
+                        false);
+                holder = new ViewHolder(view);
+                view.setTag(holder);
+
+                holder.titleAndSubtitleLayout.getLayoutTransition().setDuration(
+                        LAYOUT_TRANSITION_DURATION_MILLIS);
+            }
+
+            view.setEnabled(isEnabled(position));
+
+            Pair<ApplicationInfo, Boolean> qualifyingApplication = getItem(position);
+            Drawable icon;
+            String title;
+            String subtitle;
+            if (qualifyingApplication == null) {
+                icon = AppCompatResources.getDrawable(context, R.drawable.ic_remove_circle);
+                title = context.getString(R.string.default_app_none);
+                subtitle = !mHasHolderApplication ? context.getString(
+                        R.string.request_role_current_default) : null;
+            } else {
+                ApplicationInfo qualifyingApplicationInfo = qualifyingApplication.first;
+                icon = Utils.getBadgedIcon(context, qualifyingApplicationInfo);
+                title = Utils.getAppLabel(qualifyingApplicationInfo, context);
+                boolean isHolderApplication = qualifyingApplication.second;
+                subtitle = isHolderApplication
+                        ? context.getString(R.string.request_role_current_default)
+                        : mListView.isItemChecked(position)
+                                ? context.getString(mRole.getRequestDescriptionResource()) : null;
+            }
+
+            holder.iconImage.setImageDrawable(icon);
+            holder.titleText.setText(title);
+            holder.subtitleText.setVisibility(!TextUtils.isEmpty(subtitle) ? View.VISIBLE
+                    : View.GONE);
+            holder.subtitleText.setText(subtitle);
+
+            return view;
+        }
+
+        private static class ViewHolder {
+
+            @NonNull
+            public final ImageView iconImage;
+            @NonNull
+            public final ViewGroup titleAndSubtitleLayout;
+            @NonNull
+            public final TextView titleText;
+            @NonNull
+            public final TextView subtitleText;
+
+            ViewHolder(@NonNull View view) {
+                iconImage = Objects.requireNonNull(view.findViewById(R.id.icon));
+                titleAndSubtitleLayout = Objects.requireNonNull(view.findViewById(
+                        R.id.title_and_subtitle));
+                titleText = Objects.requireNonNull(view.findViewById(R.id.title));
+                subtitleText = Objects.requireNonNull(view.findViewById(R.id.subtitle));
+            }
+        }
     }
 }
