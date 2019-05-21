@@ -96,23 +96,27 @@ public class AssistantRoleBehavior implements RoleBehavior {
     @Override
     public List<String> getQualifyingPackagesAsUser(@NonNull Role role, @NonNull UserHandle user,
             @NonNull Context context) {
-        PackageManager pm = context.getPackageManager();
+        Context userContext = UserUtils.getUserContext(context, user);
+        PackageManager userPackageManager = userContext.getPackageManager();
         Set<String> availableAssistants = new ArraySet<>();
 
-        List<ResolveInfo> services = pm.queryIntentServicesAsUser(ASSIST_SERVICE_PROBE,
-                PackageManager.GET_META_DATA, user);
+        List<ResolveInfo> services = userPackageManager.queryIntentServices(ASSIST_SERVICE_PROBE,
+                PackageManager.GET_META_DATA | PackageManager.MATCH_DIRECT_BOOT_AWARE
+                        | PackageManager.MATCH_DIRECT_BOOT_UNAWARE);
 
         int numServices = services.size();
         for (int i = 0; i < numServices; i++) {
             ResolveInfo service = services.get(i);
 
-            if (isAssistantVoiceInteractionService(pm, service.serviceInfo)) {
+            if (isAssistantVoiceInteractionService(userPackageManager, service.serviceInfo)) {
                 availableAssistants.add(service.serviceInfo.packageName);
             }
         }
 
-        List<ResolveInfo> activities = pm.queryIntentActivitiesAsUser(ASSIST_ACTIVITY_PROBE,
-                PackageManager.MATCH_DEFAULT_ONLY, user);
+        List<ResolveInfo> activities = userPackageManager.queryIntentActivities(
+                ASSIST_ACTIVITY_PROBE, PackageManager.MATCH_DEFAULT_ONLY
+                        | PackageManager.MATCH_DIRECT_BOOT_AWARE
+                        | PackageManager.MATCH_DIRECT_BOOT_UNAWARE);
 
         int numActivities = activities.size();
         for (int i = 0; i < numActivities; i++) {
@@ -130,7 +134,8 @@ public class AssistantRoleBehavior implements RoleBehavior {
 
         Intent pkgServiceProbe = new Intent(ASSIST_SERVICE_PROBE).setPackage(packageName);
         List<ResolveInfo> services = pm.queryIntentServices(pkgServiceProbe,
-                PackageManager.GET_META_DATA);
+                PackageManager.GET_META_DATA | PackageManager.MATCH_DIRECT_BOOT_AWARE
+                        | PackageManager.MATCH_DIRECT_BOOT_UNAWARE);
 
         int numServices = services.size();
         for (int i = 0; i < numServices; i++) {
@@ -143,7 +148,8 @@ public class AssistantRoleBehavior implements RoleBehavior {
 
         Intent pkgActivityProbe = new Intent(ASSIST_ACTIVITY_PROBE).setPackage(packageName);
         boolean hasAssistantActivity = !pm.queryIntentActivities(pkgActivityProbe,
-                PackageManager.MATCH_DEFAULT_ONLY).isEmpty();
+                PackageManager.MATCH_DEFAULT_ONLY | PackageManager.MATCH_DIRECT_BOOT_AWARE
+                        | PackageManager.MATCH_DIRECT_BOOT_UNAWARE).isEmpty();
 
         if (!hasAssistantActivity) {
             Log.w(LOG_TAG, "Package " + packageName + " not qualified for " + role.getName()

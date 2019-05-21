@@ -413,10 +413,76 @@
     <string name="app_permission_header"><xliff:g id="perm" example="location">%1$s</xliff:g> access for this app</string>
 
     <!-- Summary for showing a single permission access [CHAR LIMIT=60] -->
-    <string name="app_permission_footer_usage_summary"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your <xliff:g id="perm" example="location">%2$s</xliff:g> <xliff:g id="time" example="2 hours">%3$s</xliff:g> ago</string>
+    <string name="app_permission_footer_usage_summary_generic"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your <xliff:g id="perm" example="location">%2$s</xliff:g> <xliff:g id="time" example="2 hours">%3$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single activity recognition permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_activity_recognition"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your physical activity <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single calendar permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_calendar"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your calendar <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single call log permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_call_log"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your call logs <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single camera permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_camera"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your camera <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single contacts permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_contacts"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your contacts <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single location permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_location"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your location <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single microphone permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_microphone"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your microphone <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single phone permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_phone"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your phone <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single sensors permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_sensors"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your sensors <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single SMS permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_sms"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your SMS <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
+
+    <!-- Summary for showing a single storage permission access [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_usage_summary_storage"><xliff:g id="app" example="Maps">%1$s</xliff:g> accessed your storage <xliff:g id="time" example="2 hours">%2$s</xliff:g> ago</string>
 
     <!-- Summary for showing a single permission access that has not accessed the permission [CHAR LIMIT=60] -->
-    <string name="app_permission_footer_no_usages"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your <xliff:g id="perm" example="location">%2$s</xliff:g></string>
+    <string name="app_permission_footer_no_usages_generic"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your <xliff:g id="perm" example="location">%2$s</xliff:g></string>
+
+    <!-- Summary for showing a single permission access that has not accessed the activity recognition permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_activity_recognition"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your physical activity</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the calendar permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_calendar"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your calendar</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the call log permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_call_log"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your call logs</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the camera permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_camera"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your camera</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the contacts permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_contacts"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your contacts</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the location permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_location"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your location</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the microphone permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_microphone"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your microphone</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the phone permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_phone"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your phone</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the sensors permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_sensors"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your sensors</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the SMS permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_sms"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your SMS</string>
+
+    <!-- Summary for showing a single permission access that has not accessed the storage permission [CHAR LIMIT=60] -->
+    <string name="app_permission_footer_no_usages_storage"><xliff:g id="app" example="Maps">%1$s</xliff:g> has not accessed your storage</string>
 
     <!-- Summary for showing that the permission usage data for a permission is not available [CHAR LIMIT=none] -->
     <string name="app_permission_footer_not_available">Last access data is currently not available for this permission</string>
@@ -619,39 +685,6 @@
     <!-- Description when an app requests to become the default home app. [CHAR LIMIT=60] -->
     <string name="role_home_request_description">No permissions needed</string>
 
-    <!-- Label for the music player role. [CHAR LIMIT=30] -->
-    <string name="role_music_label">Default music app</string>
-    <!-- Short label for the music player role. [CHAR LIMIT=30] -->
-    <string name="role_music_short_label">Music app</string>
-    <!-- Description for the music role. [CHAR LIMIT=NONE] -->
-    <string name="role_music_description">Apps that allow you to play songs, podcasts, and other audio</string>
-    <!-- Template for the title when an app requests to become the default music app. [CHAR LIMIT=100] -->
-    <string name="role_music_request_title">Set <xliff:g id="app_name" example="Super Music">%1$s</xliff:g> as your default music app?</string>
-    <!-- Description when an app requests to become the default music app. [CHAR LIMIT=60] -->
-    <string name="role_music_request_description">Gets access to audio</string>
-
-    <!-- Label for the gallery role. [CHAR LIMIT=30] -->
-    <string name="role_gallery_label">Default gallery app</string>
-    <!-- Short label for the gallery role. [CHAR LIMIT=30] -->
-    <string name="role_gallery_short_label">Gallery app</string>
-    <!-- Description for the gallery role. [CHAR LIMIT=NONE] -->
-    <string name="role_gallery_description">Apps that allow you to view, organize, protect, and share your photos and videos</string>
-    <!-- Template for the title when an app requests to become the default gallery app. [CHAR LIMIT=100] -->
-    <string name="role_gallery_request_title">Set <xliff:g id="app_name" example="Super Gallery">%1$s</xliff:g> as your default gallery app?</string>
-    <!-- Description when an app requests to become the default gallery app. [CHAR LIMIT=60] -->
-    <string name="role_gallery_request_description">Gets access to photos and videos</string>
-
-    <!-- Label for the automotive dialer role. [CHAR LIMIT=30] -->
-    <string name="role_car_mode_dialer_label">Default car mode phone app</string>
-    <!-- Short label for the automotive dialer role. [CHAR LIMIT=30] -->
-    <string name="role_car_mode_dialer_short_label">Car mode phone app</string>
-    <!-- Description for the automotive dialer role. [CHAR LIMIT=NONE] -->
-    <string name="role_car_mode_dialer_description"></string>
-    <!-- Template for the title when an app requests to become the default automotive dialer app. [CHAR LIMIT=100] -->
-    <string name="role_car_mode_dialer_request_title">Set <xliff:g id="app_name" example="Super Car Mode Phone">%1$s</xliff:g> as your default car mode phone app?</string>
-    <!-- Description when an app requests to become the default automotive dialer app. [CHAR LIMIT=60] -->
-    <string name="role_car_mode_dialer_request_description"></string>
-
     <!-- Label for the call redirection role. [CHAR LIMIT=30] -->
     <string name="role_call_redirection_label">Default call redirecting app</string>
     <!-- Short label for the call redirection role. [CHAR LIMIT=30] -->
@@ -673,17 +706,6 @@
     <string name="role_call_screening_request_title">Set <xliff:g id="app_name" example="Super Call Screening">%1$s</xliff:g> as your default caller ID &amp; spam app?</string>
     <!-- Description when an app requests to become the default call screening app. [CHAR LIMIT=60] -->
     <string name="role_call_screening_request_description">No permissions needed</string>
-
-    <!-- Label for the call companion role. [CHAR LIMIT=30] -->
-    <string name="role_call_companion_label">Default call companion app</string>
-    <!-- Short label for the call companion role. [CHAR LIMIT=30] -->
-    <string name="role_call_companion_short_label">Call companion app</string>
-    <!-- Description for the call companion role. [CHAR LIMIT=NONE] -->
-    <string name="role_call_companion_description"></string>
-    <!-- Template for the title when an app requests to become the default call companion app. [CHAR LIMIT=100] -->
-    <string name="role_call_companion_request_title">Set <xliff:g id="app_name" example="Super Call Companion">%1$s</xliff:g> as your default call companion app?</string>
-    <!-- Description when an app requests to become the default call companion app. [CHAR LIMIT=60] -->
-    <string name="role_call_companion_request_description"></string>
 
     <!-- Subtitle for the application that is the current default application [CHAR LIMIT=30] -->
     <string name="request_role_current_default">Current default</string>
@@ -737,6 +759,9 @@
     <!-- Summary of a default app when there is no app set [CHAR LIMIT=60] -->
     <string name="default_app_none">None</string>
 
+    <!-- Label for a system default app [CHAR LIMIT=60] -->
+    <string name="default_app_system_default">(System default)</string>
+
     <!-- Label when there are no apps available for a default app [CHAR LIMIT=30] -->
     <string name="default_app_no_apps">No apps</string>
 
@@ -789,23 +814,13 @@ Allow <xliff:g id="app_name" example="Gmail">%4$s</xliff:g> to upload a bug repo
 
     <!-- Content for dialog shown when there was an error parsing the incident / bug report.
     [CHAR LIMIT=none] -->
-    <string name="incident_report_error_dialog_text">"There was an error processing the bug report for <xliff:g id="app_name" example="Gmail">%1$s</xliff:g>. So sharing the detailed debugging data data has been denied. Sorry for the interruption."</string>
+    <string name="incident_report_error_dialog_text">"There was an error processing the bug report for <xliff:g id="app_name" example="Gmail">%1$s</xliff:g>. So sharing the detailed debugging data has been denied. Sorry for the interruption."</string>
 
     <!-- Label for the button to allow sharing of the report. [CHAR LIMIT=20]-->
     <string name="incident_report_dialog_allow_label">Allow</string>
 
     <!-- Label for the button to NOT allow sharing of the report. [CHAR LIMIT=20] -->
     <string name="incident_report_dialog_deny_label">Deny</string>
-
-    <!-- Title for the warning dialog shown when user tried to revoke a grandfathered modern storage permission.
-    [CHAR LIMIT=100] -->
-    <string name="grandfathered_modern_storage_permission_deny_warning_title">Permission can\u2019t be denied. Uninstall <xliff:g id="app_name" example="Gmail">%1$s</xliff:g>.</string>
-
-    <!-- Content for the warning dialog shown when user tried to revoke a grandfathered modern storage permission [CHAR LIMIT=none] -->
-    <string name="grandfathered_modern_storage_permission_deny_warning_content"><xliff:g id="app_name" example="Gmail">%1$s</xliff:g> has legacy storage permission to keep your previous data accessible, and the app can stop working when this permission is denied.\n\nTo continue using the app, uninstall it and then reinstall it. Your data in this app may be lost.</string>
-
-    <!-- Dismiss with acknowledgment [CHAR LIMIT=30] -->
-    <string name="dismiss_with_acknowledgment">Got it</string>
 
     <!-- Label for screen allowing the user to force certain apps to always be shown in permission controller settings ui instead of being hidden behind "system app" menu. [CHAR LIMIT=60] -->
     <string name="adjust_user_sensitive_title">Advanced settings</string>
@@ -827,4 +842,8 @@ Allow <xliff:g id="app_name" example="Gmail">%4$s</xliff:g> to upload a bug repo
 
     <!-- Subtitle for switch that enables/disables the microphone status bar icon for the currently selected assistant. [CHAR LIMIT=none] -->
     <string name="assistant_record_audio_user_sensitive_summary">Show icon in status bar when microphone is used to activate voice assistant</string>
+
+    <!-- Message shown to the user when the apps requests permission from this group. Shows in the isolated storage case. If ever possible this should stay below 80 characters (assuming the parameters takes 20 characters). Don't abbreviate until the message reaches 120 characters though. [CHAR LIMIT=120] -->
+    <string name="permgrouprequest_storage_isolated">Allow
+        &lt;b><xliff:g id="app_name" example="Gmail">%1$s</xliff:g>&lt;/b> to access photos and media on your device?</string>
 </resources>

@@ -80,8 +80,7 @@
         exclusive="true"
         showNone="true"
         label="@string/role_assistant_label"
-        requestDescription="@string/role_assistant_request_description"
-        requestTitle="@string/role_assistant_request_title"
+        requestable="false"
         shortLabel="@string/role_assistant_short_label">
         <required-components>
             <!-- Qualified components are determined int AssistantRoleBehavior. This comment here is
@@ -271,6 +270,7 @@
               -->
             <app-op name="android:run_in_background" maxTargetSdkVersion="25" mode="allowed" />
             <app-op name="android:run_any_in_background" mode="allowed" />
+            <app-op name="android:read_device_identifiers" mode="allowed" />
         </app-ops>
         <preferred-activities>
             <preferred-activity>
@@ -364,108 +364,6 @@
         </preferred-activities>
     </role>
 
-    <role
-        name="android.app.role.MUSIC"
-        behavior="MusicRoleBehavior"
-        description="@string/role_music_description"
-        exclusive="true"
-        label="@string/role_music_label"
-        requestDescription="@string/role_music_request_description"
-        requestTitle="@string/role_music_request_title"
-        shortLabel="@string/role_music_short_label">
-        <required-components>
-            <activity>
-                <intent-filter>
-                    <action name="android.intent.action.MAIN" />
-                    <category name="android.intent.category.APP_MUSIC" />
-                </intent-filter>
-            </activity>
-        </required-components>
-        <permissions>
-            <permission-set name="storage" />
-        </permissions>
-        <app-ops>
-            <app-op name="android:write_media_audio" mode="allowed" />
-        </app-ops>
-        <preferred-activities>
-            <preferred-activity>
-                <activity>
-                    <intent-filter>
-                        <action name="android.intent.action.MAIN" />
-                        <category name="android.intent.category.APP_MUSIC" />
-                    </intent-filter>
-                </activity>
-                <intent-filter>
-                    <action name="android.intent.action.MAIN" />
-                    <category name="android.intent.category.APP_MUSIC" />
-                </intent-filter>
-            </preferred-activity>
-        </preferred-activities>
-    </role>
-
-    <role
-        name="android.app.role.GALLERY"
-        behavior="GalleryRoleBehavior"
-        description="@string/role_gallery_description"
-        exclusive="true"
-        label="@string/role_gallery_label"
-        requestDescription="@string/role_gallery_request_description"
-        requestTitle="@string/role_gallery_request_title"
-        shortLabel="@string/role_gallery_short_label">
-        <required-components>
-            <activity>
-                <intent-filter>
-                    <action name="android.intent.action.MAIN" />
-                    <category name="android.intent.category.APP_GALLERY" />
-                </intent-filter>
-            </activity>
-        </required-components>
-        <permissions>
-            <permission-set name="storage" />
-        </permissions>
-        <app-ops>
-            <app-op name="android:write_media_video" mode="allowed" />
-            <app-op name="android:write_media_images" mode="allowed" />
-        </app-ops>
-        <preferred-activities>
-            <preferred-activity>
-                <activity>
-                    <intent-filter>
-                        <action name="android.intent.action.MAIN" />
-                        <category name="android.intent.category.APP_GALLERY" />
-                    </intent-filter>
-                </activity>
-                <intent-filter>
-                    <action name="android.intent.action.MAIN" />
-                    <category name="android.intent.category.APP_GALLERY" />
-                </intent-filter>
-            </preferred-activity>
-        </preferred-activities>
-    </role>
-
-    <!--- @see android.telecom.InCallService -->
-    <role
-        name="android.app.role.CAR_MODE_DIALER"
-        description="@string/role_car_mode_dialer_description"
-        exclusive="true"
-        label="@string/role_car_mode_dialer_label"
-        requestDescription="@string/role_car_mode_dialer_request_description"
-        requestTitle="@string/role_car_mode_dialer_request_title"
-        shortLabel="@string/role_car_mode_dialer_short_label">
-        <required-components>
-            <service permission="android.permission.BIND_INCALL_SERVICE">
-                <meta-data
-                    name="android.telecom.IN_CALL_SERVICE_UI"
-                    value="false"
-                    optional="true" />
-                <meta-data name="android.telecom.IN_CALL_SERVICE_CAR_MODE_UI" value="true" />
-                <intent-filter>
-                    <action name="android.telecom.InCallService" />
-                </intent-filter>
-            </service>
-        </required-components>
-    </role>
-
     <!--- @see android.telecom.CallRedirectionService -->
     <role
         name="android.app.role.CALL_REDIRECTION"
@@ -497,32 +395,6 @@
             <service permission="android.permission.BIND_SCREENING_SERVICE">
                 <intent-filter>
                     <action name="android.telecom.CallScreeningService" />
-                </intent-filter>
-            </service>
-        </required-components>
-    </role>
-
-    <!--- @see android.telecom.InCallService -->
-    <role
-        name="android.app.role.CALL_COMPANION"
-        description="@string/role_call_companion_description"
-        exclusive="false"
-        label="@string/role_call_companion_label"
-        requestDescription="@string/role_call_companion_request_description"
-        requestTitle="@string/role_call_companion_request_title"
-        shortLabel="@string/role_call_companion_short_label">
-        <required-components>
-            <service permission="android.permission.BIND_INCALL_SERVICE">
-                <meta-data
-                    name="android.telecom.IN_CALL_SERVICE_UI"
-                    value="false"
-                    optional="true" />
-                <meta-data
-                    name="android.telecom.IN_CALL_SERVICE_CAR_MODE_UI"
-                    value="false"
-                    optional="true" />
-                <intent-filter>
-                    <action name="android.telecom.InCallService" />
                 </intent-filter>
             </service>
         </required-components>

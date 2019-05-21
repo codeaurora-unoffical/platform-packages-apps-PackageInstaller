@@ -17,22 +17,21 @@
 package com.android.packageinstaller.permission.ui;
 
 import static android.content.pm.PackageManager.PERMISSION_DENIED;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_DENIED;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_GRANTED;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_POLICY_FIXED;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_USER_FIXED;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__USER_DENIED;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__USER_DENIED_WITH_PREJUDICE;
-import static android.util.StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__USER_GRANTED;
 import static android.view.WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS;
 
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_DENIED;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_GRANTED;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_POLICY_FIXED;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_RESTRICTED_PERMISSION;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_USER_FIXED;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__USER_DENIED;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__USER_DENIED_WITH_PREJUDICE;
+import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__USER_GRANTED;
 import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler.DENIED;
-import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler
-        .DENIED_DO_NOT_ASK_AGAIN;
+import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler.DENIED_DO_NOT_ASK_AGAIN;
 import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler.GRANTED_ALWAYS;
-import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler
-        .GRANTED_FOREGROUND_ONLY;
+import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler.GRANTED_FOREGROUND_ONLY;
 import static com.android.packageinstaller.permission.utils.Utils.getRequestMessage;
 
 import android.app.Activity;
@@ -52,9 +51,6 @@ import android.text.Spanned;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
-import android.util.StatsLog;
-import android.util.StatsLogAtoms;
-import android.util.StatsLogAtoms.PermissionGrantRequestResultReported_Result;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -65,6 +61,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.packageinstaller.DeviceUtils;
+import com.android.packageinstaller.PermissionControllerStatsLog;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.Permission;
@@ -143,14 +140,20 @@ public class GrantPermissionsActivity extends Activity
         if (!group.isGrantingAllowed()) {
             reportRequestResult(permission,
                     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED);
-
             // Skip showing groups that we know cannot be granted.
             return;
         }
 
+        // If the permission is restricted it does not show in the UI and
+        // is not added to the group at all, so check that first.
+        if (group.getPermission(permission) == null && ArrayUtils.contains(mAppPermissions
+                .getPackageInfo().requestedPermissions, permission)) {
+            reportRequestResult(permission,
+                  PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_RESTRICTED_PERMISSION);
+            return;
         // We allow the user to choose only non-fixed permissions. A permission
         // is fixed either by device policy or the user denying with prejudice.
-        if (group.isUserFixed()) {
+        } else if (group.isUserFixed()) {
             reportRequestResult(permission,
                     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_USER_FIXED);
             return;
@@ -217,8 +220,7 @@ public class GrantPermissionsActivity extends Activity
      * @param permission The permission that was granted or denied
      * @param result The permission grant result
      */
-    private void reportRequestResult(@NonNull String permission,
-            @PermissionGrantRequestResultReported_Result int result) {
+    private void reportRequestResult(@NonNull String permission, int result) {
         boolean isImplicit = !ArrayUtils.contains(mRequestedPermissions, permission);
 
         Log.v(LOG_TAG,
@@ -226,7 +228,8 @@ public class GrantPermissionsActivity extends Activity
                         + " callingPackage=" + mCallingPackage + " permission=" + permission
                         + " isImplicit=" + isImplicit + " result=" + result);
 
-        StatsLog.write(StatsLogAtoms.PERMISSION_GRANT_REQUEST_RESULT_REPORTED, mRequestId,
+        PermissionControllerStatsLog.write(
+                PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED, mRequestId,
                 mCallingUid, mCallingPackage, permission, isImplicit, result);
     }
 
@@ -236,8 +239,7 @@ public class GrantPermissionsActivity extends Activity
      * @param permissions The permissions that were granted or denied
      * @param result The permission grant result
      */
-    private void reportRequestResult(@NonNull String[] permissions,
-            @PermissionGrantRequestResultReported_Result int result) {
+    private void reportRequestResult(@NonNull String[] permissions, int result) {
         for (String permission : permissions) {
             reportRequestResult(permission, result);
         }

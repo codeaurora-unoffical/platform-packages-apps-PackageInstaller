@@ -103,18 +103,15 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
     private static final String KEY_SHOW_SYSTEM_PREFS = "_show_system";
     private static final String SHOW_SYSTEM_KEY = PermissionUsageFragment.class.getName()
             + KEY_SHOW_SYSTEM_PREFS;
-    private static final String KEY_PERMS_INDEX = "_perms_index";
-    private static final String PERMS_INDEX_KEY = PermissionUsageFragment.class.getName()
-            + KEY_PERMS_INDEX;
+    private static final String KEY_PERM_NAME = "_perm_name";
+    private static final String PERM_NAME_KEY = PermissionUsageFragment.class.getName()
+            + KEY_PERM_NAME;
     private static final String KEY_TIME_INDEX = "_time_index";
     private static final String TIME_INDEX_KEY = PermissionUsageFragment.class.getName()
             + KEY_TIME_INDEX;
     private static final String KEY_SORT = "_sort";
     private static final String SORT_KEY = PermissionUsageFragment.class.getName()
             + KEY_SORT;
-    private static final String KEY_FINISHED_INITIAL_LOAD = "_finished_initial_load";
-    private static final String FINISHED_INITIAL_LOAD_KEY = PermissionUsageFragment.class.getName()
-            + KEY_FINISHED_INITIAL_LOAD;
 
     /**
      * The maximum number of columns shown in the bar chart.
@@ -143,12 +140,6 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
     private boolean mFinishedInitialLoad;
 
     /**
-     * Only used to restore permission selection state or use the passed permission after onCreate.
-     * Once the first list of groups is reported, this becomes invalid.
-     */
-    private String mSavedGroupName;
-
-    /**
      * @return A new fragment
      */
     public static @NonNull PermissionUsageFragment newInstance(@Nullable String groupName,
@@ -167,14 +158,15 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        mFinishedInitialLoad = false;
         mSort = SORT_RECENT_APPS;
+        mFilterGroup = null;
         initializeTimeFilter();
         if (savedInstanceState != null) {
             mShowSystem = savedInstanceState.getBoolean(SHOW_SYSTEM_KEY);
-            mSavedGroupName = savedInstanceState.getString(PERMS_INDEX_KEY);
+            mFilterGroup = savedInstanceState.getString(PERM_NAME_KEY);
             mFilterTimeIndex = savedInstanceState.getInt(TIME_INDEX_KEY);
             mSort = savedInstanceState.getInt(SORT_KEY);
-            mFinishedInitialLoad = savedInstanceState.getBoolean(FINISHED_INITIAL_LOAD_KEY);
         }
 
         setLoading(true, false);
@@ -184,12 +176,11 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
             ab.setDisplayHomeAsUpEnabled(true);
         }
 
-        if (mSavedGroupName == null) {
-            mSavedGroupName = getArguments().getString(Intent.EXTRA_PERMISSION_GROUP_NAME);
+        if (mFilterGroup == null) {
+            mFilterGroup = getArguments().getString(Intent.EXTRA_PERMISSION_GROUP_NAME);
         }
 
         Context context = getPreferenceManager().getContext();
-        mFilterGroup = null;
         mCollator = Collator.getInstance(
                 context.getResources().getConfiguration().getLocales().get(0));
         mPermissionUsages = new PermissionUsages(context);
@@ -255,10 +246,9 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putBoolean(SHOW_SYSTEM_KEY, mShowSystem);
-        outState.putString(PERMS_INDEX_KEY, mFilterGroup);
+        outState.putString(PERM_NAME_KEY, mFilterGroup);
         outState.putInt(TIME_INDEX_KEY, mFilterTimeIndex);
         outState.putInt(SORT_KEY, mSort);
-        outState.putBoolean(FINISHED_INITIAL_LOAD_KEY, mFinishedInitialLoad);
     }
 
     @Override
@@ -347,12 +337,9 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
         }
         mAppPermissionUsages = new ArrayList<>(mPermissionUsages.getUsages());
 
-        // Use the saved permission group or the one passed as an argument, if applicable.
-        if (mSavedGroupName != null && mFilterGroup == null) {
-            if (getGroup(mSavedGroupName) != null) {
-                mFilterGroup = mSavedGroupName;
-                mSavedGroupName = null;
-            }
+        // Ensure the group name is valid.
+        if (getGroup(mFilterGroup) == null) {
+            mFilterGroup = null;
         }
 
         updateUI();

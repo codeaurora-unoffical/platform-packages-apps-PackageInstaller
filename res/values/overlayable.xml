@@ -22,6 +22,7 @@
 
             <!-- START PERMISSION GRANT DIALOG -->
             <item type="style" name="PermissionGrantScrollView" />
+            <item type="style" name="PermissionGrantSingleton" />
             <item type="style" name="PermissionGrantDialog" />
 
             <item type="style" name="PermissionGrantContent" />
@@ -49,6 +50,7 @@
             <item type="style" name="PermissionReviewTitleMessage" />
 
             <item type="style" name="PermissionReviewSettings" />
+            <item type="style" name="PermissionReviewSwitchStyle" />
 
             <item type="style" name="PermissionReviewButtonBar" />
             <item type="style" name="PermissionReviewButtonBarSpace" />
@@ -73,6 +75,7 @@
             <item type="style" name="AppPermission" />
 
             <item type="style" name="LargeHeader" />
+            <item type="style" name="LargeHeaderText" />
             <item type="style" name="LargeHeaderLink" />
             <item type="style" name="LargeHeaderDivider" />
 
@@ -112,6 +115,10 @@
             <item type="style" name="PreferenceUsageWidgetFrame" />
             <!-- END PREFERENCE USAGE -->
 
+            <!-- START TITLE SUMMARY IMAGE VIEW -->
+            <item type="style" name="TitleSummaryImageViewIcon" />
+            <!-- END TITLE SUMMARY IMAGE VIEW -->
+
             <!-- START IMAGE VIEW -->
             <item type="style" name="ImageView" />
             <item type="style" name="ImageViewIcon" />
@@ -121,18 +128,10 @@
             <item type="style" name="LoadingContainerTextView" />
             <!-- END LOADING CONTAINER -->
 
-            <!-- START GRANDFATHERED MODERN STORAGE GROUP WARNING DIALOG -->
-            <item type="style" name="GrandfatheredModernStorageGroupWarningDialogHeader" />
-
-            <item type="style" name="GrandfatheredModernStorageGroupWarningDialogTitleIcon" />
-            <item type="style" name="GrandfatheredModernStorageGroupWarningDialogTitleMessage" />
-            <!-- END GRANDFATHERED MODERN STORAGE GROUP WARNING DIALOG -->
-
             <!-- START ONGOING USAGE DIALOG -->
             <item type="style" name="PermissionUsageDialogContainerScrollView" />
             <item type="style" name="PermissionUsageDialogContainerLayout" />
             <item type="style" name="PermissionUsageDialogTitle" />
-            <item type="style" name="PermissionUsageDialogItemsContainerLayout" />
             <item type="style" name="PermissionUsageDialogItemsContainer" />
 
             <item type="style" name="PermissionUsageDialogItemContainer" />
@@ -148,19 +147,48 @@
             <item type="style" name="RequestRoleTitleText" />
             <!-- END REQUEST ROLE DIALOG TITLE -->
 
-            <!-- START REQUEST ROLE DIALOG TITLE -->
+            <!-- START REQUEST ROLE DIALOG ITEM -->
             <item type="style" name="RequestRoleItem" />
             <item type="style" name="RequestRoleItemIcon" />
             <item type="style" name="RequestRoleItemTitleLayout" />
             <item type="style" name="RequestRoleItemTitleText" />
             <item type="style" name="RequestRoleItemSubtitleText" />
             <item type="style" name="RequestRoleItemRadioButton" />
-            <!-- END REQUEST ROLE DIALOG TITLE -->
+            <!-- END REQUEST ROLE DIALOG ITEM -->
+
+            <!-- START REQUEST ROLE DIALOG VIEW -->
+            <item type="style" name="RequestRoleView" />
+            <item type="style" name="RequestRoleViewCheckbox" />
+            <!-- END REQUEST ROLE DIALOG VIEW -->
 
             <!-- START SETTINGS BUTTON PREFERENCE WIDGET -->
             <item type="style" name="SettingsButtonPreferenceWidgetDivider" />
             <item type="style" name="SettingsButtonPreferenceWidgetButton" />
             <!-- END SETTINGS BUTTON PREFERENCE WIDGET -->
+
+            <!-- START ACCESSIBILITY SERVICE DIALOG -->
+            <item type="style" name="AccessibilityServiceDialogScrollView" />
+            <item type="style" name="AccessibilityServiceDialog" />
+            <item type="style" name="AccessibilityServiceDialogHeader" />
+            <item type="style" name="AccessibilityServiceDialogHeaderIcon" />
+            <item type="style" name="AccessibilityServiceDialogTitle" />
+
+            <item type="style" name="AccessibilityServiceDialogItemsContainer" />
+            <item type="style" name="AccessibilityServiceDialogMiddleText" />
+            <item type="style" name="AccessibilityServiceDialogBottomText" />
+            <!-- END ACCESSIBILITY SERVICE DIALOG -->
+
+            <!-- START ACCESSIBILITY SERVICE DIALOG ITEM -->
+            <item type="style" name="AccessibilityServiceDialogItem" />
+            <item type="style" name="AccessibilityServiceDialogItemIcon" />
+            <item type="style" name="AccessibilityServiceDialogItemDescription" />
+            <item type="style" name="AccessibilityServiceDialogItemTitle" />
+            <item type="style" name="AccessibilityServiceDialogItemSummary" />
+            <!-- END ACCESSIBILITY SERVICE DIALOG ITEM -->
+
+            <!-- START LOCATION ACCESS CHECK PIN DROP -->
+            <item type="color" name="system_notification_accent_color" />
+            <!-- END LOCATION ACCESS CHECK PIN DROP -->
 
             <!-- START SETTINGSLIB BARCHARTPREFERENCE -->
             <item type="style" name="SettingsBarChart" />
@@ -186,6 +214,18 @@
             <!-- DIMEN -->
             <item type="dimen" name="secondary_app_icon_size" />
             <!-- END SETTINGSLIB APPPREFERENCE -->
+
+            <!-- START THEMES -->
+            <item type="style" name="Settings" />
+            <item type="style" name="TextAppearance.CategoryTitle" />
+            <item type="style" name="PagedListTheme" />
+            <item type="style" name="ReviewPermissions" />
+            <item type="style" name="GrantPermissions" />
+            <item type="style" name="Header.Settings" />
+            <item type="style" name="RequestRole" />
+            <item type="style" name="Theme.PermissionGrantDialog" />
+            <item type="style" name="PermissionDialog" />
+            <!-- END THEMES -->
 
         </policy>
 

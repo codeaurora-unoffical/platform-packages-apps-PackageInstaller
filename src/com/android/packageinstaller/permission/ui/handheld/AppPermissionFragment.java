@@ -18,6 +18,7 @@ package com.android.packageinstaller.permission.ui.handheld;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
+import android.Manifest;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -110,11 +111,15 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
      * @return A new fragment
      */
     public static @NonNull AppPermissionFragment newInstance(@NonNull String packageName,
-            @NonNull String groupName, @NonNull UserHandle userHandle) {
+            @NonNull String permName, @Nullable String groupName, @NonNull UserHandle userHandle) {
         AppPermissionFragment fragment = new AppPermissionFragment();
         Bundle arguments = new Bundle();
         arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
-        arguments.putString(Intent.EXTRA_PERMISSION_GROUP_NAME, groupName);
+        if (groupName == null) {
+            arguments.putString(Intent.EXTRA_PERMISSION_NAME, permName);
+        } else {
+            arguments.putString(Intent.EXTRA_PERMISSION_GROUP_NAME, groupName);
+        }
         arguments.putParcelable(Intent.EXTRA_USER, userHandle);
         fragment.setArguments(arguments);
         return fragment;
@@ -146,6 +151,9 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
 
         String packageName = getArguments().getString(Intent.EXTRA_PACKAGE_NAME);
         String groupName = getArguments().getString(Intent.EXTRA_PERMISSION_GROUP_NAME);
+        if (groupName == null) {
+            groupName = getArguments().getString(Intent.EXTRA_PERMISSION_NAME);
+        }
         PackageItemInfo groupInfo = Utils.getGroupInfo(groupName, context);
         List<PermissionInfo> groupPermInfos = Utils.getGroupPermissionInfos(groupName, context);
         if (groupInfo == null || groupPermInfos == null) {
@@ -189,22 +197,8 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
                 ((TextView) root.requireViewById(R.id.usage_summary)).setText(
                         context.getString(R.string.app_permission_footer_not_available));
             } else {
-                String timeDiffStr = Utils.getRelativeLastUsageString(context,
-                        PermissionUsages.loadLastGroupUsage(context, mGroup));
-                if (timeDiffStr == null) {
-                    ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                            context.getString(
-                                    R.string.app_permission_footer_no_usages,
-                                    appLabel,
-                                    mGroup.getLabel().toString().toLowerCase()));
-                } else {
-                    ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                            context.getString(
-                                    R.string.app_permission_footer_usage_summary,
-                                    appLabel,
-                                    mGroup.getLabel().toString().toLowerCase(),
-                                    timeDiffStr));
-                }
+                ((TextView) root.requireViewById(R.id.usage_summary)).setText(
+                        getUsageSummary(context, appLabel));
             }
         } else {
             root.requireViewById(R.id.usage_summary).setVisibility(View.GONE);
@@ -214,10 +208,10 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         footer1Link.setText(context.getString(R.string.app_permission_footer_app_permissions_link,
                 appLabel));
         footer1Link.setOnClickListener((v) -> {
+            UserHandle user = UserHandle.getUserHandleForUid(mGroup.getApp().applicationInfo.uid);
             Intent intent = new Intent(Intent.ACTION_MANAGE_APP_PERMISSIONS);
             intent.putExtra(Intent.EXTRA_PACKAGE_NAME, mGroup.getApp().packageName);
-            intent.putExtra(Intent.EXTRA_USER,
-                    UserHandle.getUserHandleForUid(mGroup.getApp().applicationInfo.uid));
+            intent.putExtra(Intent.EXTRA_USER, user);
             context.startActivity(intent);
         });
 
@@ -244,6 +238,93 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         }
 
         return root;
+    }
+
+    private @NonNull String getUsageSummary(@NonNull Context context, @NonNull String appLabel) {
+        String timeDiffStr = Utils.getRelativeLastUsageString(context,
+                PermissionUsages.loadLastGroupUsage(context, mGroup));
+        int strResId;
+        if (timeDiffStr == null) {
+            switch (mGroup.getName()) {
+                case Manifest.permission_group.ACTIVITY_RECOGNITION:
+                    strResId = R.string.app_permission_footer_no_usages_activity_recognition;
+                    break;
+                case Manifest.permission_group.CALENDAR:
+                    strResId = R.string.app_permission_footer_no_usages_calendar;
+                    break;
+                case Manifest.permission_group.CALL_LOG:
+                    strResId = R.string.app_permission_footer_no_usages_call_log;
+                    break;
+                case Manifest.permission_group.CAMERA:
+                    strResId = R.string.app_permission_footer_no_usages_camera;
+                    break;
+                case Manifest.permission_group.CONTACTS:
+                    strResId = R.string.app_permission_footer_no_usages_contacts;
+                    break;
+                case Manifest.permission_group.LOCATION:
+                    strResId = R.string.app_permission_footer_no_usages_location;
+                    break;
+                case Manifest.permission_group.MICROPHONE:
+                    strResId = R.string.app_permission_footer_no_usages_microphone;
+                    break;
+                case Manifest.permission_group.PHONE:
+                    strResId = R.string.app_permission_footer_no_usages_phone;
+                    break;
+                case Manifest.permission_group.SENSORS:
+                    strResId = R.string.app_permission_footer_no_usages_sensors;
+                    break;
+                case Manifest.permission_group.SMS:
+                    strResId = R.string.app_permission_footer_no_usages_sms;
+                    break;
+                case Manifest.permission_group.STORAGE:
+                    strResId = R.string.app_permission_footer_no_usages_storage;
+                    break;
+                default:
+                    return context.getString(R.string.app_permission_footer_no_usages_generic,
+                            appLabel, mGroup.getLabel().toString().toLowerCase());
+            }
+            return context.getString(strResId, appLabel);
+        } else {
+            switch (mGroup.getName()) {
+                case Manifest.permission_group.ACTIVITY_RECOGNITION:
+                    strResId = R.string.app_permission_footer_usage_summary_activity_recognition;
+                    break;
+                case Manifest.permission_group.CALENDAR:
+                    strResId = R.string.app_permission_footer_usage_summary_calendar;
+                    break;
+                case Manifest.permission_group.CALL_LOG:
+                    strResId = R.string.app_permission_footer_usage_summary_call_log;
+                    break;
+                case Manifest.permission_group.CAMERA:
+                    strResId = R.string.app_permission_footer_usage_summary_camera;
+                    break;
+                case Manifest.permission_group.CONTACTS:
+                    strResId = R.string.app_permission_footer_usage_summary_contacts;
+                    break;
+                case Manifest.permission_group.LOCATION:
+                    strResId = R.string.app_permission_footer_usage_summary_location;
+                    break;
+                case Manifest.permission_group.MICROPHONE:
+                    strResId = R.string.app_permission_footer_usage_summary_microphone;
+                    break;
+                case Manifest.permission_group.PHONE:
+                    strResId = R.string.app_permission_footer_usage_summary_phone;
+                    break;
+                case Manifest.permission_group.SENSORS:
+                    strResId = R.string.app_permission_footer_usage_summary_sensors;
+                    break;
+                case Manifest.permission_group.SMS:
+                    strResId = R.string.app_permission_footer_usage_summary_sms;
+                    break;
+                case Manifest.permission_group.STORAGE:
+                    strResId = R.string.app_permission_footer_usage_summary_storage;
+                    break;
+                default:
+                    return context.getString(R.string.app_permission_footer_usage_summary_generic,
+                            appLabel, mGroup.getLabel().toString().toLowerCase(), timeDiffStr);
+            }
+            return context.getString(strResId, appLabel, timeDiffStr);
+        }
     }
 
     @Override
@@ -814,19 +895,6 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
                 DefaultDenyDialog.class.getName());
     }
 
-    private void showGrandfatheredModernStorageGroupWarningDialog() {
-        Bundle args = new Bundle();
-        args.putParcelable(GrandfatheredModernStorageGroupWarningDialog.APP_INFO,
-                mGroup.getApp().applicationInfo);
-
-        GrandfatheredModernStorageGroupWarningDialog warningDialog =
-                new GrandfatheredModernStorageGroupWarningDialog();
-        warningDialog.setArguments(args);
-        warningDialog.setTargetFragment(this, 0);
-        warningDialog.show(getFragmentManager().beginTransaction(),
-                GrandfatheredModernStorageGroupWarningDialog.class.getName());
-    }
-
     /**
      * Once we user has confirmed that he/she wants to revoke a permission that was granted by
      * default, actually revoke the permissions.
@@ -861,42 +929,6 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
             mHasConfirmedRevoke = true;
         }
         updateButtons();
-    }
-
-    /**
-     * A dialog warning the user that she/he is about to deny a permission that was granted by
-     * default.
-     *
-     * @see #showGrandfatheredModernStorageGroupWarningDialog()
-     */
-    public static class GrandfatheredModernStorageGroupWarningDialog extends DialogFragment {
-        private static final String APP_INFO =
-                GrandfatheredModernStorageGroupWarningDialog.class.getName() + ".arg.appInfo";
-
-        @Override
-        public Dialog onCreateDialog(Bundle savedInstanceState) {
-            Context context = getContext();
-
-            ApplicationInfo appInfo = getArguments().getParcelable(APP_INFO);
-
-            String appLabel = Utils.getFullAppLabel(appInfo, context);
-            View header = LayoutInflater.from(context).inflate(R.layout.dialog_header, null);
-            ((ImageView) header.requireViewById(R.id.icon)).setImageDrawable(
-                    context.getDrawable(R.drawable.ic_warning));
-            ((TextView) header.requireViewById(R.id.title)).setText(
-                    context.getString(
-                            R.string.grandfathered_modern_storage_permission_deny_warning_title,
-                            appLabel));
-
-            AlertDialog.Builder b = new AlertDialog.Builder(context)
-                    .setCustomTitle(header)
-                    .setMessage(context.getString(
-                            R.string.grandfathered_modern_storage_permission_deny_warning_content,
-                            appLabel))
-                    .setPositiveButton(R.string.dismiss_with_acknowledgment, null);
-
-            return b.create();
-        }
     }
 
     /**
