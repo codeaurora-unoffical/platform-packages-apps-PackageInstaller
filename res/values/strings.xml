@@ -584,7 +584,7 @@
     <string name="permission_reminders">Permission reminders</string>
 
     <!-- The notification title for background location access reminder notification [CHAR LIMIT=60] -->
-    <string name="background_location_access_reminder_notification_title"><xliff:g id="app_name" example="Gmail">%s</xliff:g> has been using your location</string>
+    <string name="background_location_access_reminder_notification_title"><xliff:g id="app_name" example="Gmail">%s</xliff:g> got your location in the background</string>
 
     <!-- The notification content for background location access reminder notification [CHAR LIMIT=none] -->
     <string name="background_location_access_reminder_notification_content">This app can always access your location. Tap to change.</string>
@@ -764,6 +764,12 @@
 
     <!-- Label when there are no apps available for a default app [CHAR LIMIT=30] -->
     <string name="default_app_no_apps">No apps</string>
+
+    <!-- Label for the selected default app for default app [CHAR LIMIT=30] -->
+    <string name="car_default_app_selected">Selected</string>
+
+    <!-- Label for the selected default app for default app when it has additional information to show [CHAR LIMIT=30] -->
+    <string name="car_default_app_selected_with_info">Selected - <xliff:g id="additional_info" example="(System default)">%1$s</xliff:g></string>
 
     <!-- Keyword in the Settings app's search functionality that can be used to find links to the special app access management screens [CHAR LIMIT=none] -->
     <string name="special_app_access_search_keyword">special app access</string>
