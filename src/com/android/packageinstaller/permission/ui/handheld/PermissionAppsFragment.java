@@ -171,9 +171,9 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader implem
     private static void bindUi(SettingsWithLargeHeader fragment, PermissionApps permissionApps,
             @NonNull String groupName) {
         final Drawable icon = permissionApps.getIcon();
-        final CharSequence label = permissionApps.getLabel();
+        final CharSequence label = permissionApps.getFullLabel();
 
-        fragment.setHeader(icon, label, null, true);
+        fragment.setHeader(icon, label, null, null, true);
         fragment.setSummary(Utils.getPermissionGroupDescriptionString(fragment.getActivity(),
                 groupName, permissionApps.getDescription()), null);
 
@@ -237,7 +237,13 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader implem
         boolean hasPermissionWithBackgroundMode = false;
 
         ArrayList<PermissionApp> sortedApps = new ArrayList<>(permissionApps.getApps());
-        sortedApps.sort((x, y) -> mCollator.compare(x.getLabel(), y.getLabel()));
+        sortedApps.sort((x, y) -> {
+            int result = mCollator.compare(x.getLabel(), y.getLabel());
+            if (result == 0) {
+                result = x.getUid() - y.getUid();
+            }
+            return result;
+        });
 
         for (int i = 0; i < sortedApps.size(); i++) {
             PermissionApp app = sortedApps.get(i);
@@ -295,7 +301,8 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader implem
                 continue;
             }
 
-            PermissionControlPreference pref = new PermissionControlPreference(context, group);
+            PermissionControlPreference pref = new PermissionControlPreference(context, group,
+                    PermissionAppsFragment.class.getName());
             pref.setKey(key);
             pref.setIcon(app.getIcon());
             pref.setTitle(Utils.getFullAppLabel(app.getAppInfo(), context));
@@ -354,6 +361,7 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader implem
         if (allowed.getPreferenceCount() == 0) {
             Preference empty = new Preference(context);
             empty.setTitle(getString(R.string.no_apps_allowed));
+            empty.setSelectable(false);
             allowed.addPreference(empty);
         }
         if (allowedForeground.getPreferenceCount() == 0) {
@@ -364,6 +372,7 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader implem
         if (denied.getPreferenceCount() == 0) {
             Preference empty = new Preference(context);
             empty.setTitle(getString(R.string.no_apps_denied));
+            empty.setSelectable(false);
             denied.addPreference(empty);
         }
 
@@ -375,6 +384,7 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader implem
             Preference footerText = new Preference(context);
             footerText.setSummary(context.getString(R.string.app_permission_footer_not_available));
             footerText.setIcon(R.drawable.ic_info_outline);
+            footerText.setSelectable(false);
             footer.addPreference(footerText);
         }
 
@@ -422,7 +432,7 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader implem
             mOuterFragment = (PermissionAppsFragment) getTargetFragment();
             setLoading(true /* loading */, false /* animate */);
             super.onCreate(savedInstanceState);
-            setHeader(mOuterFragment.mIcon, mOuterFragment.mLabel, null, true);
+            setHeader(mOuterFragment.mIcon, mOuterFragment.mLabel, null, null, true);
             if (mOuterFragment.mExtraScreen != null) {
                 setPreferenceScreen();
             } else {

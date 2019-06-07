@@ -584,7 +584,7 @@
     <string name="permission_reminders">Permission reminders</string>
 
     <!-- The notification title for background location access reminder notification [CHAR LIMIT=60] -->
-    <string name="background_location_access_reminder_notification_title"><xliff:g id="app_name" example="Gmail">%s</xliff:g> has been using your location</string>
+    <string name="background_location_access_reminder_notification_title"><xliff:g id="app_name" example="Gmail">%s</xliff:g> got your location in the background</string>
 
     <!-- The notification content for background location access reminder notification [CHAR LIMIT=none] -->
     <string name="background_location_access_reminder_notification_content">This app can always access your location. Tap to change.</string>
@@ -603,6 +603,9 @@
 
     <!-- Label when no apps have been denied a given permission [CHAR LIMIT=none] -->
     <string name="no_apps_denied">No apps denied</string>
+
+    <!-- Label for the selected permission state for a given permission and application [CHAR LIMIT=30] -->
+    <string name="car_permission_selected">Selected</string>
 
     <!-- Label for button that opens up the Settings [CHAR LIMIT=20] -->
     <string name="settings">Settings</string>
@@ -690,7 +693,7 @@
     <!-- Short label for the call redirection role. [CHAR LIMIT=30] -->
     <string name="role_call_redirection_short_label">Call redirecting app</string>
     <!-- Description for the call redirection role. [CHAR LIMIT=NONE] -->
-    <string name="role_call_redirection_description">Apps that allow you to forward calls to another phone number</string>
+    <string name="role_call_redirection_description">Apps that allow you to forward outgoing calls to another phone number</string>
     <!-- Template for the title when an app requests to become the default call redirection app. [CHAR LIMIT=100] -->
     <string name="role_call_redirection_request_title">Set <xliff:g id="app_name" example="Super Call Redirection">%1$s</xliff:g> as your default call redirection app?</string>
     <!-- Description when an app requests to become the default call redirection app. [CHAR LIMIT=60] -->
@@ -701,7 +704,7 @@
     <!-- Short label for the call screening role. [CHAR LIMIT=30] -->
     <string name="role_call_screening_short_label">Caller ID &amp; spam app</string>
     <!-- Description for the call screening role. [CHAR LIMIT=NONE] -->
-    <string name="role_call_screening_description">Apps that allow you to identify incoming calls, block spam and robocalls, blacklist unwanted numbers, and so on</string>
+    <string name="role_call_screening_description">Apps that allow you to identify calls, block spam and robocalls, and blacklist unwanted numbers</string>
     <!-- Template for the title when an app requests to become the default call screening app. [CHAR LIMIT=100] -->
     <string name="role_call_screening_request_title">Set <xliff:g id="app_name" example="Super Call Screening">%1$s</xliff:g> as your default caller ID &amp; spam app?</string>
     <!-- Description when an app requests to become the default call screening app. [CHAR LIMIT=60] -->
@@ -740,7 +743,6 @@
     <!-- Title for page of managing default apps. [CHAR LIMIT=30] -->
     <string name="default_apps">Default apps</string>
 
-    <!-- TODO: STOPSHIP: I cannot find its value in Settings. -->
     <!-- Help URI, default apps [DO NOT TRANSLATE] -->
     <string name="help_uri_default_apps" translatable="false"></string>
 
@@ -765,13 +767,18 @@
     <!-- Label when there are no apps available for a default app [CHAR LIMIT=30] -->
     <string name="default_app_no_apps">No apps</string>
 
+    <!-- Label for the selected default app for default app [CHAR LIMIT=30] -->
+    <string name="car_default_app_selected">Selected</string>
+
+    <!-- Label for the selected default app for default app when it has additional information to show [CHAR LIMIT=30] -->
+    <string name="car_default_app_selected_with_info">Selected - <xliff:g id="additional_info" example="(System default)">%1$s</xliff:g></string>
+
     <!-- Keyword in the Settings app's search functionality that can be used to find links to the special app access management screens [CHAR LIMIT=none] -->
     <string name="special_app_access_search_keyword">special app access</string>
 
     <!-- Title for page of managing special app access. [CHAR LIMIT=30] -->
     <string name="special_app_access">Special app access</string>
 
-    <!-- TODO: STOPSHIP: I cannot find its value in Settings. -->
     <!-- Help URI, special app access [DO NOT TRANSLATE] -->
     <string name="help_uri_special_app_access" translatable="false"></string>
 
@@ -805,6 +812,12 @@
 
     <!-- Title for the incident / bug report confirmation dialog. [CHAR LIMIT=50] -->
     <string name="incident_report_dialog_title">Share Debugging Data</string>
+
+    <!-- Title text for introduction to incident / bug report confirmation dialog.
+    Following this text is a bulleted list of reasons that a bug is being collected (e.g. "bad
+    battery life detected"). Please try to keep this as short as possible (<40 chars if possible).
+    The dialog is getting full, but going over is ok if necessary.  [CHAR LIMIT=60] -->
+    <string name="incident_report_dialog_intro">The system has detected a problem.</string>
 
     <!-- Content for dialog shown when the user should confirm an incident / bug report.
     [CHAR LIMIT=none] -->

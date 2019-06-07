@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.packageinstaller.role.ui;
+package com.android.packageinstaller.role.ui.handheld;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -35,31 +35,31 @@ import com.android.permissioncontroller.R;
 /**
  * {@link Preference} acting as the footer of a page.
  */
-public class FooterPreference extends Preference {
+class FooterPreference extends Preference {
 
     private static final int ICON_LAYOUT_PADDING_VERTICAL_DP = 16;
 
-    public FooterPreference(@NonNull Context context, @Nullable AttributeSet attrs,
+    FooterPreference(@NonNull Context context, @Nullable AttributeSet attrs,
             @AttrRes int defStyleAttr, @StyleRes int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
 
         init();
     }
 
-    public FooterPreference(@NonNull Context context, @Nullable AttributeSet attrs,
+    FooterPreference(@NonNull Context context, @Nullable AttributeSet attrs,
             @AttrRes int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
         init();
     }
 
-    public FooterPreference(@NonNull Context context, @Nullable AttributeSet attrs) {
+    FooterPreference(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
 
         init();
     }
 
-    public FooterPreference(@NonNull Context context) {
+    FooterPreference(@NonNull Context context) {
         super(context);
 
         init();
