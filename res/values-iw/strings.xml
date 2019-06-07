@@ -224,7 +224,7 @@
       <item quantity="one">שנייה אחת</item>
     </plurals>
     <string name="permission_reminders" msgid="8040710767178843151">"תזכורות להרשאות"</string>
-    <string name="background_location_access_reminder_notification_title" msgid="3986986240015907758">"נעשה שימוש במיקום שלך על ידי <xliff:g id="APP_NAME">%s</xliff:g>"</string>
+    <string name="background_location_access_reminder_notification_title" msgid="458109692937364585">"האפליקציה <xliff:g id="APP_NAME">%s</xliff:g> קיבלה גישה ברקע למיקום שלך"</string>
     <string name="background_location_access_reminder_notification_content" msgid="2715202570602748060">"האפליקציה הזו יכולה תמיד לגשת למיקום שלך. יש להקיש כדי לשנות הגדרה זו."</string>
     <string name="permission_subtitle_only_in_foreground" msgid="3101936262905298459">"רק בזמן שהאפליקציה בשימוש"</string>
     <string name="no_permissions_allowed" msgid="5781278485002145993">"לא ניתנו הרשאות"</string>
@@ -268,12 +268,14 @@
     <string name="role_home_request_description" msgid="6437733879812403277">"אין צורך בהרשאות"</string>
     <string name="role_call_redirection_label" msgid="7555518736037919521">"אפליקציית ברירת מחדל להפניית שיחות"</string>
     <string name="role_call_redirection_short_label" msgid="4214301516577863936">"אפליקציה להפניית שיחות"</string>
-    <string name="role_call_redirection_description" msgid="159351481987081777">"אפליקציות שמאפשרות לך להעביר שיחות אל מספר טלפון אחר"</string>
+    <!-- no translation found for role_call_redirection_description (769231030043298555) -->
+    <skip />
     <string name="role_call_redirection_request_title" msgid="5719129486575088263">"להגדיר את <xliff:g id="APP_NAME">%1$s</xliff:g> כאפליקציית ברירת המחדל להפניית שיחות?"</string>
     <string name="role_call_redirection_request_description" msgid="6117172580087594081">"אין צורך בהרשאות"</string>
     <string name="role_call_screening_label" msgid="5366988848919437946">"אפליקציית ברירת מחדל לשיחה מזוהה וחסימת ספאם"</string>
     <string name="role_call_screening_short_label" msgid="7596133131034442273">"אפליקציית שיחה מזוהה וחסימת ספאם"</string>
-    <string name="role_call_screening_description" msgid="9009090500431969390">"אפליקציות שמאפשרות לך לזהות שיחות נכנסות, לחסום ספאם ושיחות אוטומטיות, להעביר מספרים לא רצויים לרשימה השחורה וכן הלאה"</string>
+    <!-- no translation found for role_call_screening_description (4470066768170089758) -->
+    <skip />
     <string name="role_call_screening_request_title" msgid="4775643776524356653">"להגדיר את <xliff:g id="APP_NAME">%1$s</xliff:g> כאפליקציית ברירת המחדל לשיחות מזוהות וחסימת ספאם?"</string>
     <string name="role_call_screening_request_description" msgid="7788142583532880646">"אין צורך בהרשאות"</string>
     <string name="request_role_current_default" msgid="7512045433655289638">"ברירת המחדל הנוכחית"</string>
@@ -294,6 +296,10 @@
     <string name="default_app_none" msgid="7671097769303174666">"ללא"</string>
     <string name="default_app_system_default" msgid="3870203641514466948">"(ברירת מחדל של המערכת)"</string>
     <string name="default_app_no_apps" msgid="5344668465735677271">"אין אפליקציות"</string>
+    <!-- no translation found for car_default_app_selected (2813270284225505741) -->
+    <skip />
+    <!-- no translation found for car_default_app_selected_with_info (5067890906522338747) -->
+    <skip />
     <string name="special_app_access_search_keyword" msgid="462008045110320714">"גישה מיוחדת של אפליקציה"</string>
     <string name="special_app_access" msgid="2561673957499408877">"גישה מיוחדת לאפליקציה"</string>
     <string name="no_special_app_access" msgid="994977666694457811">"אין גישה מיוחדת לאפליקציה"</string>
