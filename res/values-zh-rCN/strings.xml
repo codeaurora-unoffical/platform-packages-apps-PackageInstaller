@@ -210,7 +210,7 @@
       <item quantity="one">1 秒</item>
     </plurals>
     <string name="permission_reminders" msgid="8040710767178843151">"权限提醒"</string>
-    <string name="background_location_access_reminder_notification_title" msgid="3986986240015907758">"<xliff:g id="APP_NAME">%s</xliff:g>一直在使用您的位置信息"</string>
+    <string name="background_location_access_reminder_notification_title" msgid="458109692937364585">"<xliff:g id="APP_NAME">%s</xliff:g>在后台获取了您的位置信息"</string>
     <string name="background_location_access_reminder_notification_content" msgid="2715202570602748060">"此应用随时可以使用您的位置信息。点按即可更改。"</string>
     <string name="permission_subtitle_only_in_foreground" msgid="3101936262905298459">"仅在使用该应用期间允许"</string>
     <string name="no_permissions_allowed" msgid="5781278485002145993">"未允许任何权限"</string>
@@ -254,12 +254,14 @@
     <string name="role_home_request_description" msgid="6437733879812403277">"无需任何权限"</string>
     <string name="role_call_redirection_label" msgid="7555518736037919521">"默认来电转接应用"</string>
     <string name="role_call_redirection_short_label" msgid="4214301516577863936">"来电转接应用"</string>
-    <string name="role_call_redirection_description" msgid="159351481987081777">"这类应用可让您将来电转接到其他电话号码"</string>
+    <!-- no translation found for role_call_redirection_description (769231030043298555) -->
+    <skip />
     <string name="role_call_redirection_request_title" msgid="5719129486575088263">"要将<xliff:g id="APP_NAME">%1$s</xliff:g>设为您的默认来电转接应用吗？"</string>
     <string name="role_call_redirection_request_description" msgid="6117172580087594081">"无需任何权限"</string>
     <string name="role_call_screening_label" msgid="5366988848919437946">"默认的来电显示和骚扰电话屏蔽应用"</string>
     <string name="role_call_screening_short_label" msgid="7596133131034442273">"来电显示和骚扰电话屏蔽应用"</string>
-    <string name="role_call_screening_description" msgid="9009090500431969390">"这类应用可让您识别来电、屏蔽骚扰电话和录音推销电话、将骚扰电话号码加入黑名单等"</string>
+    <!-- no translation found for role_call_screening_description (4470066768170089758) -->
+    <skip />
     <string name="role_call_screening_request_title" msgid="4775643776524356653">"要将<xliff:g id="APP_NAME">%1$s</xliff:g>设为您的默认来电显示和骚扰电话屏蔽应用吗？"</string>
     <string name="role_call_screening_request_description" msgid="7788142583532880646">"无需任何权限"</string>
     <string name="request_role_current_default" msgid="7512045433655289638">"当前默认应用"</string>
@@ -280,6 +282,8 @@
     <string name="default_app_none" msgid="7671097769303174666">"无"</string>
     <string name="default_app_system_default" msgid="3870203641514466948">"（系统默认）"</string>
     <string name="default_app_no_apps" msgid="5344668465735677271">"没有应用"</string>
+    <string name="car_default_app_selected" msgid="2813270284225505741">"已选择"</string>
+    <string name="car_default_app_selected_with_info" msgid="5067890906522338747">"已选择 - <xliff:g id="ADDITIONAL_INFO">%1$s</xliff:g>"</string>
     <string name="special_app_access_search_keyword" msgid="462008045110320714">"特殊应用权限"</string>
     <string name="special_app_access" msgid="2561673957499408877">"特殊应用权限"</string>
     <string name="no_special_app_access" msgid="994977666694457811">"没有特殊应用权限"</string>

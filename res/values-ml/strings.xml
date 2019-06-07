@@ -210,7 +210,7 @@
       <item quantity="one">ഒരു സെക്കൻഡ്</item>
     </plurals>
     <string name="permission_reminders" msgid="8040710767178843151">"അനുമതിയ്ക്കുള്ള റിമൈൻഡറുകൾ"</string>
-    <string name="background_location_access_reminder_notification_title" msgid="3986986240015907758">"<xliff:g id="APP_NAME">%s</xliff:g>എന്ന ആപ്പ് നിങ്ങളുടെ ലൊക്കേഷൻ ഉപയോഗിക്കുന്നു"</string>
+    <string name="background_location_access_reminder_notification_title" msgid="458109692937364585">"<xliff:g id="APP_NAME">%s</xliff:g>-ന് നിങ്ങളുടെ ലൊക്കേഷൻ പശ്ചാത്തലത്തിൽ ലഭിച്ചു"</string>
     <string name="background_location_access_reminder_notification_content" msgid="2715202570602748060">"ഈ ആപ്പിന് എപ്പോഴും നിങ്ങളുടെ ലൊക്കേഷൻ ആക്‌സസ് ചെയ്യാനാവും. മാറ്റാൻ ടാപ്പ് ചെയ്യുക."</string>
     <string name="permission_subtitle_only_in_foreground" msgid="3101936262905298459">"ആപ്പ് ഉപയോഗത്തിലുള്ളപ്പോൾ മാത്രം"</string>
     <string name="no_permissions_allowed" msgid="5781278485002145993">"അനുമതികളൊന്നും നൽകിയിട്ടില്ല"</string>
@@ -254,12 +254,14 @@
     <string name="role_home_request_description" msgid="6437733879812403277">"അനുമതികൾ ആവശ്യമില്ല"</string>
     <string name="role_call_redirection_label" msgid="7555518736037919521">"ഡിഫോൾട്ട് കോൾ റീഡയറക്‌ടിംഗ് ആപ്പ്"</string>
     <string name="role_call_redirection_short_label" msgid="4214301516577863936">"കോൾ റീഡയറക്‌ട് ചെയ്യുന്ന ആപ്പ്"</string>
-    <string name="role_call_redirection_description" msgid="159351481987081777">"മറ്റൊരു ഫോൺ നമ്പറിലേക്ക് നിങ്ങളുടെ കോളുകൾ കൈമാറാൻ അനുവദിക്കുന്ന ആപ്പുകൾ"</string>
+    <!-- no translation found for role_call_redirection_description (769231030043298555) -->
+    <skip />
     <string name="role_call_redirection_request_title" msgid="5719129486575088263">"<xliff:g id="APP_NAME">%1$s</xliff:g> എന്നതിനെ നിങ്ങളുടെ ഡിഫോൾട്ട് കോൾ റീഡയറക്‌ട് ചെയ്യുന്ന ആപ്പായി സജ്ജീകരിക്കണോ?"</string>
     <string name="role_call_redirection_request_description" msgid="6117172580087594081">"അനുമതികൾ ആവശ്യമില്ല"</string>
     <string name="role_call_screening_label" msgid="5366988848919437946">"ഡിഫോൾട്ട് കോളർ ഐഡിയും സ്‌പാം ആപ്പും"</string>
     <string name="role_call_screening_short_label" msgid="7596133131034442273">"കോളർ ഐഡിയും സ്‌പാം ആപ്പും"</string>
-    <string name="role_call_screening_description" msgid="9009090500431969390">"ഇൻകമിംഗ് കോളുകൾ തിരിച്ചറിയാനും സ്‌പാമും റോബോകോളും ബ്ലോക്ക് ചെയ്യാനും ആവശ്യമില്ലാത്ത നമ്പറുകൾ കരിമ്പട്ടികയിൽ ചേർക്കാനും മറ്റും അനുവദിക്കുന്ന ആപ്പുകൾ"</string>
+    <!-- no translation found for role_call_screening_description (4470066768170089758) -->
+    <skip />
     <string name="role_call_screening_request_title" msgid="4775643776524356653">"<xliff:g id="APP_NAME">%1$s</xliff:g> എന്നതിനെ നിങ്ങളുടെ ഡിഫോൾട്ട് കോളർ ഐഡി സ്‌പാം ആപ്പായി സജ്ജീകരിക്കണോ?"</string>
     <string name="role_call_screening_request_description" msgid="7788142583532880646">"അനുമതികൾ ആവശ്യമില്ല"</string>
     <string name="request_role_current_default" msgid="7512045433655289638">"നിലവിലെ ഡിഫോൾട്ട്"</string>
@@ -280,6 +282,10 @@
     <string name="default_app_none" msgid="7671097769303174666">"ഒന്നുമില്ല"</string>
     <string name="default_app_system_default" msgid="3870203641514466948">"(സിസ്‌റ്റം ഡിഫോൾട്ട്)"</string>
     <string name="default_app_no_apps" msgid="5344668465735677271">"ആപ്പുകൾ ഒന്നുമില്ല"</string>
+    <!-- no translation found for car_default_app_selected (2813270284225505741) -->
+    <skip />
+    <!-- no translation found for car_default_app_selected_with_info (5067890906522338747) -->
+    <skip />
     <string name="special_app_access_search_keyword" msgid="462008045110320714">"പ്രത്യേക ആപ്പ് ആക്‌സസ്"</string>
     <string name="special_app_access" msgid="2561673957499408877">"പ്രത്യേക ആപ്പ് ആക്‌സസ്"</string>
     <string name="no_special_app_access" msgid="994977666694457811">"പ്രത്യേക ആപ്പ് ആക്‌സസില്ല"</string>
