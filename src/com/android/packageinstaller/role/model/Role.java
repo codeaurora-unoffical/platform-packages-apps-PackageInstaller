@@ -35,7 +35,7 @@ import androidx.preference.Preference;
 
 import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.permission.utils.Utils;
-import com.android.packageinstaller.role.ui.SettingsButtonPreference;
+import com.android.packageinstaller.role.ui.TwoTargetPreference;
 import com.android.packageinstaller.role.utils.PackageUtils;
 import com.android.packageinstaller.role.utils.UserUtils;
 
@@ -361,7 +361,7 @@ public class Role {
      * @param user the user for this role
      * @param context the {@code Context} to retrieve system services
      */
-    public void preparePreferenceAsUser(@NonNull SettingsButtonPreference preference,
+    public void preparePreferenceAsUser(@NonNull TwoTargetPreference preference,
             @NonNull UserHandle user, @NonNull Context context) {
         if (mBehavior != null) {
             mBehavior.preparePreferenceAsUser(this, preference, user, context);
@@ -525,7 +525,9 @@ public class Role {
             return false;
         }
 
-        // TODO: STOPSHIP: Check for disabled packages?
+        if (!applicationInfo.enabled) {
+            return false;
+        }
 
         if (applicationInfo.isInstantApp()) {
             return false;
@@ -557,7 +559,7 @@ public class Role {
         int appOpsSize = mAppOps.size();
         for (int i = 0; i < appOpsSize; i++) {
             AppOp appOp = mAppOps.get(i);
-            permissionOrAppOpChanged |= appOp.grant(packageName, context);
+            appOp.grant(packageName, context);
         }
 
         int preferredActivitiesSize = mPreferredActivities.size();
@@ -610,10 +612,13 @@ public class Role {
         int appOpsSize = appOpsToRevoke.size();
         for (int i = 0; i < appOpsSize; i++) {
             AppOp appOp = appOpsToRevoke.get(i);
-            permissionOrAppOpChanged |= appOp.revoke(packageName, context);
+            appOp.revoke(packageName, context);
         }
 
-        // TODO: STOPSHIP: Revoke preferred activities?
+        // TODO: Revoke preferred activities? But this is unnecessary for most roles using it as
+        //  they have fallback holders. Moreover, clearing the preferred activity might result in
+        //  other system components listening to preferred activity change get notified for the
+        //  wrong thing when we are removing a exclusive role holder for adding another.
 
         if (mBehavior != null) {
             mBehavior.revoke(this, packageName, context);

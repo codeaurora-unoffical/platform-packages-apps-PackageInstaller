@@ -4,7 +4,7 @@
   xmlns:tools="http://schemas.android.com/tools"
   package="com.android.permissioncontroller"
   coreApp="true"
-  android:versionCode="210000000"
+  android:versionCode="220000000"
   android:versionName="29 system image"
 >
 
@@ -179,22 +179,21 @@
                 <action android:name="android.app.role.action.REQUEST_ROLE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
-            <!-- TODO: STOPSHIP: give this a priority greater than 1 to override Settings. -->
-            <intent-filter android:priority="0">
+            <intent-filter android:priority="2">
                 <action android:name="android.provider.Telephony.ACTION_CHANGE_DEFAULT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter android:priority="1001">
+                <action android:name="android.telecom.action.CHANGE_DEFAULT_DIALER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
-        <!-- TODO: STOPSHIP: Removed permissions because apps were able to launch it. Is this good? -->
         <activity android:name="com.android.packageinstaller.role.ui.DefaultAppListActivity"
                   android:label="@string/default_apps"
                   android:theme="@style/Settings">
-            <!-- TODO: STOPSHIP: give this a priority greater than 1 to override Settings. -->
-            <intent-filter android:priority="0">
+            <intent-filter android:priority="2">
                 <action android:name="android.settings.MANAGE_DEFAULT_APPS_SETTINGS" />
-                <!-- TODO: Redirect into role page? -->
-                <action android:name="android.settings.HOME_SETTINGS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -204,6 +203,16 @@
                   android:theme="@style/Settings">
             <intent-filter android:priority="1">
                 <action android:name="android.intent.action.MANAGE_DEFAULT_APP" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name="com.android.packageinstaller.role.ui.HomeSettingsActivity"
+                  android:excludeFromRecents="true"
+                  android:noHistory="true"
+                  android:theme="@android:style/Theme.NoDisplay">
+            <intent-filter android:priority="2">
+                <action android:name="android.settings.HOME_SETTINGS" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -218,7 +227,7 @@
             </intent-filter>
         </activity>
 
-        <!-- TODO: STOPSHIP: Override other Settings intents. -->
+        <!-- TODO: Override other Settings intents when we've done migrating them. -->
         <activity android:name="com.android.packageinstaller.role.ui.SpecialAppAccessActivity"
                   android:theme="@style/Settings" />
 
