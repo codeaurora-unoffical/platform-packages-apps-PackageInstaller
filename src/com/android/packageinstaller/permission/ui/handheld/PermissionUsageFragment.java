@@ -383,9 +383,6 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
                 GroupUsage groupUsage = appGroups.get(groupNum);
                 long lastAccessTime = groupUsage.getLastAccessTime();
 
-                if (groupUsage.getAccessCount() <= 0) {
-                    continue;
-                }
                 if (lastAccessTime == 0) {
                     Log.w(LOG_TAG,
                             "Unexpected access time of 0 for " + appUsage.getApp().getKey() + " "
@@ -435,7 +432,7 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
                 setHeader(Utils.applyTint(context, context.getDrawable(group.getIconResId()),
                         android.R.attr.colorControlNormal),
                         context.getString(R.string.app_permission_usage_filter_label,
-                                group.getLabel()), null, true);
+                                group.getLabel()), null, null, true);
                 setSummary(context.getString(R.string.app_permission_usage_remove_filter), v -> {
                     onPermissionGroupSelected(null);
                 });
@@ -655,7 +652,7 @@ public class PermissionUsageFragment extends SettingsWithLargeHeader implements
             @NonNull AppPermissionUsage appPermissionUsage,
             @NonNull GroupUsage groupUsage, @NonNull String accessTimeStr) {
         final PermissionControlPreference pref = new PermissionControlPreference(context,
-                groupUsage.getGroup());
+                groupUsage.getGroup(), PermissionUsageFragment.class.getName());
 
         final AppPermissionGroup group = groupUsage.getGroup();
         pref.setTitle(group.getLabel());

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.packageinstaller.role.ui;
+package com.android.packageinstaller.role.ui.handheld;
 
 import android.content.Context;
 import android.util.AttributeSet;
@@ -24,37 +24,36 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StyleRes;
 import androidx.preference.PreferenceViewHolder;
-import androidx.preference.SwitchPreference;
 
 /**
- * {@link SwitchPreference} with {@link AppIconPreference.Mixin}.
+ * {@link RadioButtonPreference} with {@link AppIconPreference.Mixin}.
  */
-public class AppIconSwitchPreference extends SwitchPreference {
+class AppIconRadioButtonPreference extends RadioButtonPreference {
 
     private AppIconPreference.Mixin mMixin;
 
-    public AppIconSwitchPreference(@NonNull Context context) {
-        super(context);
+    AppIconRadioButtonPreference(@NonNull Context context, @Nullable AttributeSet attrs,
+            @AttrRes int defStyleAttr, @StyleRes int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
 
         init();
     }
 
-    public AppIconSwitchPreference(@NonNull Context context, @Nullable AttributeSet attrs) {
-        super(context, attrs);
-
-        init();
-    }
-
-    public AppIconSwitchPreference(@NonNull Context context, @Nullable AttributeSet attrs,
+    AppIconRadioButtonPreference(@NonNull Context context, @Nullable AttributeSet attrs,
             @AttrRes int defStyleAttr) {
         super(context, attrs, defStyleAttr);
 
         init();
     }
 
-    public AppIconSwitchPreference(@NonNull Context context, @Nullable AttributeSet attrs,
-            @AttrRes int defStyleAttr, @StyleRes int defStyleRes) {
-        super(context, attrs, defStyleAttr, defStyleRes);
+    AppIconRadioButtonPreference(@NonNull Context context, @Nullable AttributeSet attrs) {
+        super(context, attrs);
+
+        init();
+    }
+
+    AppIconRadioButtonPreference(@NonNull Context context) {
+        super(context);
 
         init();
     }
