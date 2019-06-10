@@ -27,6 +27,7 @@ import androidx.annotation.Nullable;
 
 import com.android.packageinstaller.permission.utils.CollectionUtils;
 import com.android.packageinstaller.role.utils.UserUtils;
+import com.android.permissioncontroller.R;
 
 import java.util.List;
 
@@ -50,7 +51,9 @@ public class SmsRoleBehavior implements RoleBehavior {
             return false;
         }
         TelephonyManager telephonyManager = context.getSystemService(TelephonyManager.class);
-        if (!telephonyManager.isSmsCapable()) {
+        if (!telephonyManager.isSmsCapable()
+                // Ensure sms role is present on car despite !isSmsCapable config (b/132972702)
+                && getDefaultHolder(role, context) == null) {
             return false;
         }
         return true;
@@ -59,17 +62,22 @@ public class SmsRoleBehavior implements RoleBehavior {
     @Nullable
     @Override
     public String getFallbackHolder(@NonNull Role role, @NonNull Context context) {
-        String defaultPackageName = ExclusiveDefaultHolderMixin.getDefaultHolder(role,
-                "config_defaultSms", context);
+        String defaultPackageName = getDefaultHolder(role, context);
         if (defaultPackageName != null) {
             return defaultPackageName;
         }
 
-        // TODO: STOPSHIP: This was the previous behavior, however this allows any third-party app
-        // to suddenly become the default SMS app and get the permissions.
+        // TODO(b/132916161): This was the previous behavior, however this may allow any third-party
+        //  app to suddenly become the default SMS app and get the permissions, if no system default
+        //  SMS app is available.
         List<String> qualifyingPackageNames = role.getQualifyingPackagesAsUser(
                 Process.myUserHandle(), context);
         return CollectionUtils.firstOrNull(qualifyingPackageNames);
+    }
+
+    @Nullable
+    private static String getDefaultHolder(@NonNull Role role, @NonNull Context context) {
+        return ExclusiveDefaultHolderMixin.getDefaultHolder(role, "config_defaultSms", context);
     }
 
     @Nullable
@@ -78,5 +86,11 @@ public class SmsRoleBehavior implements RoleBehavior {
             @NonNull Context context) {
         return EncryptionUnawareConfirmationMixin.getConfirmationMessage(role, packageName,
                 context);
+    }
+
+    @Override
+    public boolean isVisibleAsUser(@NonNull Role role, @NonNull UserHandle user,
+            @NonNull Context context) {
+        return context.getResources().getBoolean(R.bool.config_showSmsRole);
     }
 }
