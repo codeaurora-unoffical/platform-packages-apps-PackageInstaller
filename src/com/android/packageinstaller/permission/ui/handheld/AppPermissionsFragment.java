@@ -160,7 +160,7 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
     private void showAllPermissions(String filterGroup) {
         Fragment frag = AllAppPermissionsFragment.newInstance(
                 getArguments().getString(Intent.EXTRA_PACKAGE_NAME),
-                filterGroup);
+                filterGroup, getArguments().getParcelable(Intent.EXTRA_USER));
         getFragmentManager().beginTransaction()
                 .replace(android.R.id.content, frag)
                 .addToBackStack("AllPerms")
@@ -177,7 +177,8 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
         }
 
         Drawable icon = Utils.getBadgedIcon(activity, appInfo);
-        fragment.setHeader(icon, Utils.getFullAppLabel(appInfo, activity), infoIntent, false);
+        fragment.setHeader(icon, Utils.getFullAppLabel(appInfo, activity), infoIntent,
+                UserHandle.getUserHandleForUid(appInfo.uid), false);
 
         ActionBar ab = activity.getActionBar();
         if (ab != null) {
@@ -223,7 +224,7 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
             boolean isPlatform = group.getDeclaringPackage().equals(Utils.OS_PKG);
 
             PermissionControlPreference preference = new PermissionControlPreference(context,
-                    group);
+                    group, AppPermissionsFragment.class.getName());
             preference.setKey(group.getName());
             Drawable icon = Utils.loadDrawable(context.getPackageManager(),
                     group.getIconPkg(), group.getIconResId());
@@ -297,11 +298,13 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
         if (allowed.getPreferenceCount() == 0) {
             Preference empty = new Preference(context);
             empty.setTitle(getString(R.string.no_permissions_allowed));
+            empty.setSelectable(false);
             allowed.addPreference(empty);
         }
         if (denied.getPreferenceCount() == 0) {
             Preference empty = new Preference(context);
             empty.setTitle(getString(R.string.no_permissions_denied));
+            empty.setSelectable(false);
             denied.addPreference(empty);
         }
 
@@ -330,7 +333,7 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
         public void onCreate(Bundle savedInstanceState) {
             mOuterFragment = (AppPermissionsFragment) getTargetFragment();
             super.onCreate(savedInstanceState);
-            setHeader(mOuterFragment.mIcon, mOuterFragment.mLabel, null, false);
+            setHeader(mOuterFragment.mIcon, mOuterFragment.mLabel, null, null, false);
             setHasOptionsMenu(true);
             setPreferenceScreen(mOuterFragment.mExtraScreen);
         }
