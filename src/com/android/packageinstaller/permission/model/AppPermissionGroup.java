@@ -47,6 +47,7 @@ import androidx.annotation.StringRes;
 import com.android.packageinstaller.permission.service.LocationAccessCheck;
 import com.android.packageinstaller.permission.utils.ArrayUtils;
 import com.android.packageinstaller.permission.utils.LocationUtils;
+import com.android.packageinstaller.permission.utils.SoftRestrictedPermissionPolicy;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.permissioncontroller.R;
 
@@ -341,8 +342,10 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
 
                 group.getBackgroundPermissions().addPermission(permission);
             } else {
-                if (!permission.isHardRestricted()
-                            || whitelistedRestrictedPermissions.contains(permission.getName())) {
+                if ((!permission.isHardRestricted()
+                        || whitelistedRestrictedPermissions.contains(permission.getName()))
+                        && (!permission.isSoftRestricted()
+                        || SoftRestrictedPermissionPolicy.shouldShow(packageInfo, permission))) {
                     group.addPermission(permission);
                 }
             }
@@ -1020,11 +1023,18 @@ public final class AppPermissionGroup implements Comparable<AppPermissionGroup> 
         return wasAllRevoked;
     }
 
-    public void setPolicyFixed() {
-        final int permissionCount = mPermissions.size();
-        for (int i = 0; i < permissionCount; i++) {
-            Permission permission = mPermissions.valueAt(i);
-            permission.setPolicyFixed(true);
+    /**
+     * Mark permissions in this group as policy fixed.
+     *
+     * @param filterPermissions The permissions to mark
+     */
+    public void setPolicyFixed(@NonNull String[] filterPermissions) {
+        for (String permissionName : filterPermissions) {
+            Permission permission = mPermissions.get(permissionName);
+
+            if (permission != null) {
+                permission.setPolicyFixed(true);
+            }
         }
 
         if (!mDelayChanges) {

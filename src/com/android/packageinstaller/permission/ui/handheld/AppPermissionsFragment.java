@@ -16,6 +16,9 @@
 
 package com.android.packageinstaller.permission.ui.handheld;
 
+import static com.android.packageinstaller.Constants.EXTRA_SESSION_ID;
+import static com.android.packageinstaller.Constants.INVALID_SESSION_ID;
+
 import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
@@ -43,7 +46,6 @@ import androidx.preference.PreferenceScreen;
 
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
-import com.android.packageinstaller.permission.model.PermissionUsages;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.permissioncontroller.R;
 import com.android.settingslib.HelpUtils;
@@ -71,15 +73,18 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
      * @return A new fragment
      */
     public static AppPermissionsFragment newInstance(@NonNull String packageName,
-            @NonNull UserHandle userHandle) {
-        return setPackageNameAndUserHandle(new AppPermissionsFragment(), packageName, userHandle);
+            @NonNull UserHandle userHandle, long sessionId) {
+        return setPackageNameAndUserHandleAndSessionId(
+                new AppPermissionsFragment(), packageName, userHandle, sessionId);
     }
 
-    private static <T extends Fragment> T setPackageNameAndUserHandle(@NonNull T fragment,
-            @NonNull String packageName, @NonNull UserHandle userHandle) {
+    private static <T extends Fragment> T setPackageNameAndUserHandleAndSessionId(
+            @NonNull T fragment, @NonNull String packageName, @NonNull UserHandle userHandle,
+            long sessionId) {
         Bundle arguments = new Bundle();
         arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
         arguments.putParcelable(Intent.EXTRA_USER, userHandle);
+        arguments.putLong(EXTRA_SESSION_ID, sessionId);
         fragment.setArguments(arguments);
         return fragment;
     }
@@ -215,6 +220,8 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
         allowed.setOrderingAsAdded(true);
         denied.setOrderingAsAdded(true);
 
+        long sessionId = getArguments().getLong(EXTRA_SESSION_ID, INVALID_SESSION_ID);
+
         for (int i = 0; i < groups.size(); i++) {
             AppPermissionGroup group = groups.get(i);
             if (!Utils.shouldShowPermission(getContext(), group)) {
@@ -224,41 +231,14 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
             boolean isPlatform = group.getDeclaringPackage().equals(Utils.OS_PKG);
 
             PermissionControlPreference preference = new PermissionControlPreference(context,
-                    group, AppPermissionsFragment.class.getName());
+                    group, AppPermissionsFragment.class.getName(), sessionId);
             preference.setKey(group.getName());
             Drawable icon = Utils.loadDrawable(context.getPackageManager(),
                     group.getIconPkg(), group.getIconResId());
             preference.setIcon(Utils.applyTint(context, icon,
                     android.R.attr.colorControlNormal));
             preference.setTitle(group.getFullLabel());
-            if (Utils.isModernPermissionGroup(group.getName()) && Utils.shouldShowPermissionUsage(
-                    group.getName())) {
-                String lastAccessStr = Utils.getAbsoluteLastUsageString(context,
-                        PermissionUsages.loadLastGroupUsage(context, group));
-                if (lastAccessStr != null) {
-                    if (group.areRuntimePermissionsGranted()) {
-                        preference.setSummary(
-                                context.getString(R.string.app_permission_most_recent_summary,
-                                        lastAccessStr));
-                    } else {
-                        preference.setSummary(context.getString(
-                                R.string.app_permission_most_recent_denied_summary, lastAccessStr));
-                    }
-                } else {
-                    preference.setGroupSummary(group);
-                    if (preference.getSummary().length() == 0 && Utils.isPermissionsHubEnabled()) {
-                        if (group.areRuntimePermissionsGranted()) {
-                            preference.setSummary(context.getString(
-                                    R.string.app_permission_never_accessed_summary));
-                        } else {
-                            preference.setSummary(context.getString(
-                                    R.string.app_permission_never_accessed_denied_summary));
-                        }
-                    }
-                }
-            } else {
-                preference.setGroupSummary(group);
-            }
+            preference.setGroupSummary(group);
 
             if (isPlatform) {
                 PreferenceCategory category =
@@ -278,9 +258,10 @@ public final class AppPermissionsFragment extends SettingsWithLargeHeader {
         if (mExtraScreen != null) {
             extraPerms.setOnPreferenceClickListener(preference -> {
                 AdditionalPermissionsFragment frag = new AdditionalPermissionsFragment();
-                setPackageNameAndUserHandle(frag,
+                setPackageNameAndUserHandleAndSessionId(frag,
                         getArguments().getString(Intent.EXTRA_PACKAGE_NAME),
-                        getArguments().getParcelable(Intent.EXTRA_USER));
+                        getArguments().getParcelable(Intent.EXTRA_USER),
+                        getArguments().getLong(EXTRA_SESSION_ID, INVALID_SESSION_ID));
                 frag.setTargetFragment(AppPermissionsFragment.this, 0);
                 getFragmentManager().beginTransaction()
                         .replace(android.R.id.content, frag)
