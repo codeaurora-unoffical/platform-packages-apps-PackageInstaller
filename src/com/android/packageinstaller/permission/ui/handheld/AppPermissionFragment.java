@@ -18,7 +18,6 @@ package com.android.packageinstaller.permission.ui.handheld;
 
 import static java.lang.annotation.RetentionPolicy.SOURCE;
 
-import android.Manifest;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -52,9 +51,9 @@ import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 
+import com.android.packageinstaller.Constants;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.Permission;
-import com.android.packageinstaller.permission.model.PermissionUsages;
 import com.android.packageinstaller.permission.ui.AppPermissionActivity;
 import com.android.packageinstaller.permission.utils.LocationUtils;
 import com.android.packageinstaller.permission.utils.PackageRemovalMonitor;
@@ -112,8 +111,8 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
      * @return A new fragment
      */
     public static @NonNull AppPermissionFragment newInstance(@NonNull String packageName,
-            @NonNull String permName, @Nullable String groupName, @NonNull UserHandle userHandle,
-            @Nullable String caller) {
+            @NonNull String permName, @Nullable String groupName,
+            @NonNull UserHandle userHandle, @Nullable String caller, long sessionId) {
         AppPermissionFragment fragment = new AppPermissionFragment();
         Bundle arguments = new Bundle();
         arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
@@ -124,6 +123,7 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         }
         arguments.putParcelable(Intent.EXTRA_USER, userHandle);
         arguments.putString(AppPermissionActivity.EXTRA_CALLER_NAME, caller);
+        arguments.putLong(Constants.EXTRA_SESSION_ID, sessionId);
         fragment.setArguments(arguments);
         return fragment;
     }
@@ -195,19 +195,8 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         ((TextView) root.requireViewById(R.id.permission_message)).setText(
                 context.getString(R.string.app_permission_header, mGroup.getFullLabel()));
 
-        if (!Utils.isPermissionsHubEnabled()) {
-            root.requireViewById(R.id.usage_summary).setVisibility(View.GONE);
-        } else if (Utils.isModernPermissionGroup(mGroup.getName())) {
-            if (!Utils.shouldShowPermissionUsage(mGroup.getName())) {
-                ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                        context.getString(R.string.app_permission_footer_not_available));
-            } else {
-                ((TextView) root.requireViewById(R.id.usage_summary)).setText(
-                        getUsageSummary(context, appLabel));
-            }
-        } else {
-            root.requireViewById(R.id.usage_summary).setVisibility(View.GONE);
-        }
+        root.requireViewById(R.id.usage_summary).setVisibility(View.GONE);
+        long sessionId = getArguments().getLong(Constants.EXTRA_SESSION_ID);
 
         TextView footer1Link = root.requireViewById(R.id.footer_link_1);
         footer1Link.setText(context.getString(R.string.app_permission_footer_app_permissions_link,
@@ -216,6 +205,7 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
             UserHandle user = UserHandle.getUserHandleForUid(mGroup.getApp().applicationInfo.uid);
             Intent intent = new Intent(Intent.ACTION_MANAGE_APP_PERMISSIONS);
             intent.putExtra(Intent.EXTRA_PACKAGE_NAME, mGroup.getApp().packageName);
+            intent.putExtra(Constants.EXTRA_SESSION_ID, sessionId);
             intent.putExtra(Intent.EXTRA_USER, user);
             context.startActivity(intent);
         });
@@ -225,6 +215,7 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         footer2Link.setOnClickListener((v) -> {
             Intent intent = new Intent(Intent.ACTION_MANAGE_PERMISSION_APPS);
             intent.putExtra(Intent.EXTRA_PERMISSION_NAME, mGroup.getName());
+            intent.putExtra(Constants.EXTRA_SESSION_ID, sessionId);
             context.startActivity(intent);
         });
 
@@ -246,93 +237,6 @@ public class AppPermissionFragment extends SettingsWithLargeHeader {
         mNestedScrollView = root.requireViewById(R.id.nested_scroll_view);
 
         return root;
-    }
-
-    private @NonNull String getUsageSummary(@NonNull Context context, @NonNull String appLabel) {
-        String timeDiffStr = Utils.getRelativeLastUsageString(context,
-                PermissionUsages.loadLastGroupUsage(context, mGroup));
-        int strResId;
-        if (timeDiffStr == null) {
-            switch (mGroup.getName()) {
-                case Manifest.permission_group.ACTIVITY_RECOGNITION:
-                    strResId = R.string.app_permission_footer_no_usages_activity_recognition;
-                    break;
-                case Manifest.permission_group.CALENDAR:
-                    strResId = R.string.app_permission_footer_no_usages_calendar;
-                    break;
-                case Manifest.permission_group.CALL_LOG:
-                    strResId = R.string.app_permission_footer_no_usages_call_log;
-                    break;
-                case Manifest.permission_group.CAMERA:
-                    strResId = R.string.app_permission_footer_no_usages_camera;
-                    break;
-                case Manifest.permission_group.CONTACTS:
-                    strResId = R.string.app_permission_footer_no_usages_contacts;
-                    break;
-                case Manifest.permission_group.LOCATION:
-                    strResId = R.string.app_permission_footer_no_usages_location;
-                    break;
-                case Manifest.permission_group.MICROPHONE:
-                    strResId = R.string.app_permission_footer_no_usages_microphone;
-                    break;
-                case Manifest.permission_group.PHONE:
-                    strResId = R.string.app_permission_footer_no_usages_phone;
-                    break;
-                case Manifest.permission_group.SENSORS:
-                    strResId = R.string.app_permission_footer_no_usages_sensors;
-                    break;
-                case Manifest.permission_group.SMS:
-                    strResId = R.string.app_permission_footer_no_usages_sms;
-                    break;
-                case Manifest.permission_group.STORAGE:
-                    strResId = R.string.app_permission_footer_no_usages_storage;
-                    break;
-                default:
-                    return context.getString(R.string.app_permission_footer_no_usages_generic,
-                            appLabel, mGroup.getLabel().toString().toLowerCase());
-            }
-            return context.getString(strResId, appLabel);
-        } else {
-            switch (mGroup.getName()) {
-                case Manifest.permission_group.ACTIVITY_RECOGNITION:
-                    strResId = R.string.app_permission_footer_usage_summary_activity_recognition;
-                    break;
-                case Manifest.permission_group.CALENDAR:
-                    strResId = R.string.app_permission_footer_usage_summary_calendar;
-                    break;
-                case Manifest.permission_group.CALL_LOG:
-                    strResId = R.string.app_permission_footer_usage_summary_call_log;
-                    break;
-                case Manifest.permission_group.CAMERA:
-                    strResId = R.string.app_permission_footer_usage_summary_camera;
-                    break;
-                case Manifest.permission_group.CONTACTS:
-                    strResId = R.string.app_permission_footer_usage_summary_contacts;
-                    break;
-                case Manifest.permission_group.LOCATION:
-                    strResId = R.string.app_permission_footer_usage_summary_location;
-                    break;
-                case Manifest.permission_group.MICROPHONE:
-                    strResId = R.string.app_permission_footer_usage_summary_microphone;
-                    break;
-                case Manifest.permission_group.PHONE:
-                    strResId = R.string.app_permission_footer_usage_summary_phone;
-                    break;
-                case Manifest.permission_group.SENSORS:
-                    strResId = R.string.app_permission_footer_usage_summary_sensors;
-                    break;
-                case Manifest.permission_group.SMS:
-                    strResId = R.string.app_permission_footer_usage_summary_sms;
-                    break;
-                case Manifest.permission_group.STORAGE:
-                    strResId = R.string.app_permission_footer_usage_summary_storage;
-                    break;
-                default:
-                    return context.getString(R.string.app_permission_footer_usage_summary_generic,
-                            appLabel, mGroup.getLabel().toString().toLowerCase(), timeDiffStr);
-            }
-            return context.getString(strResId, appLabel, timeDiffStr);
-        }
     }
 
     @Override
