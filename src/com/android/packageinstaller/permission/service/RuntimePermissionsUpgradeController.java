@@ -16,6 +16,8 @@
 
 package com.android.packageinstaller.permission.service;
 
+import static com.android.packageinstaller.PermissionControllerStatsLog.RUNTIME_PERMISSIONS_UPGRADE_RESULT;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -26,9 +28,12 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.android.packageinstaller.PermissionControllerStatsLog;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
+import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -38,7 +43,7 @@ class RuntimePermissionsUpgradeController {
     private static final String LOG_TAG = RuntimePermissionsUpgradeController.class.getSimpleName();
 
     // The latest version of the runtime permissions database
-    private static final int LATEST_VERSION = 5;
+    private static final int LATEST_VERSION = 7;
 
     private RuntimePermissionsUpgradeController() {
         /* do nothing - hide constructor */
@@ -79,6 +84,8 @@ class RuntimePermissionsUpgradeController {
         final int appCount = apps.size();
 
         final boolean sdkUpgradedFromP;
+        boolean isFreshInstall = false;
+
         if (currentVersion <= -1) {
             Log.i(LOG_TAG, "Upgrading from Android P");
 
@@ -90,6 +97,10 @@ class RuntimePermissionsUpgradeController {
         }
 
         if (currentVersion == 0) {
+            if (!sdkUpgradedFromP) {
+                isFreshInstall = true;
+            }
+
             Log.i(LOG_TAG, "Grandfathering SMS and CallLog permissions");
 
             final List<String> smsPermissions = Utils.getPlatformPermissionNamesOfGroup(
@@ -121,27 +132,7 @@ class RuntimePermissionsUpgradeController {
         }
 
         if (currentVersion == 2) {
-            Log.i(LOG_TAG, "Grandfathering Storage permissions");
-
-            final List<String> storagePermissions = Utils.getPlatformPermissionNamesOfGroup(
-                    Manifest.permission_group.STORAGE);
-
-            for (int i = 0; i < appCount; i++) {
-                final PackageInfo app = apps.get(i);
-                if (app.requestedPermissions == null) {
-                    continue;
-                }
-
-                // We don't want to allow modification of storage post install, so put it
-                // on the internal system whitelist to prevent the installer changing it.
-                for (String requestedPermission : app.requestedPermissions) {
-                    if (storagePermissions.contains(requestedPermission)) {
-                        context.getPackageManager().addWhitelistedRestrictedPermission(
-                                app.packageName, requestedPermission,
-                                PackageManager.FLAG_PERMISSION_WHITELIST_UPGRADE);
-                    }
-                }
-            }
+            // moved to step 5->6 to clean up broken permission state during dogfooding
             currentVersion = 3;
         }
 
@@ -168,7 +159,37 @@ class RuntimePermissionsUpgradeController {
         }
 
         if (currentVersion == 4) {
-            if (sdkUpgradedFromP) {
+            // moved to step 5->6 to clean up broken permission state during beta 4->5 upgrade
+            currentVersion = 5;
+        }
+
+        if (currentVersion == 5) {
+            Log.i(LOG_TAG, "Grandfathering Storage permissions");
+
+            final List<String> storagePermissions = Utils.getPlatformPermissionNamesOfGroup(
+                    Manifest.permission_group.STORAGE);
+
+            for (int i = 0; i < appCount; i++) {
+                final PackageInfo app = apps.get(i);
+                if (app.requestedPermissions == null) {
+                    continue;
+                }
+
+                // We don't want to allow modification of storage post install, so put it
+                // on the internal system whitelist to prevent the installer changing it.
+                for (String requestedPermission : app.requestedPermissions) {
+                    if (storagePermissions.contains(requestedPermission)) {
+                        context.getPackageManager().addWhitelistedRestrictedPermission(
+                                app.packageName, requestedPermission,
+                                PackageManager.FLAG_PERMISSION_WHITELIST_UPGRADE);
+                    }
+                }
+            }
+            currentVersion = 6;
+        }
+
+        if (currentVersion == 6) {
+            if (!isFreshInstall || sdkUpgradedFromP) {
                 Log.i(LOG_TAG, "Expanding location permissions");
 
                 for (int i = 0; i < appCount; i++) {
@@ -190,9 +211,12 @@ class RuntimePermissionsUpgradeController {
 
                         if (group.areRuntimePermissionsGranted()
                                 && bgGroup != null
-                                && !bgGroup.isUserSet() && !bgGroup.isSystemFixed()
+                                && !bgGroup.isSystemFixed()
                                 && !bgGroup.isPolicyFixed()) {
                             bgGroup.grantRuntimePermissions(group.isUserFixed());
+
+                            logRuntimePermissionUpgradeResult(bgGroup,
+                                    app.applicationInfo.uid, app.packageName);
                         }
 
                         break;
@@ -203,11 +227,24 @@ class RuntimePermissionsUpgradeController {
                         + "from Android P");
             }
 
-            currentVersion = 5;
+            currentVersion = 7;
         }
 
         // XXX: Add new upgrade steps above this point.
 
         return currentVersion;
+    }
+
+    private static void logRuntimePermissionUpgradeResult(AppPermissionGroup permissionGroup,
+            int uid, String packageName) {
+        ArrayList<Permission> permissions = permissionGroup.getPermissions();
+        int numPermissions = permissions.size();
+        for (int i = 0; i < numPermissions; i++) {
+            Permission permission = permissions.get(i);
+            PermissionControllerStatsLog.write(RUNTIME_PERMISSIONS_UPGRADE_RESULT,
+                    permission.getName(), uid, packageName);
+            Log.v(LOG_TAG, "Runtime permission upgrade logged for permissionName="
+                    + permission.getName() + " uid=" + uid + " packageName=" + packageName);
+        }
     }
 }
