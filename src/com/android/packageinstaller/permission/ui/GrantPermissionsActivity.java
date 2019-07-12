@@ -19,6 +19,7 @@ package com.android.packageinstaller.permission.ui;
 import static android.content.pm.PackageManager.PERMISSION_DENIED;
 import static android.view.WindowManager.LayoutParams.SYSTEM_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS;
 
+import static com.android.packageinstaller.PermissionControllerStatsLog.GRANT_PERMISSIONS_ACTIVITY_BUTTON_ACTIONS;
 import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_DENIED;
 import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_GRANTED;
 import static com.android.packageinstaller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED;
@@ -95,6 +96,7 @@ public class GrantPermissionsActivity extends Activity
     private long mRequestId;
 
     private String[] mRequestedPermissions;
+    private CharSequence[] mButtonLabels;
 
     private ArrayMap<Pair<String, Boolean>, GroupState> mRequestGrantPermissionGroups =
             new ArrayMap<>();
@@ -133,33 +135,36 @@ public class GrantPermissionsActivity extends Activity
      * affected permissions}.
      *
      * @param group The group the permission belongs to (might be a background permission group)
-     * @param permission The permission to add
+     * @param permName The name of the permission to add
      * @param isFirstInstance Is this the first time the groupStates get created
      */
-    private void addRequestedPermissions(AppPermissionGroup group, String permission,
+    private void addRequestedPermissions(AppPermissionGroup group, String permName,
             boolean isFirstInstance) {
         if (!group.isGrantingAllowed()) {
-            reportRequestResult(permission,
+            reportRequestResult(permName,
                     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED);
             // Skip showing groups that we know cannot be granted.
             return;
         }
 
+        Permission permission = group.getPermission(permName);
+
         // If the permission is restricted it does not show in the UI and
         // is not added to the group at all, so check that first.
-        if (group.getPermission(permission) == null && ArrayUtils.contains(mAppPermissions
-                .getPackageInfo().requestedPermissions, permission)) {
-            reportRequestResult(permission,
+        if (permission == null && ArrayUtils.contains(
+                mAppPermissions.getPackageInfo().requestedPermissions, permName)) {
+            reportRequestResult(permName,
                   PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_RESTRICTED_PERMISSION);
             return;
         // We allow the user to choose only non-fixed permissions. A permission
         // is fixed either by device policy or the user denying with prejudice.
         } else if (group.isUserFixed()) {
-            reportRequestResult(permission,
+            reportRequestResult(permName,
                     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_USER_FIXED);
             return;
-        } else if (group.isPolicyFixed() && !group.areRuntimePermissionsGranted()) {
-            reportRequestResult(permission,
+        } else if (group.isPolicyFixed() && !group.areRuntimePermissionsGranted()
+                || permission.isPolicyFixed()) {
+            reportRequestResult(permName,
                     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__IGNORED_POLICY_FIXED);
             return;
         }
@@ -173,36 +178,38 @@ public class GrantPermissionsActivity extends Activity
             mRequestGrantPermissionGroups.put(groupKey, state);
         }
         state.affectedPermissions = ArrayUtils.appendString(
-                state.affectedPermissions, permission);
+                state.affectedPermissions, permName);
 
         boolean skipGroup = false;
         switch (getPermissionPolicy()) {
             case DevicePolicyManager.PERMISSION_POLICY_AUTO_GRANT: {
-                group.grantRuntimePermissions(false, new String[]{permission});
+                final String[] filterPermissions = new String[]{permName};
+                group.grantRuntimePermissions(false, filterPermissions);
+                group.setPolicyFixed(filterPermissions);
                 state.mState = GroupState.STATE_ALLOWED;
-                group.setPolicyFixed();
                 skipGroup = true;
 
-                reportRequestResult(permission,
+                reportRequestResult(permName,
                         PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_GRANTED);
             } break;
 
             case DevicePolicyManager.PERMISSION_POLICY_AUTO_DENY: {
+                final String[] filterPermissions = new String[]{permName};
+                group.setPolicyFixed(filterPermissions);
                 state.mState = GroupState.STATE_DENIED;
-                group.setPolicyFixed();
                 skipGroup = true;
 
-                reportRequestResult(permission,
+                reportRequestResult(permName,
                         PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_DENIED);
             } break;
 
             default: {
                 if (group.areRuntimePermissionsGranted()) {
-                    group.grantRuntimePermissions(false, new String[]{permission});
+                    group.grantRuntimePermissions(false, new String[]{permName});
                     state.mState = GroupState.STATE_ALLOWED;
                     skipGroup = true;
 
-                    reportRequestResult(permission,
+                    reportRequestResult(permName,
                             PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_GRANTED);
                 }
             } break;
@@ -636,16 +643,16 @@ public class GrantPermissionsActivity extends Activity
                 }
 
                 // The button doesn't show when its label is null
-                CharSequence[] buttonLabels = new CharSequence[NUM_BUTTONS];
-                buttonLabels[LABEL_ALLOW_BUTTON] = getString(R.string.grant_dialog_button_allow);
-                buttonLabels[LABEL_ALLOW_ALWAYS_BUTTON] = null;
-                buttonLabels[LABEL_ALLOW_FOREGROUND_BUTTON] = null;
-                buttonLabels[LABEL_DENY_BUTTON] = getString(R.string.grant_dialog_button_deny);
+                mButtonLabels = new CharSequence[NUM_BUTTONS];
+                mButtonLabels[LABEL_ALLOW_BUTTON] = getString(R.string.grant_dialog_button_allow);
+                mButtonLabels[LABEL_ALLOW_ALWAYS_BUTTON] = null;
+                mButtonLabels[LABEL_ALLOW_FOREGROUND_BUTTON] = null;
+                mButtonLabels[LABEL_DENY_BUTTON] = getString(R.string.grant_dialog_button_deny);
                 if (isForegroundPermissionUserSet || isBackgroundPermissionUserSet) {
-                    buttonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] =
+                    mButtonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] =
                             getString(R.string.grant_dialog_button_deny_and_dont_ask_again);
                 } else {
-                    buttonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] = null;
+                    mButtonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] = null;
                 }
 
                 int messageId;
@@ -654,14 +661,14 @@ public class GrantPermissionsActivity extends Activity
                     messageId = groupState.mGroup.getRequest();
 
                     if (groupState.mGroup.hasPermissionWithBackgroundMode()) {
-                        buttonLabels[LABEL_ALLOW_BUTTON] = null;
-                        buttonLabels[LABEL_ALLOW_FOREGROUND_BUTTON] =
+                        mButtonLabels[LABEL_ALLOW_BUTTON] = null;
+                        mButtonLabels[LABEL_ALLOW_FOREGROUND_BUTTON] =
                                 getString(R.string.grant_dialog_button_allow_foreground);
                         if (needBackgroundPermission) {
-                            buttonLabels[LABEL_ALLOW_ALWAYS_BUTTON] =
+                            mButtonLabels[LABEL_ALLOW_ALWAYS_BUTTON] =
                                     getString(R.string.grant_dialog_button_allow_always);
                             if (isForegroundPermissionUserSet || isBackgroundPermissionUserSet) {
-                                buttonLabels[LABEL_DENY_BUTTON] = null;
+                                mButtonLabels[LABEL_DENY_BUTTON] = null;
                             }
                         }
                     } else {
@@ -671,11 +678,11 @@ public class GrantPermissionsActivity extends Activity
                     if (needBackgroundPermission) {
                         messageId = groupState.mGroup.getBackgroundRequest();
                         detailMessageId = groupState.mGroup.getBackgroundRequestDetail();
-                        buttonLabels[LABEL_ALLOW_BUTTON] =
+                        mButtonLabels[LABEL_ALLOW_BUTTON] =
                                 getString(R.string.grant_dialog_button_allow_background);
-                        buttonLabels[LABEL_DENY_BUTTON] =
+                        mButtonLabels[LABEL_DENY_BUTTON] =
                                 getString(R.string.grant_dialog_button_deny_background);
-                        buttonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] =
+                        mButtonLabels[LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON] =
                                 getString(R.string
                                         .grant_dialog_button_deny_background_and_dont_ask_again);
                     } else {
@@ -702,7 +709,7 @@ public class GrantPermissionsActivity extends Activity
                 setTitle(message);
 
                 mViewHandler.updateUi(groupState.mGroup.getName(), numGrantRequests, currentIndex,
-                        icon, message, detailMessage, buttonLabels);
+                        icon, message, detailMessage, mButtonLabels);
 
                 return true;
             }
@@ -718,6 +725,7 @@ public class GrantPermissionsActivity extends Activity
     @Override
     public void onPermissionGrantResult(String name,
             @GrantPermissionsViewHandler.Result int result) {
+        logGrantPermissionActivityButtons(name, result);
         GroupState foregroundGroupState = getForegroundGroupState(name);
         GroupState backgroundGroupState = getBackgroundGroupState(name);
 
@@ -946,6 +954,52 @@ public class GrantPermissionsActivity extends Activity
         } else {
             return extendedBySplitPerms;
         }
+    }
+
+    private void logGrantPermissionActivityButtons(String permissionGroupName, int grantResult) {
+        int clickedButton = 0;
+        int presentedButtons = getButtonState();
+        switch (grantResult) {
+            case GRANTED_ALWAYS:
+                if ((presentedButtons & (1 << LABEL_ALLOW_BUTTON)) != 0) {
+                    clickedButton = 1 << LABEL_ALLOW_BUTTON;
+                } else {
+                    clickedButton = 1 << LABEL_ALLOW_ALWAYS_BUTTON;
+                }
+                break;
+            case GRANTED_FOREGROUND_ONLY:
+                clickedButton = 1 << LABEL_ALLOW_FOREGROUND_BUTTON;
+                break;
+            case DENIED:
+                clickedButton = 1 << LABEL_DENY_BUTTON;
+                break;
+            case DENIED_DO_NOT_ASK_AGAIN:
+                clickedButton = 1 << LABEL_DENY_AND_DONT_ASK_AGAIN_BUTTON;
+                break;
+            default:
+                break;
+        }
+
+        PermissionControllerStatsLog.write(GRANT_PERMISSIONS_ACTIVITY_BUTTON_ACTIONS,
+                permissionGroupName, mCallingUid, mCallingPackage, presentedButtons,
+                clickedButton);
+        Log.v(LOG_TAG, "Logged buttons presented and clicked permissionGroupName="
+                + permissionGroupName + " uid=" + mCallingUid + " package=" + mCallingPackage
+                + " presentedButtons=" + presentedButtons + " clickedButton=" + clickedButton);
+    }
+
+    private int getButtonState() {
+        if (mButtonLabels == null) {
+            return 0;
+        }
+        int buttonState = 0;
+        for (int i = NUM_BUTTONS - 1; i >= 0; i--) {
+            buttonState *= 2;
+            if (mButtonLabels[i] != null) {
+                buttonState++;
+            }
+        }
+        return buttonState;
     }
 
     private static final class GroupState {

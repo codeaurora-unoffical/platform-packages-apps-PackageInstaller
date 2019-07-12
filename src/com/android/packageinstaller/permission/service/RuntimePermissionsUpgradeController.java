@@ -16,19 +16,25 @@
 
 package com.android.packageinstaller.permission.service;
 
+import static com.android.packageinstaller.PermissionControllerStatsLog.RUNTIME_PERMISSIONS_UPGRADE_RESULT;
+
 import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.PermissionInfo;
 import android.permission.PermissionManager;
 import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.android.packageinstaller.PermissionControllerStatsLog;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
+import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -38,7 +44,7 @@ class RuntimePermissionsUpgradeController {
     private static final String LOG_TAG = RuntimePermissionsUpgradeController.class.getSimpleName();
 
     // The latest version of the runtime permissions database
-    private static final int LATEST_VERSION = 5;
+    private static final int LATEST_VERSION = 7;
 
     private RuntimePermissionsUpgradeController() {
         /* do nothing - hide constructor */
@@ -48,6 +54,8 @@ class RuntimePermissionsUpgradeController {
         final PermissionManager permissionManager = context.getSystemService(
                 PermissionManager.class);
         final int currentVersion = permissionManager.getRuntimePermissionsVersion();
+
+        whitelistAllSystemAppPermissions(context);
 
         final int upgradedVersion = onUpgradeLocked(context, currentVersion);
 
@@ -61,6 +69,51 @@ class RuntimePermissionsUpgradeController {
 
         if (currentVersion != upgradedVersion) {
             permissionManager.setRuntimePermissionsVersion(LATEST_VERSION);
+        }
+    }
+
+    /**
+     * Whitelist permissions of system-apps.
+     *
+     * <p>Apps that are updated via OTAs are never installed. Hence their permission are never
+     * whitelisted. This code replaces that by always whitelisting them.
+     *
+     * @param context A context to talk to the platform
+     */
+    private static void whitelistAllSystemAppPermissions(@NonNull Context context) {
+        // Only whitelist permissions that are in the OTA. For non-OTA updates the installer should
+        // do the white-listing
+        final List<PackageInfo> apps = context.getPackageManager()
+                .getInstalledPackages(PackageManager.GET_PERMISSIONS
+                        | PackageManager.MATCH_UNINSTALLED_PACKAGES
+                        | PackageManager.MATCH_FACTORY_ONLY);
+
+        final int appCount = apps.size();
+        for (int i = 0; i < appCount; i++) {
+            final PackageInfo app = apps.get(i);
+
+            if (app.requestedPermissions == null) {
+                continue;
+            }
+
+            for (String requestedPermission : app.requestedPermissions) {
+                final PermissionInfo permInfo;
+                try {
+                    permInfo = context.getPackageManager().getPermissionInfo(
+                            requestedPermission, 0);
+                } catch (PackageManager.NameNotFoundException e) {
+                    continue;
+                }
+
+                if ((permInfo.flags & (PermissionInfo.FLAG_HARD_RESTRICTED
+                        | PermissionInfo.FLAG_SOFT_RESTRICTED)) == 0) {
+                    continue;
+                }
+
+                context.getPackageManager().addWhitelistedRestrictedPermission(
+                        app.packageName, requestedPermission,
+                        PackageManager.FLAG_PERMISSION_WHITELIST_UPGRADE);
+            }
         }
     }
 
@@ -121,27 +174,7 @@ class RuntimePermissionsUpgradeController {
         }
 
         if (currentVersion == 2) {
-            Log.i(LOG_TAG, "Grandfathering Storage permissions");
-
-            final List<String> storagePermissions = Utils.getPlatformPermissionNamesOfGroup(
-                    Manifest.permission_group.STORAGE);
-
-            for (int i = 0; i < appCount; i++) {
-                final PackageInfo app = apps.get(i);
-                if (app.requestedPermissions == null) {
-                    continue;
-                }
-
-                // We don't want to allow modification of storage post install, so put it
-                // on the internal system whitelist to prevent the installer changing it.
-                for (String requestedPermission : app.requestedPermissions) {
-                    if (storagePermissions.contains(requestedPermission)) {
-                        context.getPackageManager().addWhitelistedRestrictedPermission(
-                                app.packageName, requestedPermission,
-                                PackageManager.FLAG_PERMISSION_WHITELIST_UPGRADE);
-                    }
-                }
-            }
+            // moved to step 5->6 to clean up broken permission state during dogfooding
             currentVersion = 3;
         }
 
@@ -168,6 +201,36 @@ class RuntimePermissionsUpgradeController {
         }
 
         if (currentVersion == 4) {
+            // moved to step 5->6 to clean up broken permission state during beta 4->5 upgrade
+            currentVersion = 5;
+        }
+
+        if (currentVersion == 5) {
+            Log.i(LOG_TAG, "Grandfathering Storage permissions");
+
+            final List<String> storagePermissions = Utils.getPlatformPermissionNamesOfGroup(
+                    Manifest.permission_group.STORAGE);
+
+            for (int i = 0; i < appCount; i++) {
+                final PackageInfo app = apps.get(i);
+                if (app.requestedPermissions == null) {
+                    continue;
+                }
+
+                // We don't want to allow modification of storage post install, so put it
+                // on the internal system whitelist to prevent the installer changing it.
+                for (String requestedPermission : app.requestedPermissions) {
+                    if (storagePermissions.contains(requestedPermission)) {
+                        context.getPackageManager().addWhitelistedRestrictedPermission(
+                                app.packageName, requestedPermission,
+                                PackageManager.FLAG_PERMISSION_WHITELIST_UPGRADE);
+                    }
+                }
+            }
+            currentVersion = 6;
+        }
+
+        if (currentVersion == 6) {
             if (sdkUpgradedFromP) {
                 Log.i(LOG_TAG, "Expanding location permissions");
 
@@ -193,6 +256,9 @@ class RuntimePermissionsUpgradeController {
                                 && !bgGroup.isUserSet() && !bgGroup.isSystemFixed()
                                 && !bgGroup.isPolicyFixed()) {
                             bgGroup.grantRuntimePermissions(group.isUserFixed());
+
+                            logRuntimePermissionUpgradeResult(bgGroup,
+                                    app.applicationInfo.uid, app.packageName);
                         }
 
                         break;
@@ -203,11 +269,24 @@ class RuntimePermissionsUpgradeController {
                         + "from Android P");
             }
 
-            currentVersion = 5;
+            currentVersion = 7;
         }
 
         // XXX: Add new upgrade steps above this point.
 
         return currentVersion;
+    }
+
+    private static void logRuntimePermissionUpgradeResult(AppPermissionGroup permissionGroup,
+            int uid, String packageName) {
+        ArrayList<Permission> permissions = permissionGroup.getPermissions();
+        int numPermissions = permissions.size();
+        for (int i = 0; i < numPermissions; i++) {
+            Permission permission = permissions.get(i);
+            PermissionControllerStatsLog.write(RUNTIME_PERMISSIONS_UPGRADE_RESULT,
+                    permission.getName(), uid, packageName);
+            Log.v(LOG_TAG, "Runtime permission upgrade logged for permissionName="
+                    + permission.getName() + " uid=" + uid + " packageName=" + packageName);
+        }
     }
 }
