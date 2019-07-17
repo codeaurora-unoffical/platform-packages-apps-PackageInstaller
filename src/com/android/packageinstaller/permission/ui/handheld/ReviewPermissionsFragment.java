@@ -16,10 +16,15 @@
 
 package com.android.packageinstaller.permission.ui.handheld;
 
+import static android.content.pm.PackageManager.FLAG_PERMISSION_REVIEW_REQUIRED;
+
+import static com.android.packageinstaller.PermissionControllerStatsLog.REVIEW_PERMISSIONS_FRAGMENT_RESULT_REPORTED;
+
 import android.app.Activity;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.RemoteCallback;
@@ -27,6 +32,7 @@ import android.os.UserHandle;
 import android.text.Html;
 import android.text.Spanned;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -39,6 +45,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceGroup;
 import androidx.preference.PreferenceScreen;
 
+import com.android.packageinstaller.PermissionControllerStatsLog;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.Permission;
@@ -49,6 +56,7 @@ import com.android.permissioncontroller.R;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * If an app does not support runtime permissions the user is prompted via this fragment to select
@@ -60,6 +68,7 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
 
     private static final String EXTRA_PACKAGE_INFO =
             "com.android.packageinstaller.permission.ui.extra.PACKAGE_INFO";
+    private static final String LOG_TAG = ReviewPermissionsFragment.class.getSimpleName();
 
     private AppPermissions mAppPermissions;
 
@@ -99,11 +108,6 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
         mAppPermissions = new AppPermissions(activity, packageInfo, false, true,
                 () -> getActivity().finish());
 
-        if (mAppPermissions.getPermissionGroups().isEmpty()) {
-            activity.finish();
-            return;
-        }
-
         boolean reviewRequired = false;
         for (AppPermissionGroup group : mAppPermissions.getPermissionGroups()) {
             if (group.isReviewRequired() || (group.getBackgroundPermissions() != null
@@ -114,6 +118,9 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
         }
 
         if (!reviewRequired) {
+            // If the system called for a review but no groups are found, this means that all groups
+            // are restricted. Hence there is nothing to review and instantly continue.
+            confirmPermissionsReview();
             activity.finish();
         }
     }
@@ -185,6 +192,8 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
         }
 
         final int preferenceGroupCount = preferenceGroups.size();
+        long changeIdForLogging = new Random().nextLong();
+
         for (int groupNum = 0; groupNum < preferenceGroupCount; groupNum++) {
             final PreferenceGroup preferenceGroup = preferenceGroups.get(groupNum);
 
@@ -200,7 +209,7 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
                     if (group.isReviewRequired() && !permPreference.wasChanged()) {
                         grantReviewedPermission(group);
                     }
-                    group.unsetReviewRequired();
+                    logReviewPermissionsFragmentResult(changeIdForLogging, group);
 
                     AppPermissionGroup backgroundGroup = group.getBackgroundPermissions();
                     if (backgroundGroup != null) {
@@ -208,13 +217,45 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
                         if (backgroundGroup.isReviewRequired() && !permPreference.wasChanged()) {
                             grantReviewedPermission(backgroundGroup);
                         }
-                        backgroundGroup.unsetReviewRequired();
+                        logReviewPermissionsFragmentResult(changeIdForLogging, backgroundGroup);
                     }
                 }
             }
         }
-
         mAppPermissions.persistChanges(true);
+
+        // Some permission might be restricted and hence there is no AppPermissionGroup for it.
+        // Manually unset all review-required flags, regardless of restriction.
+        PackageManager pm = getContext().getPackageManager();
+        PackageInfo pkg = mAppPermissions.getPackageInfo();
+        UserHandle user = UserHandle.getUserHandleForUid(pkg.applicationInfo.uid);
+
+        for (String perm : pkg.requestedPermissions) {
+            try {
+                pm.updatePermissionFlags(perm, pkg.packageName, FLAG_PERMISSION_REVIEW_REQUIRED,
+                        0, user);
+            } catch (IllegalArgumentException e) {
+                Log.e(LOG_TAG, "Cannot unmark " + perm + " requested by " + pkg.packageName
+                        + " as review required", e);
+            }
+        }
+    }
+
+    private void logReviewPermissionsFragmentResult(long changeId, AppPermissionGroup group) {
+        ArrayList<Permission> permissions = group.getPermissions();
+
+        int numPermissions = permissions.size();
+        for (int i = 0; i < numPermissions; i++) {
+            Permission permission = permissions.get(i);
+
+            PermissionControllerStatsLog.write(REVIEW_PERMISSIONS_FRAGMENT_RESULT_REPORTED,
+                    changeId, group.getApp().applicationInfo.uid, group.getApp().packageName,
+                    permission.getName(), permission.isGrantedIncludingAppOp());
+            Log.v(LOG_TAG, "Permission grant via permission review changeId=" + changeId + " uid="
+                    + group.getApp().applicationInfo.uid + " packageName="
+                    + group.getApp().packageName + " permission="
+                    + permission.getName() + " granted=" + permission.isGrantedIncludingAppOp());
+        }
     }
 
     private void bindUi() {
