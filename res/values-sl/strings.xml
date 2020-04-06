@@ -254,7 +254,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Izpostavitev uporabe za naslednje"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Prikaz zaznavanja sprožilca za pomočnika"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Prikaz ikone v vrstici stanja, ko z mikrofonom aktivirate glasovnega pomočnika"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Želite aplikaciji &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; dovoliti branje datotek predstavnosti v tej napravi?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Dovolite aplikaciji &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; dostop do fotografij in predstavnosti v napravi?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Dovolite aplikaciji &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; dostop do stikov?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Želite aplikaciji &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; dovoliti dostop do lokacije te naprave?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"Aplikacija bo imela dostop do lokacije samo, ko aplikacijo uporabljate"</string>
@@ -272,6 +272,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Dovolite aplikaciji &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; opravljanje in upravljanje telefonskih klicev?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Dovolite aplikaciji &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; dostop do podatkov tipala o vitalnih znakih?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Zunanje upravljana dovoljenja"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Ena od aplikacij ima dostop do lokacije"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"Aplikacija <xliff:g id="APP_NAME">%s</xliff:g> ima zdaj dostop do vaše lokacije. Za več informacij se obrnite na skrbnika za IT."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Omogočen je dostop do lokacije"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Skrbnik za IT aplikaciji <xliff:g id="APP_NAME">%s</xliff:g> dovoljuje dostop do vaše lokacije"</string>
 </resources>

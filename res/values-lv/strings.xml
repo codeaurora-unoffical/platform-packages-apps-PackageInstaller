@@ -249,7 +249,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Tālāk norādīto lietotņu izmantojuma atzīmēšana"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Asistenta aktivizētāja noteikšanas rādīšana"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Rādīt ikonu statusa joslā, kad mikrofons tiek izmantots balss palīga aktivizēšanai"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Vai atļaut lietotnei &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; lasīt šīs ierīces multivides failus?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Vai atļaut lietotnei &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; piekļūt fotoattēliem un multivides saturam jūsu ierīcē?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Vai atļaut lietotnei &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; piekļūt jūsu kontaktpersonām?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Vai atļaut lietotnei &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; piekļūt šīs ierīces atrašanās vietai?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"Lietotne varēs piekļūt atrašanās vietai tikai tad, kad izmantosiet šo lietotni"</string>
@@ -267,6 +267,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Vai atļaut lietotnei &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; veikt un pārvaldīt tālruņa zvanus?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Vai atļaut lietotnei &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; piekļūt sensoru uztvertajiem veselības rādījumiem?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Kontrolētās atļaujas"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Lietotne var piekļūt atrašanās vietas datiem."</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"Tagad lietotne <xliff:g id="APP_NAME">%s</xliff:g> var piekļūt jūsu atrašanās vietas datiem. Lai uzzinātu vairāk, sazinieties ar savu IT administratoru."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Atrašanās vietas datiem var piekļūt."</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"IT administrators ir atļāvis lietotnei <xliff:g id="APP_NAME">%s</xliff:g> piekļūt jūsu atrašanās vietas datiem."</string>
 </resources>

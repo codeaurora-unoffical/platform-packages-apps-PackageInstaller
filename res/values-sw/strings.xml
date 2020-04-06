@@ -244,7 +244,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Angazia matumizi ya programu ifuatayo"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Onyesha utambuzi wa kisababishi cha Mratibu"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Onyesha aikoni kwenye sehemu ya kuonyesha hali wakati maikrofoni inatumika kuwasha kipengele cha maagizo ya sauti"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Ungependa kuruhusu &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; isome faili za maudhui za kifaa hiki?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Ungependa kuruhusu &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; ifikie picha na maudhui kwenye kifaa chako?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Ungependa kuiruhusu &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; ifikie anwani zako?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Ungependa kuiruhusu &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; ifikie mahali kilipo kifaa hiki?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"Programu itafikia data ya mahali ulipo unapoitumia tu"</string>
@@ -262,6 +262,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Ungependa kuruhusu &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; kupiga na kudhibiti simu?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Ungependa kuiruhusu &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; ifikie data ya vitambuzi kuhusu viashiria muhimu vya mwili wako?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Ruhusa zinazodhibitiwa"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Programu inaweza kufikia maelezo ya mahali"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"<xliff:g id="APP_NAME">%s</xliff:g> sasa inaweza kufikia maelezo ya mahali ulipo. Wasiliana na msimamizi wako wa TEHAMA ili upate maelezo zaidi."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Maelezo ya mahali yanaweza kufikiwa"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Msimamizi wako wa TEHAMA anaruhusu <xliff:g id="APP_NAME">%s</xliff:g> ifikie maelezo ya mahali ulipo"</string>
 </resources>

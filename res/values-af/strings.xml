@@ -244,7 +244,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Beklemtoon gebruik vir die volgende"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Wys Assistent-aktiveringbespeuring"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Wys ikoon in statusbalk wanneer mikrofoon gebruik word om stemassistent te aktiveer"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Gee &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; toestemming om hierdie toestel se medialêers te lees?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Gee &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; toegang tot jou foto\'s en media op jou toestel?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Gee &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; toegang tot jou kontakte?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Gee &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; toegang tot hierdie toestel se ligging?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"Die program sal net toegang tot die ligging hê terwyl jy die program gebruik"</string>
@@ -262,6 +262,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Laat &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; toe om foonoproepe te maak en te bestuur?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Gee &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; toegang tot sensordata oor jou lewenstekens?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Beheerde toestemmings"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"\'n Program het toegang tot ligging"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"<xliff:g id="APP_NAME">%s</xliff:g> het nou toegang tot jou ligging. Kontak jou IT-administrateur om meer te wete te kom."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Kan toegang tot ligging kry"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Jou IT-admin laat <xliff:g id="APP_NAME">%s</xliff:g> toe om toegang tot jou ligging te kry"</string>
 </resources>

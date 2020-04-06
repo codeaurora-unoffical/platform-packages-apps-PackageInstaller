@@ -244,7 +244,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Дараахын ашиглалтыг тодруулах"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Туслахын өдөөгч илрүүлэлтийг харуулах"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Дуут туслахыг идэвхжүүлэхийн тулд микрофоныг ашиглах үед статус самбарт дүрс тэмдэг харуулах"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Энэ төхөөрөмжийн медиа файлуудыг уншихыг &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;-д зөвшөөрөх үү?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;-д төхөөрөмжийнхөө зураг болон медиад хандахыг зөвшөөрөх үү?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;-д таны харилцагчид хандахыг зөвшөөрөх үү?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;-д энэ төхөөрөмжийн байршилд хандахыг зөвшөөрөх үү?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"Та тухайн аппыг ашиглаж байгаа үед энэ нь зөвхөн байршилд хандах эрхтэй болно"</string>
@@ -262,6 +262,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;-д утасны дуудлага хийх, дуудлагад хариулахыг зөвшөөрөх үү?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;-д таны биеийн ерөнхий байдлын үзүүлэлтүүдийн мэдрэгчийн өгөгдөлд хандахыг зөвшөөрөх үү?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Хяналттай зөвшөөрөл"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Апп байршилд хандах боломжтой"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"<xliff:g id="APP_NAME">%s</xliff:g> одоо таны байршилд хандах боломжтой. Нэмэлт мэдээлэл авахын тулд мэдээлэл технологийн админтайгаа холбогдоно уу."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Байршилд хандах боломжтой"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Таны IT админ таны байршилд хандахыг <xliff:g id="APP_NAME">%s</xliff:g>-д зөвшөөрч байна"</string>
 </resources>

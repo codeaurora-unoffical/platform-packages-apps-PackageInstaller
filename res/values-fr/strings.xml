@@ -244,7 +244,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Mettre en avant l\'utilisation des applications suivantes"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Afficher la détection de l\'activation de l\'Assistant"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Afficher une icône dans la barre d\'état lorsque le micro est utilisé pour activer l\'assistance vocale"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Autoriser <xliff:g id="APP_NAME">%1$s</xliff:g> à lire les fichiers multimédias de cet appareil ?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Permettre à &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; d\'accéder aux photos et contenus multimédias sur votre appareil ?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Autoriser l\'appli &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; à accéder à vos contacts ?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Autoriser &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; à accéder à la position de cet appareil ?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"L\'application n\'a accès à la position de l\'appareil que lorsqu\'elle est ouverte"</string>
@@ -262,6 +262,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Autoriser l\'appli &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; à passer et gérer des appels téléphoniques ?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Permettre à &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; d\'accéder aux données des capteurs relatives à vos signes vitaux ?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Autorisations contrôlées"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Une application peut accéder à vos données de localisation"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"<xliff:g id="APP_NAME">%s</xliff:g> peut désormais accéder à vos données de localisation. Contactez l\'administrateur informatique pour en savoir plus."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Votre position est accessible"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Votre administrateur informatique autorise <xliff:g id="APP_NAME">%s</xliff:g> à accéder à votre position"</string>
 </resources>

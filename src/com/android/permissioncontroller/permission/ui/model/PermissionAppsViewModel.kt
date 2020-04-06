@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,27 +14,33 @@
  * limitations under the License.
  */
 
-package com.android.permissioncontroller.permission.ui.handheld
+package com.android.permissioncontroller.permission.ui.model
 
 import android.Manifest
 import android.app.Application
+import android.content.Intent
 import android.os.Bundle
 import android.os.UserHandle
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.AbstractSavedStateViewModelFactory
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.navigation.fragment.findNavController
 import androidx.savedstate.SavedStateRegistryOwner
+import com.android.permissioncontroller.R
 import com.android.permissioncontroller.permission.data.AllPackageInfosLiveData
 import com.android.permissioncontroller.permission.data.FullStoragePermissionAppsLiveData
 import com.android.permissioncontroller.permission.data.SinglePermGroupPackagesUiInfoLiveData
-import com.android.permissioncontroller.permission.data.get
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo.PermGrantState
 import com.android.permissioncontroller.permission.ui.Category
-import com.android.permissioncontroller.permission.ui.handheld.PermissionAppsViewModel.Companion.CREATION_LOGGED_KEY
-import com.android.permissioncontroller.permission.ui.handheld.PermissionAppsViewModel.Companion.HAS_SYSTEM_APPS_KEY
-import com.android.permissioncontroller.permission.ui.handheld.PermissionAppsViewModel.Companion.SHOULD_SHOW_SYSTEM_KEY
-import com.android.permissioncontroller.permission.ui.handheld.PermissionAppsViewModel.Companion.SHOW_ALWAYS_ALLOWED
+
+import com.android.permissioncontroller.permission.ui.LocationProviderInterceptDialog
+import com.android.permissioncontroller.permission.ui.model.PermissionAppsViewModel.Companion.CREATION_LOGGED_KEY
+import com.android.permissioncontroller.permission.ui.model.PermissionAppsViewModel.Companion.HAS_SYSTEM_APPS_KEY
+import com.android.permissioncontroller.permission.ui.model.PermissionAppsViewModel.Companion.SHOULD_SHOW_SYSTEM_KEY
+import com.android.permissioncontroller.permission.ui.model.PermissionAppsViewModel.Companion.SHOW_ALWAYS_ALLOWED
+import com.android.permissioncontroller.permission.utils.LocationUtils
 
 /**
  * ViewModel for the PermissionAppsFragment. Has a liveData with all of the UI info for each
@@ -48,7 +54,7 @@ import com.android.permissioncontroller.permission.ui.handheld.PermissionAppsVie
 class PermissionAppsViewModel(
     private val state: SavedStateHandle,
     private val app: Application,
-    groupName: String
+    private val groupName: String
 ) : ViewModel() {
 
     companion object {
@@ -83,11 +89,11 @@ class PermissionAppsViewModel(
 
             addSource(packagesUiInfoLiveData) {
                 if (fullStorageLiveData == null || fullStorageLiveData?.isInitialized == true)
-                update()
+                    update()
             }
             addSource(shouldShowSystemLiveData) {
                 if (fullStorageLiveData == null || fullStorageLiveData?.isInitialized == true)
-                update()
+                    update()
             }
 
             // If this is the Storage group, observe a FullStoragePermissionAppsLiveData, update
@@ -188,6 +194,39 @@ class PermissionAppsViewModel(
      */
     fun arePackagesLoaded(): Boolean {
         return AllPackageInfosLiveData.isInitialized
+    }
+
+    /**
+     * Navigate to an AppPermissionFragment, unless this is a special location package
+     *
+     * @param fragment The fragment attached to this ViewModel
+     * @param packageName The package name we want to navigate to
+     * @param user The user we want to navigate to the package of
+     * @param args The arguments to pass onto the fragment
+     */
+    fun navigateToAppPermission(
+        fragment: Fragment,
+        packageName: String,
+        user: UserHandle,
+        args: Bundle
+    ) {
+        val activity = fragment.activity!!
+        if (LocationUtils.isLocationGroupAndProvider(
+                activity, groupName, packageName)) {
+            val intent = Intent(activity, LocationProviderInterceptDialog::class.java)
+            intent.putExtra(Intent.EXTRA_PACKAGE_NAME, packageName)
+            activity.startActivityAsUser(intent, user)
+            return
+        }
+
+        if (LocationUtils.isLocationGroupAndControllerExtraPackage(
+                activity, groupName, packageName)) {
+            // Redirect to location controller extra package settings.
+            LocationUtils.startLocationControllerExtraPackageSettings(activity, user)
+            return
+        }
+
+        fragment.findNavController().navigate(R.id.perm_apps_to_app, args)
     }
 }
 

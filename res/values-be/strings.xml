@@ -254,7 +254,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Паказваць выбраныя праграмы"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Паказваць значок актывацыі Памочніка"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Паказваць значок на панэлі стану, калі мікрафон выкарыстоўваецца для актывацыі галасавога памочніка"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Дазволіць праграме &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; счытваць файлы мультымедыя на гэтай прыладзе?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Дазволіць праграме &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; доступ да фота і мультымедыя на вашай прыладзе?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Дазволіць праграме &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; доступ да вашых кантактаў?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Дазволіць праграме &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; доступ да звестак пра месцазнаходжанне гэтай прылады?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"Праграма будзе мець доступ да звестак пра месцазнаходжанне толькі падчас карыстання ёю"</string>
@@ -272,6 +272,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Дазволіць праграме &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; рабіць тэлефонныя выклікі і кіраваць імі?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Дазволіць праграме &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; доступ да даных з датчыкаў пра вашы асноўныя фізіялагічныя паказчыкі?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Кіраваныя дазволы"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Праграма мае доступ да звестак пра месцазнаходжанне"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"Цяпер праграма \"<xliff:g id="APP_NAME">%s</xliff:g>\" можа атрымліваць даныя пра месцазнаходжанне. Каб даведацца больш, звярніцеся да ІТ-адміністратара."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Доступ да даных пра месцазнаходжанне атрыманы"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Ваш ІТ-адміністратар дазваляе праграме \"<xliff:g id="APP_NAME">%s</xliff:g>\" мець доступ да даных пра ваша месцазнаходжанне"</string>
 </resources>

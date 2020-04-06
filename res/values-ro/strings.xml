@@ -249,7 +249,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Evidențiați folosirea pentru următoarele"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Afișează detectarea declanșatorului Asistentului"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Afișați pictograma în bara de stare când microfonul este folosit pentru a activa asistentul vocal"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Permiteți ca &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; să citească fișierele media de pe dispozitiv?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Permiteți &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; să acceseze fotografiile și conținutul media de pe dispozitiv?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Permiteți &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; să vă acceseze agenda?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Permiteți &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; să acceseze locația acestui dispozitiv?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"Aplicația va avea acces la locație doar atunci când o folosiți"</string>
@@ -267,6 +267,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Permiteți &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; să inițieze și să gestioneze apeluri telefonice?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Permiteți &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; să acceseze datele de la senzori despre semnele dvs. vitale?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Permisiuni controlate"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"O aplicație poate accesa locația"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"<xliff:g id="APP_NAME">%s</xliff:g> vă poate accesa locația. Contactați administratorul IT pentru a afla mai multe."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Locația poate fi accesată"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Administratorul IT permite ca <xliff:g id="APP_NAME">%s</xliff:g> să vă acceseze locația"</string>
 </resources>

@@ -244,7 +244,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Destaca l\'ús d\'aquestes aplicacions"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Mostra la detecció d\'activador de l\'Assistent"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Mostra una icona a la barra d\'estat quan s\'utilitzi el micròfon per activar l\'assistent de veu"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Vols permetre que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; llegeixi els fitxers multimèdia del dispositiu?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Vols permetre que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; accedeixi a les fotos i al contingut multimèdia del dispositiu?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Vols permetre que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; accedeixi als contactes?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Vols permetre que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; accedeixi a la ubicació del dispositiu?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"L\'aplicació només tindrà accés a la ubicació quan l\'estiguis utilitzant"</string>
@@ -262,6 +262,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Vols permetre que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; faci trucades i les gestioni?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Vols permetre que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; accedeixi a les dades del sensor de constants vitals?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Permisos controlats"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Una aplicació pot accedir a la ubicació"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"Ara <xliff:g id="APP_NAME">%s</xliff:g> pot accedir a la teva ubicació. Contacta amb l\'administrador de TI per obtenir més informació."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Es pot accedir a la ubicació"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"El teu administrador de TI ha donat permís a l\'aplicació <xliff:g id="APP_NAME">%s</xliff:g> per accedir a la teva ubicació"</string>
 </resources>

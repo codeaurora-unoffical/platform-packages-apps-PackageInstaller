@@ -244,7 +244,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"권한 사용 내역을 표시할 앱"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"어시스턴트 트리거 감지 표시"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"음성 어시스턴트 활성화를 위해 마이크가 사용되면 상태 표시줄에 아이콘 표시"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;에서 기기의 미디어 파일을 읽도록 허용하시겠습니까?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;에서 기기의 사진 및 미디어에 액세스하도록 허용하시겠습니까?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;에서 내 연락처에 액세스하도록 허용하시겠습니까?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;에서 내 기기 위치에 액세스하도록 허용하시겠습니까?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"앱을 사용할 때만 앱에서 위치에 액세스합니다."</string>
@@ -262,6 +262,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;에서 전화를 걸고 관리하도록 허용하시겠습니까?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;에서 생체 신호에 관한 센서 데이터에 액세스하도록 허용하시겠습니까?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"관리 대상 권한"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"앱에서 위치 정보에 액세스할 수 있음"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"이제 <xliff:g id="APP_NAME">%s</xliff:g>에서 위치에 액세스할 수 있습니다. 자세한 내용은 IT 관리자에게 문의하세요."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"앱이 위치 정보에 액세스할 수 있음"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"IT 관리자가 <xliff:g id="APP_NAME">%s</xliff:g>에서 내 위치 정보에 액세스하도록 허용합니다."</string>
 </resources>

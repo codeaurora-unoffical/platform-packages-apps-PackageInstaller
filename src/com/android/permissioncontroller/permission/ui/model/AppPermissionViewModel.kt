@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-package com.android.permissioncontroller.permission.ui.handheld
+package com.android.permissioncontroller.permission.ui.model
 
+import android.Manifest
 import android.app.Activity
 import android.app.Application
 import android.content.Intent
@@ -24,6 +25,7 @@ import android.os.Bundle
 import android.os.UserHandle
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.StringRes
 import androidx.lifecycle.MutableLiveData
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
@@ -41,13 +43,13 @@ import com.android.permissioncontroller.permission.model.livedatatypes.LightPerm
 import com.android.permissioncontroller.permission.utils.KotlinUtils
 import com.android.permissioncontroller.permission.utils.LocationUtils
 import com.android.permissioncontroller.permission.utils.SafetyNetLogger
-import com.android.permissioncontroller.permission.ui.handheld.AppPermissionViewModel.ButtonType.ALLOW
-import com.android.permissioncontroller.permission.ui.handheld.AppPermissionViewModel.ButtonType.ALLOW_ALWAYS
-import com.android.permissioncontroller.permission.ui.handheld.AppPermissionViewModel.ButtonType.ALLOW_FOREGROUND
-import com.android.permissioncontroller.permission.ui.handheld.AppPermissionViewModel.ButtonType.ASK_ONCE
-import com.android.permissioncontroller.permission.ui.handheld.AppPermissionViewModel.ButtonType.ASK
-import com.android.permissioncontroller.permission.ui.handheld.AppPermissionViewModel.ButtonType.DENY
-import com.android.permissioncontroller.permission.ui.handheld.AppPermissionViewModel.ButtonType.DENY_FOREGROUND
+import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.ALLOW
+import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.ALLOW_ALWAYS
+import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.ALLOW_FOREGROUND
+import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.ASK_ONCE
+import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.ASK
+import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.DENY
+import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.DENY_FOREGROUND
 import com.android.permissioncontroller.permission.utils.Utils
 import com.android.settingslib.RestrictedLockUtils
 import java.util.Random
@@ -77,6 +79,15 @@ class AppPermissionViewModel(
 
     companion object {
         private val LOG_TAG = AppPermissionViewModel::class.java.simpleName
+    }
+
+    interface DefaultDenyShowingFragment {
+        fun showDefaultDenyDialog(
+            changeRequest: ChangeRequest,
+            @StringRes messageId: Int,
+            buttonPressed: Int,
+            oneTime: Boolean
+        )
     }
 
     enum class ChangeRequest(val value: Int) {
@@ -161,11 +172,10 @@ class AppPermissionViewModel(
             val deniedState = ButtonState()
             val deniedForegroundState = ButtonState()
 
-            askOneTimeState.isShown = group.isOneTime
-            askState.isShown = !group.isOneTime
+            askOneTimeState.isShown = group.foreground.isGranted && group.isOneTime
+            askState.isShown = Utils.supportsOneTimeGrant(permGroupName) &&
+                    !(group.foreground.isGranted && group.isOneTime)
             deniedState.isShown = true
-
-            askOneTimeState.isChecked = group.isOneTime
 
             if (group.hasPermWithBackgroundMode) {
                 // Background / Foreground / Deny case
@@ -178,9 +188,9 @@ class AppPermissionViewModel(
                     group.foreground.isGranted
                 allowedForegroundState.isChecked = group.foreground.isGranted &&
                     !group.background.isGranted && !group.isOneTime
-                val groupUserFixed = group.foreground.isUserFixed || group.background.isUserFixed
-                askState.isChecked = !group.foreground.isGranted && !groupUserFixed
-                deniedState.isChecked = !group.foreground.isGranted && groupUserFixed
+                askState.isChecked = !group.foreground.isGranted && group.isOneTime
+                askOneTimeState.isChecked = group.foreground.isGranted && group.isOneTime
+                deniedState.isChecked = !group.foreground.isGranted && !group.isOneTime
 
                 if (applyFixToForegroundBackground(group, group.foreground.isSystemFixed,
                         group.background.isSystemFixed, allowedAlwaysState,
@@ -205,8 +215,9 @@ class AppPermissionViewModel(
                 allowedState.isShown = true
 
                 allowedState.isChecked = group.foreground.isGranted
-                askState.isChecked = !group.foreground.isGranted && !group.foreground.isUserFixed
-                deniedState.isChecked = !group.foreground.isGranted && group.foreground.isUserFixed
+                askState.isChecked = !group.foreground.isGranted && group.isOneTime
+                askOneTimeState.isChecked = group.foreground.isGranted && group.isOneTime
+                deniedState.isChecked = !group.foreground.isGranted && !group.isOneTime
 
                 if (group.foreground.isPolicyFixed || group.foreground.isSystemFixed) {
                     allowedState.isEnabled = false
@@ -217,6 +228,12 @@ class AppPermissionViewModel(
                     if (detailId != 0) {
                         detailResIdLiveData.value = detailId to null
                     }
+                }
+                if (isForegroundGroupSpecialCase(permGroupName)) {
+                    allowedForegroundState.isShown = true
+                    allowedState.isShown = false
+                    allowedForegroundState.isChecked = allowedState.isChecked
+                    allowedForegroundState.isEnabled = allowedState.isEnabled
                 }
             }
             if (group.packageInfo.targetSdkVersion < Build.VERSION_CODES.M) {
@@ -230,6 +247,12 @@ class AppPermissionViewModel(
                 ALLOW_FOREGROUND to allowedForegroundState, ASK_ONCE to askOneTimeState,
                 ASK to askState, DENY to deniedState, DENY_FOREGROUND to deniedForegroundState)
         }
+    }
+
+    // TODO evanseverson: Actually change mic/camera to be a foreground only permission
+    private fun isForegroundGroupSpecialCase(permissionGroupName: String): Boolean {
+        return permissionGroupName.equals(Manifest.permission_group.CAMERA) ||
+                permissionGroupName.equals(Manifest.permission_group.MICROPHONE)
     }
 
     /**
@@ -281,6 +304,7 @@ class AppPermissionViewModel(
             if (group.foreground.isGranted) {
                 // Foreground is fixed as granted, background flexible.
                 // Allow switching between foreground and background. No denying
+                allowedForegroundState.isEnabled = allowedAlwaysState.isShown
                 askState.isEnabled = false
                 deniedState.isEnabled = false
             } else {
@@ -317,15 +341,12 @@ class AppPermissionViewModel(
      * Navigate to either the App Permission Groups screen, or the Permission Apps Screen.
      * @param fragment The current fragment
      * @param action The action to be taken
+     * @param args The arguments to pass to the fragment
      */
-    fun showBottomLinkPage(fragment: Fragment, action: String) {
-        lateinit var args: Bundle
-        var actionId = R.id.app_to_perm_apps
+    fun showBottomLinkPage(fragment: Fragment, action: String, args: Bundle) {
+        var actionId = R.id.app_to_perm_groups
         if (action == Intent.ACTION_MANAGE_PERMISSION_APPS) {
-            args = PermissionAppsFragment.createArgs(permGroupName, sessionId)
-        } else {
-            args = AppPermissionGroupsFragment.createArgs(packageName, user, sessionId, true)
-            actionId = R.id.app_to_perm_groups
+            actionId = R.id.app_to_perm_apps
         }
 
         fragment.findNavController().navigate(actionId, args)
@@ -343,6 +364,10 @@ class AppPermissionViewModel(
      *
      *  * Default grant permissions
      *
+     * @param setOneTime Whether or not to set this permission as one time
+     * @param fragment The fragment calling this method
+     * @param defaultDeny The system which will show the default deny dialog. Usually the same as
+     * the fragment.
      * @param changeRequest Which permission group (foreground/background/both) should be changed
      * @param buttonClicked button which was pressed to initiate the change, one of
      *                      AppPermissionFragmentActionReported.button_pressed constants
@@ -350,8 +375,9 @@ class AppPermissionViewModel(
      * @return The dialogue to show, if applicable, or if the request was processed.
      */
     fun requestChange(
-        userFixed: Boolean,
-        fragment: AppPermissionFragment,
+        setOneTime: Boolean,
+        fragment: Fragment,
+        defaultDeny: DefaultDenyShowingFragment,
         changeRequest: ChangeRequest,
         buttonClicked: Int
     ) {
@@ -390,24 +416,24 @@ class AppPermissionViewModel(
         }
 
         if (showDefaultDenyDialog && !hasConfirmedRevoke && showGrantedByDefaultWarning) {
-            fragment.showDefaultDenyDialog(changeRequest, R.string.system_warning, userFixed,
-                    buttonClicked)
+            defaultDeny.showDefaultDenyDialog(changeRequest, R.string.system_warning, buttonClicked,
+                    setOneTime)
             return
         }
 
         if (showDefaultDenyDialog && !hasConfirmedRevoke) {
-            fragment.showDefaultDenyDialog(changeRequest, R.string.old_sdk_deny_warning,
-                    userFixed, buttonClicked)
+            defaultDeny.showDefaultDenyDialog(changeRequest, R.string.old_sdk_deny_warning,
+                    buttonClicked,
+                    setOneTime)
             return
         }
 
         var newGroup = group
         val oldGroup = group
 
-        if (shouldRevokeBackground && group.hasBackgroundGroup &&
-            (wasBackgroundGranted || userFixed != group.background.isUserFixed)) {
-            newGroup = KotlinUtils.revokeBackgroundRuntimePermissions(app,
-                newGroup, userFixed)
+        if (shouldRevokeBackground && group.hasBackgroundGroup && wasBackgroundGranted) {
+            newGroup = KotlinUtils
+                    .revokeBackgroundRuntimePermissions(app, newGroup, false, setOneTime)
 
             // only log if we have actually denied permissions, not if we switch from
             // "ask every time" to denied
@@ -416,10 +442,9 @@ class AppPermissionViewModel(
             }
         }
 
-        if (shouldRevokeForeground &&
-            (wasForegroundGranted || userFixed != group.foreground.isUserFixed)) {
-            newGroup = KotlinUtils.revokeForegroundRuntimePermissions(app, newGroup,
-                userFixed)
+        if (shouldRevokeForeground && (wasForegroundGranted || group.isOneTime != setOneTime)) {
+            newGroup = KotlinUtils
+                    .revokeForegroundRuntimePermissions(app, newGroup, false, setOneTime)
 
             // only log if we have actually denied permissions, not if we switch from
             // "ask every time" to denied
@@ -452,13 +477,12 @@ class AppPermissionViewModel(
      * default, actually revoke the permissions.
      *
      * @param changeRequest whether to change foreground, background, or both.
-     * @param userFixed whether the user has stated they do not wish to be prompted about the
-     * permission any more.
      * @param buttonPressed button pressed to initiate the change, one of
      *                      AppPermissionFragmentActionReported.button_pressed constants
+     * @param oneTime whether the change should show that the permission was selected as one-time
      *
      */
-    fun onDenyAnyWay(changeRequest: ChangeRequest, userFixed: Boolean, buttonPressed: Int) {
+    fun onDenyAnyWay(changeRequest: ChangeRequest, buttonPressed: Int, oneTime: Boolean) {
         val group = lightAppPermGroup ?: return
         val wasForegroundGranted = group.foreground.isGranted
         val wasBackgroundGranted = group.background.isGranted
@@ -469,7 +493,7 @@ class AppPermissionViewModel(
 
         if (changeRequest andValue ChangeRequest.REVOKE_BACKGROUND != 0 &&
             group.hasBackgroundGroup) {
-            newGroup = KotlinUtils.revokeBackgroundRuntimePermissions(app, newGroup, userFixed)
+            newGroup = KotlinUtils.revokeBackgroundRuntimePermissions(app, newGroup, false, oneTime)
 
             if (wasBackgroundGranted) {
                 SafetyNetLogger.logPermissionToggled(newGroup)
@@ -479,7 +503,7 @@ class AppPermissionViewModel(
         }
 
         if (changeRequest andValue ChangeRequest.REVOKE_FOREGROUND != 0) {
-            newGroup = KotlinUtils.revokeForegroundRuntimePermissions(app, newGroup, userFixed)
+            newGroup = KotlinUtils.revokeForegroundRuntimePermissions(app, newGroup, false, oneTime)
             if (wasForegroundGranted) {
                 SafetyNetLogger.logPermissionToggled(newGroup)
             }
@@ -497,8 +521,7 @@ class AppPermissionViewModel(
      *
      * @param fragment The current fragment we wish to transition from
      */
-    fun showAllPermissions(fragment: AppPermissionFragment) {
-        val args = AllAppPermissionsFragment.createArgs(packageName, permGroupName, user)
+    fun showAllPermissions(fragment: Fragment, args: Bundle) {
         fragment.findNavController().navigate(R.id.app_to_all_perms, args)
     }
 

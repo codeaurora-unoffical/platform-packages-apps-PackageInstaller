@@ -244,7 +244,7 @@
     <string name="adjust_user_sensitive_per_app_header" msgid="1372152438971168364">"Destacar uso para os apps a seguir"</string>
     <string name="assistant_record_audio_user_sensitive_title" msgid="5382972366928946381">"Mostrar quando o Assistente detectar uma frase de gatilho"</string>
     <string name="assistant_record_audio_user_sensitive_summary" msgid="6852572549436960848">"Mostrar ícone na barra de status quando o microfone for usado para ativar o assistente por voz"</string>
-    <string name="permgrouprequest_storage_isolated" msgid="8503400511548542256">"Permitir que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; leia os arquivos de mídia do dispositivo?"</string>
+    <string name="permgrouprequest_storage_isolated" msgid="1019696034804170865">"Permitir que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; acesse fotos e mídia no seu dispositivo?"</string>
     <string name="permgrouprequest_contacts" msgid="1493445560009228831">"Permitir que o app &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; acesse seus contatos?"</string>
     <string name="permgrouprequest_location" msgid="4367626296074714965">"Permitir que o app &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; acesse a localização deste dispositivo?"</string>
     <string name="permgrouprequestdetail_location" msgid="4985222951894409507">"O app só terá acesso ao local enquanto estiver sendo usado"</string>
@@ -262,6 +262,6 @@
     <string name="permgrouprequest_phone" msgid="6240218310343431124">"Permitir que o app &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; gerencie e faça chamadas telefônicas?"</string>
     <string name="permgrouprequest_sensors" msgid="1939578702884234985">"Permitir que &lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; acesse os dados do sensor sobre seus sinais vitais?"</string>
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Permissões controladas"</string>
-    <string name="auto_granted_location_permission_notification_title" msgid="5058977868989759266">"Um app com acesso ao local"</string>
-    <string name="auto_granted_permission_notification_body" msgid="6650181834574213734">"Agora, o <xliff:g id="APP_NAME">%s</xliff:g> pode acessar seu local. Entre em contato com o administrador de TI para saber mais."</string>
+    <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"A localização pode ser acessada"</string>
+    <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"O acesso do <xliff:g id="APP_NAME">%s</xliff:g> à sua localização está permitido pelo administrador de TI"</string>
 </resources>

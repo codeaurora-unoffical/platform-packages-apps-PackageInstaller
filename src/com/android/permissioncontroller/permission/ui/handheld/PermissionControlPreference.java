@@ -40,6 +40,8 @@ import androidx.preference.PreferenceViewHolder;
 import com.android.permissioncontroller.R;
 import com.android.permissioncontroller.permission.model.AppPermissionGroup;
 import com.android.permissioncontroller.permission.ui.AppPermissionActivity;
+import com.android.permissioncontroller.permission.ui.LocationProviderInterceptDialog;
+import com.android.permissioncontroller.permission.utils.LocationUtils;
 
 import java.util.List;
 
@@ -183,8 +185,17 @@ public class PermissionControlPreference extends Preference {
         setIcons(holder, mSummaryIcons, R.id.summary_widget_frame);
         setIcons(holder, mTitleIcons, R.id.title_widget_frame);
 
-        if (mHasNavGraph) {
-            setOnPreferenceClickListener(pref -> {
+        setOnPreferenceClickListener(pref -> {
+            if (LocationUtils.isLocationGroupAndProvider(
+                    mContext, mPermGroupName, mPackageName)) {
+                Intent intent = new Intent(mContext, LocationProviderInterceptDialog.class);
+                intent.putExtra(Intent.EXTRA_PACKAGE_NAME, mPackageName);
+                mContext.startActivityAsUser(intent, mUser);
+            } else if (LocationUtils.isLocationGroupAndControllerExtraPackage(
+                    mContext, mPermGroupName, mPackageName)) {
+                // Redirect to location controller extra package settings.
+                LocationUtils.startLocationControllerExtraPackageSettings(mContext, mUser);
+            } else if (mHasNavGraph) {
                 Bundle args = new Bundle();
                 args.putString(Intent.EXTRA_PACKAGE_NAME, mPackageName);
                 args.putString(Intent.EXTRA_PERMISSION_GROUP_NAME, mPermGroupName);
@@ -194,9 +205,19 @@ public class PermissionControlPreference extends Preference {
                 args.putString(GRANT_CATEGORY, mGranted);
                 Navigation.findNavController(holder.itemView).navigate(R.id.perm_groups_to_app,
                         args);
-                return true;
-            });
-        }
+            } else {
+                // TODO ntmyren, yianyliu: Remove once Auto has been adapted to new permission model
+                // see b/150229448
+                Intent intent = new Intent(Intent.ACTION_MANAGE_APP_PERMISSION);
+                intent.putExtra(Intent.EXTRA_PACKAGE_NAME, mPackageName);
+                intent.putExtra(Intent.EXTRA_PERMISSION_GROUP_NAME, mPermGroupName);
+                intent.putExtra(Intent.EXTRA_USER, mUser);
+                intent.putExtra(AppPermissionActivity.EXTRA_CALLER_NAME, mCaller);
+                intent.putExtra(EXTRA_SESSION_ID, mSessionId);
+                mContext.startActivity(intent);
+            }
+            return true;
+        });
     }
 
     private void setIcons(PreferenceViewHolder holder, @Nullable List<Integer> icons, int frameId) {
