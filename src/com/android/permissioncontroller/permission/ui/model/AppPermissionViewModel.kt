@@ -118,10 +118,6 @@ class AppPermissionViewModel(
     private var lightAppPermGroup: LightAppPermGroup? = null
 
     /**
-     * A livedata which computes the state of the radio buttons
-     */
-    val buttonStateLiveData = AppPermButtonStateLiveData()
-    /**
      * A livedata which determines which detail string, if any, should be shown
      */
     val detailResIdLiveData = MutableLiveData<Pair<Int, Int?>>()
@@ -139,7 +135,10 @@ class AppPermissionViewModel(
         constructor() : this(false, true, false, null)
     }
 
-    inner class AppPermButtonStateLiveData
+    /**
+     * A livedata which computes the state of the radio buttons
+     */
+    val buttonStateLiveData = object
         : SmartUpdateMediatorLiveData<@JvmSuppressWildcards Map<ButtonType, ButtonState>>() {
 
         private val appPermGroupLiveData = LightAppPermGroupLiveData[packageName, permGroupName,
@@ -431,9 +430,10 @@ class AppPermissionViewModel(
         var newGroup = group
         val oldGroup = group
 
-        if (shouldRevokeBackground && group.hasBackgroundGroup && wasBackgroundGranted) {
+        if (shouldRevokeBackground && group.hasBackgroundGroup &&
+                (wasBackgroundGranted || group.background.isUserFixed)) {
             newGroup = KotlinUtils
-                    .revokeBackgroundRuntimePermissions(app, newGroup, false, setOneTime)
+                    .revokeBackgroundRuntimePermissions(app, newGroup)
 
             // only log if we have actually denied permissions, not if we switch from
             // "ask every time" to denied

@@ -58,6 +58,7 @@ import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGr
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo.PermGrantState;
 import com.android.permissioncontroller.permission.ui.AutoGrantPermissionsNotifier;
 import com.android.permissioncontroller.permission.utils.KotlinUtils;
+import com.android.permissioncontroller.permission.utils.UserSensitiveFlagsUtils;
 import com.android.permissioncontroller.permission.utils.Utils;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -72,6 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -611,8 +613,6 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
         performDefaultPermissionGrants();
         RuntimePermissionsUpgradeController.INSTANCE.upgradeIfNeeded(this, () -> {
             callback.run();
-            AsyncTask.execute(() ->
-                    Utils.updateUserSensitive(getApplication(), Process.myUserHandle()));
         });
     }
 
@@ -621,8 +621,15 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
     }
 
     @Override
-    public void onUpdateUserSensitivePermissionFlags() {
-        Utils.updateUserSensitive(getApplication(), Process.myUserHandle());
+    public void onUpdateUserSensitivePermissionFlags(int uid, Executor executor,
+            Runnable callback) {
+        if (uid == Process.INVALID_UID) {
+            UserSensitiveFlagsUtils.updateUserSensitiveForUser(Process.myUserHandle(),
+                    () -> executor.execute(callback));
+        } else {
+            UserSensitiveFlagsUtils.updateUserSensitiveForUid(uid,
+                    () -> executor.execute(callback));
+        }
     }
 
     @Override
@@ -656,6 +663,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
                 logOneTimeSessionRevoke(packageName, uid, group, requestId);
                 group.revokeRuntimePermissions(false);
             }
+            group.setUserSet(false);
             group.persistChanges(false);
         }
     }

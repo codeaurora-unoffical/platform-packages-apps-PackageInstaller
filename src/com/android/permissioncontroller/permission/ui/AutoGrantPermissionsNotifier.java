@@ -16,11 +16,11 @@
 
 package com.android.permissioncontroller.permission.ui;
 
-import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 import static android.app.PendingIntent.FLAG_UPDATE_CURRENT;
 import static android.app.PendingIntent.getActivity;
+import static android.content.Intent.ACTION_MANAGE_APP_PERMISSION;
 import static android.content.Intent.EXTRA_PACKAGE_NAME;
-import static android.content.Intent.EXTRA_PERMISSION_NAME;
+import static android.content.Intent.EXTRA_PERMISSION_GROUP_NAME;
 import static android.content.Intent.EXTRA_USER;
 import static android.content.Intent.FLAG_ACTIVITY_MULTIPLE_TASK;
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
@@ -141,6 +141,16 @@ public class AutoGrantPermissionsNotifier {
 
         Intent manageAppPermission = getSettingsPermissionIntent(sessionId);
         Bitmap pkgIconBmp = getPackageIcon(pm.getApplicationIcon(mPackageInfo.applicationInfo));
+        // Use the hash code of the package name string as a unique request code for
+        // PendingIntent.getActivity.
+        // To prevent multiple notifications related to different apps all leading to the same
+        // "Manage app permissions" screen for one single app, the pending intent for each
+        // notification has to be distinguished from other pending intents.
+        // This is done by specifying a different request code. However, a random request code
+        // cannot be used as we'd like the pending intent to be updated if multiple
+        // notifications are shown for the same app.
+        // The package name hash code serves as a stable request code value.
+        int packageBasedRequestCode = mPackageInfo.packageName.hashCode();
 
         String title = mContext.getString(
                 R.string.auto_granted_location_permission_notification_title);
@@ -155,8 +165,8 @@ public class AutoGrantPermissionsNotifier {
                 .setSmallIcon(R.drawable.ic_pin_drop)
                 .setLargeIcon(pkgIconBmp)
                 .setColor(mContext.getColor(android.R.color.system_notification_accent_color))
-                .setContentIntent(getActivity(mContext, 0, manageAppPermission,
-                        FLAG_UPDATE_CURRENT));
+                .setContentIntent(getActivity(mContext, packageBasedRequestCode,
+                            manageAppPermission, FLAG_UPDATE_CURRENT));
 
         // Add the Settings app name since we masquerade it.
         CharSequence appName = getSettingsAppName();
@@ -168,6 +178,13 @@ public class AutoGrantPermissionsNotifier {
 
         NotificationManager notificationManager = getSystemServiceSafe(mContext,
                 NotificationManager.class);
+        // Cancel previous notifications for the same package to avoid redundant notifications.
+        // This code currently only deals with location-related notifications, which would all lead
+        // to the same Settings activity for managing location permissions.
+        // If ever extended to cover multiple types of notifications, then only multiple
+        // notifications of the same group should be canceled.
+        notificationManager.cancel(
+                mPackageInfo.packageName, PERMISSION_GRANTED_BY_ADMIN_NOTIFICATION_ID);
         notificationManager.notify(mPackageInfo.packageName,
                 PERMISSION_GRANTED_BY_ADMIN_NOTIFICATION_ID,
                 b.build());
@@ -199,14 +216,14 @@ public class AutoGrantPermissionsNotifier {
     private @NonNull Intent getSettingsPermissionIntent(long sessionId) {
         UserHandle callingUser = getUserHandleForUid(mPackageInfo.applicationInfo.uid);
 
-        return new Intent(mContext, AppPermissionActivity.class)
-        .addFlags(FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_MULTIPLE_TASK)
-        .putExtra(EXTRA_PERMISSION_NAME, ACCESS_FINE_LOCATION)
-        .putExtra(EXTRA_PACKAGE_NAME, mPackageInfo.packageName)
-        .putExtra(EXTRA_USER, callingUser)
-        .putExtra(EXTRA_SESSION_ID, sessionId)
-        .putExtra(AppPermissionActivity.EXTRA_CALLER_NAME,
-                AutoGrantPermissionsNotifier.class.getName());
+        return new Intent(ACTION_MANAGE_APP_PERMISSION)
+                .addFlags(FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_MULTIPLE_TASK)
+                .putExtra(EXTRA_PERMISSION_GROUP_NAME, Manifest.permission_group.LOCATION)
+                .putExtra(EXTRA_PACKAGE_NAME, mPackageInfo.packageName)
+                .putExtra(EXTRA_USER, callingUser)
+                .putExtra(EXTRA_SESSION_ID, sessionId)
+                .putExtra(ManagePermissionsActivity.EXTRA_CALLER_NAME,
+                        AutoGrantPermissionsNotifier.class.getName());
     }
 
     private @NonNull Bitmap getPackageIcon(@NonNull Drawable pkgIcon) {
