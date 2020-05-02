@@ -119,6 +119,12 @@
             <item type="style" name="PreferenceUsageWidgetFrame" />
             <!-- END PREFERENCE USAGE -->
 
+            <!-- START AUTO REVOKE SCREEN -->
+
+            <item type="style" name="SettingsActionButton" />
+
+            <!-- END AUTO REVOKE SCREEN -->
+
             <!-- START TITLE SUMMARY IMAGE VIEW -->
             <item type="style" name="TitleSummaryImageViewIcon" />
             <!-- END TITLE SUMMARY IMAGE VIEW -->
@@ -246,14 +252,8 @@
             <item type="dimen" name="car_icon_size" />
             <!-- END CAR DIMENS -->
 
-            <!-- START CAR STYLES -->
-            <item type="style" name="CarPreferenceFragment" />
-            <item type="style" name="CarPreferenceFragmentList" />
-            <!-- END CAR STYLES -->
-
             <!-- START CAR THEMES -->
             <item type="style" name="CarSettings" />
-            <item type="style" name="CarPreferenceTheme" />
             <!-- END CAR THEMES -->
 
         </policy>
