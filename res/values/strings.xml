@@ -106,6 +106,12 @@
     <!-- Title for the dialog button to allow a change from foreground to background permission grant. [CHAR LIMIT=60]  -->
     <string name="grant_dialog_button_allow_background">Allow all the time</string>
 
+    <!-- Title for the dialog button to allow a permission grant for all files. [CHAR LIMIT=60]  -->
+    <string name="grant_dialog_button_allow_all_files">Allow management of all files</string>
+
+    <!-- Title for the dialog button to allow a permission grant for media files only. [CHAR LIMIT=60]  -->
+    <string name="grant_dialog_button_allow_media_only">Allow access to media files</string>
+
     <!-- Breadcrumb for page of managing application permissions [CHAR LIMIT=50] -->
     <string name="app_permissions_breadcrumb">Apps</string>
 
@@ -151,6 +157,9 @@
 
     <!-- Summary of number of apps currently granted a single permission [CHAR LIMIT=45] -->
    <string name="app_permissions_group_summary"><xliff:g id="count" example="10">%1$d</xliff:g> of <xliff:g id="count" example="10">%2$d</xliff:g> apps allowed</string>
+
+    <!-- Summary of number of apps currently granted a single permission [CHAR LIMIT=45] -->
+    <string name="app_permissions_group_summary2"><xliff:g id="count" example="10">%1$d</xliff:g>/<xliff:g id="count" example="10">%2$d</xliff:g> apps allowed</string>
 
    <!-- [CHAR LIMIT=NONE] Menu for manage permissions to control whether system apps are shown -->
    <string name="menu_show_system">Show system</string>
@@ -290,6 +299,12 @@
     <!-- Title for the dialog button to allow a permission grant when you cannot only allow in the foreground. [CHAR LIMIT=60] -->
     <string name="app_permission_button_allow">Allow</string>
 
+    <!-- Title for the dialog button to allow a storage permission grant for all files [CHAR LIMIT=60] -->
+    <string name="app_permission_button_allow_all_files">Allow management of all files</string>
+
+    <!-- Title for the dialog button to allow a storage permission grant for media files only [CHAR LIMIT=60] -->
+    <string name="app_permission_button_allow_media_only">Allow access to media only</string>
+
     <!-- Title for the dialog button to allow a permission grant when you can also only allow in the foreground. [CHAR LIMIT=60] -->
     <string name="app_permission_button_allow_always">Allow all the time</string>
 
@@ -317,11 +332,17 @@
     <!-- Label for the auto revoke switch [CHAR LIMIT=60] -->
     <string name="auto_revoke_label">Remove permissions if app isn\u2019t used</string>
 
-    <!-- Summary for stating that permissions will be removed[CHAR LIMIT=none] -->
-    <string name="auto_revoke_summary">To protect your data, permissions for this app will be removed if the app isn\u2019t used for a few months.</string>
+    <!-- Summary for stating that permissions will be removed [CHAR LIMIT=none] -->
+    <string name="auto_revoke_summary">To protect your data, permissions for this app will be removed if the app is unused for a few months.</string>
 
     <!-- Summary for stating that permissions will be removed, which includes a list of permissions which will be removed [CHAR LIMIT=none] -->
-    <string name="auto_revoke_summary_with_permissions">To protect your data, if the app hasn\u2019 been used for a few months, the following permissions will be removed: <xliff:g id="perms" example="location, contacts, and phone">%1$s</xliff:g>.</string>
+    <string name="auto_revoke_summary_with_permissions">To protect your data, if the app is unused for a few months, the following permissions will be removed: <xliff:g id="perms" example="location, contacts, and phone">%1$s</xliff:g></string>
+
+    <!-- Summary for the screen that shows all apps that have had permissions removed [CHAR LIMIT=none] -->
+    <string name="auto_revoked_apps_page_summary">To protect your data, permissions have been removed from apps that you haven\u2019t used in a few months.</string>
+
+    <!-- Message which tells users to open an app to grant permissions [CHAR LIMIT=none]-->
+    <string name="auto_revoke_open_app_message">If you want to allow permissions again, open the app</string>
 
     <!-- Summary for stating that auto revoke is disabled for the current app [CHAR LIMIT=none] -->
     <string name="auto_revoke_disabled">Automatic removal is currently disabled for this app.</string>
@@ -361,6 +382,12 @@
 
     <!-- Summary for showing when an app was last used, shorter version [CHAR LIMIT=none] -->
     <string name="last_opened_summary_short">Last opened <xliff:g id="date" example="March 12, 2020">%s</xliff:g></string>
+
+    <!-- Text that explains that an app has access to all files[CHAR LIMIT=none] -->
+    <string name="app_permission_footer_special_file_access">If you allow management of all files, this app can access, modify, and delete any files in common storage on this device or connected storage devices. The app may access files without asking you.</string>
+
+    <!-- Text that explains that an app requests full file access, and links to the settings page[CHAR LIMIT=none] -->
+    <string name="special_file_access_dialog">Allow this app to access, modify and delete files on the device, or any connected storage devices? This app may access files without asking you.</string>
 
     <!-- Label for showing a permission group's description in the header of the list of apps that have that permission [CHAR LIMIT=none] -->
     <string name="permission_description_summary_generic">Apps with this permission can <xliff:g id="description" example="record audio">%1$s</xliff:g></string>
@@ -420,10 +447,10 @@
     <string name="allowed_foreground_header">Allowed only while in use</string>
 
     <!-- Subtitle for scoped storage permissions, showing apps that have access to media files only [CHAR LIMIT=45] -->
-    <string name="allowed_storage_scoped">Allowed for media only</string>
+    <string name="allowed_storage_scoped">Allowed access to media only</string>
 
     <!-- Subtitle for full storage permissions, showing apps that have access to all files [CHAR LIMIT=45] -->
-    <string name="allowed_storage_full">Allowed for all files</string>
+    <string name="allowed_storage_full">Allowed to manage all files</string>
 
     <!-- Header for permissions/apps which need to ask next time they want to use the permission. Note: Permission may or may not be currently granted [CHAR LIMIT=60] -->
     <string name="ask_header">Ask every time</string>
@@ -458,11 +485,17 @@
     <!-- The name of the notification channel containing reminders about permission [CHAR LIMIT=60]-->
     <string name="permission_reminders">Permission reminders</string>
 
-    <!-- The notification title for the auto revoke reminder notification [CHAR LIMIT=60] -->
-    <string name="auto_revoke_permission_reminder_notification_title">App permissions automatically removed</string>
+    <!-- The notification title for the notification that a permission auto revoke has happened for one app [CHAR LIMIT=60] -->
+    <string name="auto_revoke_permission_reminder_notification_title_one">1 unused app</string>
+
+    <!-- The notification title for the notification that a permission auto revoke has happened for more than one app [CHAR LIMIT=60] -->
+    <string name="auto_revoke_permission_reminder_notification_title_many"><xliff:g id="number_of_apps" example="4">%s</xliff:g> unused apps</string>
 
     <!-- The notification content for the auto revoke reminder notification [CHAR LIMIT=none] -->
-    <string name="auto_revoke_permission_reminder_notification_content">Some apps haven\u2019t been used for a few months. Tap for more info.</string>
+    <string name="auto_revoke_permission_reminder_notification_content">Permissions removed to protect your privacy. Tap to review</string>
+
+    <!-- The summary for the auto revoke preference [CHAR LIMIT=none] -->
+    <string name="auto_revoke_preference_summary">Permissions removed to protect your privacy</string>
 
     <!-- The notification title for background location access reminder notification [CHAR LIMIT=60] -->
     <string name="background_location_access_reminder_notification_title"><xliff:g id="app_name" example="Gmail">%s</xliff:g> got your location in the background</string>
@@ -509,8 +542,20 @@
     <!-- Summary explaining that permissions for unused apps have be removed [CHAR LIMIT=none] -->
     <string name="unused_app_permissions_removed_summary">To protect your data, permissions have been removed from apps that you haven\u2019t used in a few months</string>
 
+    <!-- Summary listing that one app is unused [CHAR LIMIT=none] -->
+    <string name="one_unused_app_summary">1 app hasen\u2019t been used for a few months</string>
+
+    <!-- Summary listing how many apps are unused [CHAR LIMIT=none] -->
+    <string name="num_unused_apps_summary"><xliff:g id="number_of_apps" example="4">%s</xliff:g> apps haven\u2019t been used for a few months</string>
+
     <!-- Subtitle for the preference that is currently granted only when the app is in the foreground. [CHAR LIMIT=60] -->
     <string name="permission_subtitle_only_in_foreground">Only while app is in use</string>
+
+    <!-- Subtitle for a storage preference that is currently granted for Media files only. [CHAR LIMIT=60] -->
+    <string name="permission_subtitle_media_only">Media</string>
+
+    <!-- Subtitle for a storage preference that is currently granted for all files. [CHAR LIMIT=60] -->
+    <string name="permission_subtitle_all_files">All Files</string>
 
     <!-- Label when app has been granted no permissions [CHAR LIMIT=none] -->
     <string name="no_permissions_allowed">No permissions allowed</string>

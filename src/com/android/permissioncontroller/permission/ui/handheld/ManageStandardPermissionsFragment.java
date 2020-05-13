@@ -16,6 +16,7 @@
 package com.android.permissioncontroller.permission.ui.handheld;
 
 import static com.android.permissioncontroller.Constants.EXTRA_SESSION_ID;
+import static com.android.permissioncontroller.permission.ui.handheld.UtilsKt.pressBack;
 
 import android.os.Bundle;
 import android.util.Log;
@@ -30,9 +31,6 @@ import com.android.permissioncontroller.permission.ui.model.ManageStandardPermis
 import com.android.permissioncontroller.permission.ui.model.ManageStandardPermissionsViewModelFactory;
 import com.android.permissioncontroller.permission.utils.Utils;
 
-import java.util.Objects;
-
-
 /**
  * Fragment that allows the user to manage standard permissions.
  */
@@ -42,15 +40,6 @@ public final class ManageStandardPermissionsFragment extends ManagePermissionsFr
     private static final String LOG_TAG = ManageStandardPermissionsFragment.class.getSimpleName();
 
     private ManageStandardPermissionsViewModel mViewModel;
-
-    /**
-     * @return A new fragment
-     */
-    public static ManageStandardPermissionsFragment newInstance(long sessionId) {
-        ManageStandardPermissionsFragment fragment = new ManageStandardPermissionsFragment();
-        fragment.setArguments(createArgs(sessionId));
-        return fragment;
-    }
 
     /**
      * Create a bundle with the arguments needed by this fragment
@@ -85,7 +74,7 @@ public final class ManageStandardPermissionsFragment extends ManagePermissionsFr
         });
 
         mViewModel.getNumCustomPermGroups().observe(this, permNames -> updatePermissionsUi());
-        mViewModel.getShouldShowAutoRevoke().observe(this, show -> updatePermissionsUi());
+        mViewModel.getNumAutoRevoked().observe(this, show -> updatePermissionsUi());
     }
 
     @Override
@@ -98,7 +87,7 @@ public final class ManageStandardPermissionsFragment extends ManagePermissionsFr
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
-            getActivity().onBackPressed();
+            pressBack(this);
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -146,17 +135,25 @@ public final class ManageStandardPermissionsFragment extends ManagePermissionsFr
                     numExtraPermissions));
         }
 
-        Boolean showAutoRevoke = mViewModel.getShouldShowAutoRevoke().getValue();
+        Integer numAutoRevoked = mViewModel.getNumAutoRevoked().getValue();
         Preference autoRevokePreference = screen.findPreference(AUTO_REVOKE_KEY);
-        if (Objects.equals(showAutoRevoke, true)) {
+        if (numAutoRevoked != null && numAutoRevoked != 0) {
             if (autoRevokePreference == null) {
                 autoRevokePreference = new Preference(getPreferenceManager().getContext());
                 autoRevokePreference.setOrder(-1);
                 autoRevokePreference.setKey(AUTO_REVOKE_KEY);
-                autoRevokePreference.setTitle(
-                        R.string.auto_revoke_permission_reminder_notification_title);
                 autoRevokePreference.setSingleLineTitle(false);
                 autoRevokePreference.setIcon(R.drawable.ic_info_outline);
+                if (numAutoRevoked == 1) {
+                    autoRevokePreference.setTitle(
+                            R.string.auto_revoke_permission_reminder_notification_title_one);
+                } else {
+                    autoRevokePreference.setTitle(getString(
+                            R.string.auto_revoke_permission_reminder_notification_title_many,
+                            numAutoRevoked));
+                }
+                autoRevokePreference.setSummary(
+                        R.string.auto_revoke_preference_summary);
                 autoRevokePreference.setOnPreferenceClickListener(preference -> {
                     mViewModel.showAutoRevoke(this,
                             AutoRevokeFragment.createArgs(
@@ -166,7 +163,7 @@ public final class ManageStandardPermissionsFragment extends ManagePermissionsFr
 
                 screen.addPreference(autoRevokePreference);
             }
-        } else if (showAutoRevoke != null && autoRevokePreference != null) {
+        } else if (numAutoRevoked != null && autoRevokePreference != null) {
             screen.removePreference(autoRevokePreference);
         }
         return screen;

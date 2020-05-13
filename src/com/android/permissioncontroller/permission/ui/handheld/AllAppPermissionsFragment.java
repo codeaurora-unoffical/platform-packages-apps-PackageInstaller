@@ -16,6 +16,8 @@
 
 package com.android.permissioncontroller.permission.ui.handheld;
 
+import static com.android.permissioncontroller.permission.ui.handheld.UtilsKt.pressBack;
+
 import android.app.ActionBar;
 import android.app.AlertDialog;
 import android.content.Context;
@@ -28,6 +30,7 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Switch;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -66,11 +69,6 @@ public final class AllAppPermissionsFragment extends SettingsWithLargeHeader {
     private String mPackageName;
     private String mFilterGroup;
     private UserHandle mUser;
-
-    public static AllAppPermissionsFragment newInstance(@NonNull String packageName,
-            @NonNull UserHandle userHandle) {
-        return newInstance(packageName, null, userHandle);
-    }
 
     public static AllAppPermissionsFragment newInstance(@NonNull String packageName,
             @Nullable String filterGroup, @NonNull UserHandle userHandle) {
@@ -116,7 +114,7 @@ public final class AllAppPermissionsFragment extends SettingsWithLargeHeader {
         if (mPackageName == null || mUser == null) {
             Log.e(LOG_TAG, "Missing required argument EXTRA_PACKAGE_NAME or "
                     + "EXTRA_USER");
-            getActivity().finish();
+            pressBack(this);
         }
 
         AllAppPermissionsViewModelFactory factory = new AllAppPermissionsViewModelFactory(
@@ -152,7 +150,7 @@ public final class AllAppPermissionsFragment extends SettingsWithLargeHeader {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home: {
-                getActivity().onBackPressed();
+                pressBack(this);
                 return true;
             }
         }
@@ -160,6 +158,14 @@ public final class AllAppPermissionsFragment extends SettingsWithLargeHeader {
     }
 
     private void updateUi(Map<String, List<String>> groupMap) {
+        if (groupMap == null && mViewModel.getAllPackagePermissionsLiveData().isInitialized()) {
+            Toast.makeText(
+                    getActivity(), R.string.app_not_found_dlg_title, Toast.LENGTH_LONG).show();
+            Log.w(LOG_TAG, "invalid package " + mPackageName);
+            pressBack(this);
+            return;
+        }
+
         if (getPreferenceScreen() == null) {
             addPreferencesFromResource(R.xml.all_permissions);
         }
@@ -183,15 +189,17 @@ public final class AllAppPermissionsFragment extends SettingsWithLargeHeader {
                     .setData(Uri.fromParts("package", mPackageName, null));
         }
         setHeader(icon, label, infoIntent, mUser, false);
-        for (String groupName : groupMap.keySet()) {
-            List<String> permissions = groupMap.get(groupName);
-            if (permissions == null || permissions.isEmpty()) {
-                continue;
-            }
+        if (groupMap != null) {
+            for (String groupName : groupMap.keySet()) {
+                List<String> permissions = groupMap.get(groupName);
+                if (permissions == null || permissions.isEmpty()) {
+                    continue;
+                }
 
-            PreferenceGroup pref = findOrCreatePrefGroup(groupName);
-            for (String permName : permissions) {
-                pref.addPreference(getPreference(permName, groupName));
+                PreferenceGroup pref = findOrCreatePrefGroup(groupName);
+                for (String permName : permissions) {
+                    pref.addPreference(getPreference(permName, groupName));
+                }
             }
         }
         if (otherGroup.getPreferenceCount() == 0) {

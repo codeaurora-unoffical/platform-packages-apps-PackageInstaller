@@ -46,6 +46,7 @@ import android.content.Intent
 import android.content.pm.PackageManager.FLAG_PERMISSION_AUTO_REVOKED
 import android.content.pm.PackageManager.FLAG_PERMISSION_USER_SET
 import android.content.pm.PackageManager.PERMISSION_GRANTED
+import android.os.Bundle
 import android.os.Process.myUserHandle
 import android.os.UserHandle
 import android.os.UserManager
@@ -93,14 +94,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.random.Random
 
 private const val LOG_TAG = "AutoRevokePermissions"
-private const val DEBUG = true
+    private const val DEBUG_OVERRIDE_THRESHOLDS = false
+// TODO eugenesusla: temporarily enabled for extra logs during dogfooding
+private const val DEBUG = false || DEBUG_OVERRIDE_THRESHOLDS
 
-// TODO eugenesusla: temporarily disabled due to issues in droidfood
-private const val AUTO_REVOKE_ENABLED = false
+private const val AUTO_REVOKE_ENABLED = true
 
-private val DEFAULT_UNUSED_THRESHOLD_MS = DAYS.toMillis(90)
+private val DEFAULT_UNUSED_THRESHOLD_MS =
+        if (AUTO_REVOKE_ENABLED) DAYS.toMillis(90) else Long.MAX_VALUE
 private fun getUnusedThresholdMs(context: Context) = when {
-    DEBUG -> SECONDS.toMillis(1)
+    DEBUG_OVERRIDE_THRESHOLDS -> SECONDS.toMillis(1)
     TeamfoodSettings.get(context) != null -> TeamfoodSettings.get(context)!!.unusedThresholdMs
     else -> DeviceConfig.getLong(DeviceConfig.NAMESPACE_PERMISSIONS,
             PROPERTY_AUTO_REVOKE_UNUSED_THRESHOLD_MILLIS,
@@ -119,10 +122,10 @@ private fun getCheckFrequencyMs(context: Context) = when {
 private val SERVER_LOG_ID =
     PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_UNUSED_APP_PERMISSION_REVOKED
 
-private fun isAutoRevokeEnabled(context: Context): Boolean {
-    return AUTO_REVOKE_ENABLED &&
-            getCheckFrequencyMs(context) > 0 &&
-            getUnusedThresholdMs(context) > 0
+fun isAutoRevokeEnabled(context: Context): Boolean {
+    return getCheckFrequencyMs(context) > 0 &&
+            getUnusedThresholdMs(context) > 0 &&
+            getUnusedThresholdMs(context) != Long.MAX_VALUE
 }
 
 /**
@@ -166,7 +169,7 @@ private suspend fun revokePermissionsOnUnusedApps(context: Context):
     val stats = withContext(IPC) {
         context.getSystemService<UsageStatsManager>()
             .queryUsageStats(
-                if (DEBUG) INTERVAL_DAILY else INTERVAL_MONTHLY,
+                if (DEBUG_OVERRIDE_THRESHOLDS) INTERVAL_DAILY else INTERVAL_MONTHLY,
                 now - getUnusedThresholdMs(context),
                 now)
     }
@@ -179,7 +182,7 @@ private suspend fun revokePermissionsOnUnusedApps(context: Context):
                     context.forUser(user)
                         .getSystemService<UsageStatsManager>()
                         .queryUsageStats(
-                            if (DEBUG) INTERVAL_DAILY else INTERVAL_MONTHLY,
+                            if (DEBUG_OVERRIDE_THRESHOLDS) INTERVAL_DAILY else INTERVAL_MONTHLY,
                             now - getUnusedThresholdMs(context),
                             now)
                 }
@@ -198,7 +201,7 @@ private suspend fun revokePermissionsOnUnusedApps(context: Context):
 
         // Handle cross-profile apps
         if (context.isPackageCrossProfile(pkg)) {
-            profileUsersStats
+            lastTimeVisible = profileUsersStats
                 .await()
                 .fold(lastTimeVisible) { result, profileStats ->
                     val time: Long = profileStats
@@ -231,7 +234,7 @@ private suspend fun revokePermissionsOnUnusedApps(context: Context):
         }
 
         val packageName = pkg.packageName
-        if (isPackageAutoRevokeExempt(pkg, manifestExemptPackages)) {
+        if (isPackageAutoRevokeExempt(context, pkg, manifestExemptPackages)) {
             return@forEachInParallel
         }
 
@@ -278,6 +281,9 @@ private suspend fun revokePermissionsOnUnusedApps(context: Context):
                     .getSystemService(ActivityManager::class.java)!!
                     .getPackageImportance(packageName)
                 if (packageImportance > IMPORTANCE_TOP_SLEEPING) {
+                    if (DEBUG) {
+                        Log.i(LOG_TAG, "revoking $packageName - $revocablePermissions")
+                    }
                     anyPermsRevoked.compareAndSet(false, true)
 
                     KotlinUtils.revokeBackgroundRuntimePermissions(
@@ -297,7 +303,8 @@ private suspend fun revokePermissionsOnUnusedApps(context: Context):
                     }
                 } else {
                     Log.i(LOG_TAG,
-                        "Skipping auto-revoke - app running with importance $packageImportance")
+                        "Skipping auto-revoke - $packageName running with importance " +
+                            "$packageImportance")
                 }
             }
         }
@@ -314,12 +321,13 @@ private suspend fun revokePermissionsOnUnusedApps(context: Context):
 suspend fun isPackageAutoRevokeExempt(
     context: Context,
     pkg: LightPackageInfo
-) = isPackageAutoRevokeExempt(pkg, withContext(IPC) {
+) = isPackageAutoRevokeExempt(context, pkg, withContext(IPC) {
     context.getSystemService<PermissionManager>()
             .getAutoRevokeExemptionGrantedPackages()
 })
 
 private suspend fun isPackageAutoRevokeExempt(
+    context: Context,
     pkg: LightPackageInfo,
     manifestExemptPackages: Set<String>
 ): Boolean {
@@ -333,12 +341,13 @@ private suspend fun isPackageAutoRevokeExempt(
     if (whitelistAppOpMode == MODE_DEFAULT) {
         // Initial state - whitelist not explicitly overridden by either user or installer
 
-        if (DEBUG) {
+        if (DEBUG_OVERRIDE_THRESHOLDS) {
             // Suppress exemptions to allow debugging
             return false
         }
 
-        if (pkg.targetSdkVersion <= android.os.Build.VERSION_CODES.Q) {
+        if (pkg.targetSdkVersion <= android.os.Build.VERSION_CODES.Q &&
+                TeamfoodSettings.get(context)?.enabledForPreRApps != true) {
             // Q- packages exempt by default
             return true
         } else {
@@ -396,7 +405,7 @@ class AutoRevokeService : JobService() {
         return true
     }
 
-    private fun showAutoRevokeNotification() {
+    private suspend fun showAutoRevokeNotification() {
         val notificationManager = getSystemService(NotificationManager::class.java)!!
 
         val permissionReminderChannel = NotificationChannel(
@@ -412,8 +421,14 @@ class AutoRevokeService : JobService() {
         val pendingIntent = PendingIntent.getActivity(this, 0, clickIntent,
             FLAG_ONE_SHOT or FLAG_UPDATE_CURRENT)
 
+        val numRevoked = AutoRevokedPackagesLiveData.getInitializedValue().size
+        val titleString = if (numRevoked == 1) {
+            getString(R.string.auto_revoke_permission_reminder_notification_title_one)
+        } else {
+            getString(R.string.auto_revoke_permission_reminder_notification_title_many, numRevoked)
+        }
         val b = Notification.Builder(this, PERMISSION_REMINDER_CHANNEL_ID)
-            .setContentTitle(getString(R.string.auto_revoke_permission_reminder_notification_title))
+            .setContentTitle(titleString)
             .setContentText(getString(
                 R.string.auto_revoke_permission_reminder_notification_content))
             .setStyle(Notification.BigTextStyle().bigText(getString(
@@ -422,15 +437,15 @@ class AutoRevokeService : JobService() {
             .setColor(getColor(android.R.color.system_notification_accent_color))
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
+        Utils.getSettingsLabelForNotifications(applicationContext.packageManager)?.let {
+            settingsLabel ->
+            val extras = Bundle()
+            extras.putString(Notification.EXTRA_SUBSTITUTE_APP_NAME, settingsLabel.toString())
+            b.addExtras(extras)
+        }
 
         notificationManager.notify(AutoRevokeService::class.java.simpleName,
             AUTO_REVOKE_NOTIFICATION_ID, b.build())
-
-        GlobalScope.launch(Main) {
-            // Initialize the "all auto revoked" liveData, to speed loading if the user clicks on
-            // the notification
-            AutoRevokedPackagesLiveData.getInitializedValue()
-        }
     }
 
     companion object {

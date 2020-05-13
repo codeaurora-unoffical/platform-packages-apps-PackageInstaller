@@ -107,8 +107,8 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
-                activity!!.onBackPressed()
-                return true
+            this.pressBack()
+            return true
         }
         return super.onOptionsItemSelected(item)
     }
@@ -144,10 +144,9 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
             } else {
                 getString(R.string.last_opened_category_title, "6")
             }
-            if (packages.isEmpty()) {
-                category.isVisible = false
-            }
-            for ((pkgName, user, shouldDisable, permSet) in packages) {
+            category.isVisible = packages.isNotEmpty()
+
+            for ((pkgName, user, shouldDisable, canOpen, permSet) in packages) {
                 val revokedPerms = permSet.toList()
                 val key = createKey(pkgName, user)
 
@@ -159,23 +158,23 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
                     pref.title = KotlinUtils.getPackageLabel(activity!!.application, pkgName, user)
                 }
 
+                pref.canOpen = canOpen
                 pref.openClickListener = View.OnClickListener {
                     viewModel.openApp(pkgName, user)
                 }
+
                 if (shouldDisable) {
-                    pref.removeIcon = resources.getDrawable(R.drawable.ic_settings_disable)
                     pref.removeClickListener = View.OnClickListener {
                         createDisableDialog(pkgName, user)
                     }
                 } else {
                     pref.removeClickListener = View.OnClickListener {
-                        viewModel.requestUninstallApp(pkgName, user)
+                        viewModel.requestUninstallApp(this, pkgName, user)
                     }
                 }
 
                 pref.onPreferenceClickListener = Preference.OnPreferenceClickListener { _ ->
-                    val args = AppPermissionGroupsFragment.createArgs(pkgName, user, sessionId)
-                    viewModel.navigateToAppPermissions(this, args)
+                    viewModel.navigateToAppInfo(pkgName, user, sessionId)
                     true
                 }
 

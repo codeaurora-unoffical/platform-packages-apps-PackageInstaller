@@ -19,6 +19,7 @@ package com.android.permissioncontroller.permission.ui.handheld;
 import static com.android.permissioncontroller.Constants.EXTRA_SESSION_ID;
 import static com.android.permissioncontroller.permission.ui.ManagePermissionsActivity.EXTRA_CALLER_NAME;
 import static com.android.permissioncontroller.permission.ui.handheld.AppPermissionFragment.GRANT_CATEGORY;
+import static com.android.permissioncontroller.permission.utils.KotlinUtilsKt.navigateSafe;
 
 import android.content.Context;
 import android.content.Intent;
@@ -94,18 +95,6 @@ public class PermissionControlPreference extends Preference {
     }
 
     /**
-     * Sets this preference's right icon.
-     *
-     * Note that this must be called before preference layout to take effect.
-     *
-     * @param widgetIcon the icon to use.
-     */
-    public void setRightIcon(@NonNull Drawable widgetIcon) {
-        mWidgetIcon = widgetIcon;
-        setWidgetLayoutResource(R.layout.image_view);
-    }
-
-    /**
      * Sets this preference's left icon to be smaller than normal.
      *
      * Note that this must be called before preference layout to take effect.
@@ -137,26 +126,6 @@ public class PermissionControlPreference extends Preference {
             }
         }
         setSummary("");
-    }
-
-    /**
-     * Sets this preference to show the given icons to the left of its title.
-     *
-     * @param titleIcons the icons to show.
-     */
-    public void setTitleIcons(@NonNull List<Integer> titleIcons) {
-        mTitleIcons = titleIcons;
-        setLayoutResource(R.layout.preference_usage);
-    }
-
-    /**
-     * Sets this preference to show the given icons to the left of its summary.
-     *
-     * @param summaryIcons the icons to show.
-     */
-    public void setSummaryIcons(@NonNull List<Integer> summaryIcons) {
-        mSummaryIcons = summaryIcons;
-        setLayoutResource(R.layout.preference_usage);
     }
 
     @Override
@@ -203,7 +172,7 @@ public class PermissionControlPreference extends Preference {
                 args.putString(EXTRA_CALLER_NAME, mCaller);
                 args.putLong(EXTRA_SESSION_ID, mSessionId);
                 args.putString(GRANT_CATEGORY, mGranted);
-                Navigation.findNavController(holder.itemView).navigate(R.id.perm_groups_to_app,
+                navigateSafe(Navigation.findNavController(holder.itemView), R.id.perm_groups_to_app,
                         args);
             } else {
                 // TODO ntmyren, yianyliu: Remove once Auto has been adapted to new permission model

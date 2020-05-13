@@ -26,6 +26,7 @@ import static com.android.permissioncontroller.permission.ui.Category.ALLOWED;
 import static com.android.permissioncontroller.permission.ui.Category.ALLOWED_FOREGROUND;
 import static com.android.permissioncontroller.permission.ui.Category.ASK;
 import static com.android.permissioncontroller.permission.ui.Category.DENIED;
+import static com.android.permissioncontroller.permission.ui.handheld.UtilsKt.pressBack;
 
 import android.Manifest;
 import android.app.ActionBar;
@@ -81,21 +82,6 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader {
     private static final String STORAGE_ALLOWED_SCOPED = "allowed_storage_scoped";
     private static final int SHOW_LOAD_DELAY_MS = 200;
 
-    private static final String SHOW_SYSTEM_KEY = PermissionAppsFragment.class.getName()
-            + KEY_SHOW_SYSTEM_PREFS;
-
-    private static final String CREATION_LOGGED = PermissionAppsFragment.class.getName()
-            + CREATION_LOGGED_SYSTEM_PREFS;
-
-
-    /**
-     * @return A new fragment
-     */
-    public static PermissionAppsFragment newInstance(String permissionName, long sessionId) {
-        return setPermissionNameAndSessionId(
-                new PermissionAppsFragment(), permissionName, sessionId);
-    }
-
     /**
      * Create a bundle with the arguments needed by this fragment
      *
@@ -108,16 +94,6 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader {
         arguments.putString(Intent.EXTRA_PERMISSION_GROUP_NAME, permGroupName);
         arguments.putLong(EXTRA_SESSION_ID, sessionId);
         return arguments;
-    }
-
-
-    private static <T extends Fragment> T setPermissionNameAndSessionId(
-            T fragment, String permissionName, long sessionId) {
-        Bundle arguments = new Bundle();
-        arguments.putString(Intent.EXTRA_PERMISSION_NAME, permissionName);
-        arguments.putLong(EXTRA_SESSION_ID, sessionId);
-        fragment.setArguments(arguments);
-        return fragment;
     }
 
     private MenuItem mShowSystemMenu;
@@ -187,7 +163,7 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader {
         switch (item.getItemId()) {
             case android.R.id.home:
                 mViewModel.updateShowSystem(false);
-                getActivity().onBackPressed();
+                pressBack(this);
                 return true;
             case MENU_SHOW_SYSTEM:
             case MENU_HIDE_SYSTEM:
@@ -307,7 +283,7 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader {
                 String key = user + packageName;
 
                 if (isStorage && grantCategory.equals(ALLOWED)) {
-                    category = mViewModel.shouldUseFullStorageString(packageName, user)
+                    category = mViewModel.packageHasFullStorage(packageName, user)
                             ? findPreference(STORAGE_ALLOWED_FULL)
                             : findPreference(STORAGE_ALLOWED_SCOPED);
                 }
@@ -363,9 +339,9 @@ public final class PermissionAppsFragment extends SettingsWithLargeHeader {
             } else {
                 KotlinUtils.INSTANCE.sortPreferenceGroup(category, this::comparePreference, false);
             }
-
-            mViewModel.setCreationLogged(true);
         }
+
+        mViewModel.setCreationLogged(true);
 
         setLoading(false /* loading */, true /* animate */);
     }
