@@ -111,6 +111,7 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
      * @param sessionId The current session ID
      * @param isSystemPermsScreen Whether or not this screen is the system permission screen, or
      * the extra permissions screen
+     *
      * @return A bundle with all of the args placed
      */
     public static Bundle createArgs(@NonNull String packageName, @NonNull UserHandle userHandle,
@@ -121,6 +122,20 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
         arguments.putLong(EXTRA_SESSION_ID, sessionId);
         arguments.putBoolean(IS_SYSTEM_PERMS_SCREEN, isSystemPermsScreen);
         return arguments;
+    }
+
+    /**
+     * Create a bundle for a system permissions fragment
+     *
+     * @param packageName The name of the package
+     * @param userHandle The user of this package
+     * @param sessionId The current session ID
+     *
+     * @return A bundle with all of the args placed
+     */
+    public static Bundle createArgs(@NonNull String packageName, @NonNull UserHandle userHandle,
+            long sessionId) {
+        return createArgs(packageName, userHandle, sessionId, true);
     }
 
     private static <T extends Fragment> T setPackageNameAndUserHandleAndSessionId(
@@ -216,7 +231,6 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
         if (getPreferenceScreen() == null) {
             addPreferencesFromResource(R.xml.allowed_denied);
             addAutoRevokePreferences(getPreferenceScreen());
-            logAppPermissionsFragmentView();
             bindUi(this, mPackageName, mUser);
         }
     }
@@ -291,14 +305,13 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
                 setNoPermissionPreference(category, noPermsStringRes, context);
             }
 
-            KotlinUtils.INSTANCE.sortPreferenceGroup(category, false,
-                    this::comparePreferences);
+            KotlinUtils.INSTANCE.sortPreferenceGroup(category, this::comparePreferences, false);
         }
 
         setAutoRevokeToggleState(mViewModel.getAutoRevokeLiveData().getValue());
 
         if (mIsFirstLoad) {
-            logAppPermissionsFragmentView();
+            logAppPermissionGroupsFragmentView();
             mIsFirstLoad = false;
         }
     }
@@ -417,7 +430,7 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
         category.addPreference(empty);
     }
 
-    private void logAppPermissionsFragmentView() {
+    private void logAppPermissionGroupsFragmentView() {
         Context context = getPreferenceManager().getContext();
         if (context == null) {
             return;

@@ -92,15 +92,14 @@ object KotlinUtils {
     /**
      * Sort a given PreferenceGroup by the given comparison function.
      *
-     * @param group The group to be sorted
+     * @param compare The function comparing two preferences, which will be used to sort
      * @param hasHeader Whether the group contains a LargeHeaderPreference, which will be kept at
      * the top of the list
-     * @param compare The function comparing two preferences, which will be used to sort
      */
     fun sortPreferenceGroup(
         group: PreferenceGroup,
-        hasHeader: Boolean,
-        compare: (lhs: Preference, rhs: Preference) -> Int
+        compare: (lhs: Preference, rhs: Preference) -> Int,
+        hasHeader: Boolean
     ) {
         val preferences = mutableListOf<Preference>()
         for (i in 0 until group.preferenceCount) {
@@ -623,7 +622,8 @@ object KotlinUtils {
         // Take a note that the user fixed the permission, if applicable.
         newFlags = if (userFixed) newFlags.setFlag(PackageManager.FLAG_PERMISSION_USER_FIXED)
         else newFlags.clearFlag(PackageManager.FLAG_PERMISSION_USER_FIXED)
-        newFlags = newFlags.setFlag(PackageManager.FLAG_PERMISSION_USER_SET)
+        newFlags = if (oneTime) newFlags.clearFlag(PackageManager.FLAG_PERMISSION_USER_SET)
+        else newFlags.setFlag(PackageManager.FLAG_PERMISSION_USER_SET)
         newFlags = if (oneTime) newFlags.setFlag(PackageManager.FLAG_PERMISSION_ONE_TIME)
         else newFlags.clearFlag(PackageManager.FLAG_PERMISSION_ONE_TIME)
 

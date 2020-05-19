@@ -79,8 +79,8 @@ class UserSensitivityLiveData private constructor(
             if (packageLiveDatas.isEmpty() || packageLiveDatas.all { it.value.isInitialized &&
                 it.value.value == null }) {
                 packageLiveDatas.clear()
-                postValue(null)
                 invalidateSingle(uid to user)
+                postValue(null)
                 return
             } else if (!packageLiveDatas.all { it.value.isInitialized }) {
                 return
@@ -101,6 +101,9 @@ class UserSensitivityLiveData private constructor(
         // map of <uid, userSensitiveState>
         val sensitiveStatePerUid = mutableMapOf<Int, UidSensitivityState>()
 
+        // TODO ntmyren: Figure out how to get custom runtime permissions in a less costly manner
+        val runtimePerms = Utils.getRuntimePlatformPermissionNames()
+
         for (pkg in pkgs) {
             // sensitivityState for one uid
             val userSensitiveState = sensitiveStatePerUid.getOrPut(pkg.uid) {
@@ -110,7 +113,8 @@ class UserSensitivityLiveData private constructor(
 
             val pkgHasLauncherIcon = pkgsWithLauncherIcon.contains(pkg.packageName)
             val pkgIsSystemApp = pkg.appFlags and ApplicationInfo.FLAG_SYSTEM != 0
-            for (perm in pkg.requestedPermissions) {
+            // Iterate through all runtime perms, setting their keys
+            for (perm in pkg.requestedPermissions.intersect(runtimePerms)) {
                 /*
                  * Permissions are considered user sensitive for a package, when
                  * - the package has a launcher icon, or
