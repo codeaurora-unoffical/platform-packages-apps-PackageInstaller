@@ -17,24 +17,29 @@
 package com.android.permissioncontroller.permission.ui.model
 
 import android.Manifest
-import android.app.Activity
+import android.app.AppOpsManager
+import android.app.AppOpsManager.MODE_ALLOWED
+import android.app.AppOpsManager.MODE_IGNORED
+import android.app.AppOpsManager.OPSTR_MANAGE_EXTERNAL_STORAGE
 import android.app.Application
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.os.UserHandle
 import android.util.Log
-import android.widget.Toast
 import androidx.annotation.StringRes
-import androidx.lifecycle.MutableLiveData
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
+import com.android.permissioncontroller.PermissionControllerApplication
 import com.android.permissioncontroller.PermissionControllerStatsLog
 import com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSION_FRAGMENT_ACTION_REPORTED
 import com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSION_FRAGMENT_VIEWED
 import com.android.permissioncontroller.R
+import com.android.permissioncontroller.permission.data.FullStoragePermissionAppsLiveData
+import com.android.permissioncontroller.permission.data.FullStoragePermissionAppsLiveData.FullStoragePackageState
 import com.android.permissioncontroller.permission.data.LightAppPermGroupLiveData
 import com.android.permissioncontroller.permission.data.SmartUpdateMediatorLiveData
 import com.android.permissioncontroller.permission.data.get
@@ -51,13 +56,13 @@ import com.android.permissioncontroller.permission.ui.model.AppPermissionViewMod
 import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.DENY
 import com.android.permissioncontroller.permission.ui.model.AppPermissionViewModel.ButtonType.DENY_FOREGROUND
 import com.android.permissioncontroller.permission.utils.Utils
+import com.android.permissioncontroller.permission.utils.navigateSafe
 import com.android.settingslib.RestrictedLockUtils
 import java.util.Random
 import kotlin.collections.component1
 import kotlin.collections.component2
 import kotlin.collections.filter
 import kotlin.collections.iterator
-import kotlin.jvm.JvmSuppressWildcards
 
 /**
  * ViewModel for the AppPermissionFragment. Determines button state and detail text strings, logs
@@ -81,8 +86,8 @@ class AppPermissionViewModel(
         private val LOG_TAG = AppPermissionViewModel::class.java.simpleName
     }
 
-    interface DefaultDenyShowingFragment {
-        fun showDefaultDenyDialog(
+    interface ConfirmDialogShowingFragment {
+        fun showConfirmDialog(
             changeRequest: ChangeRequest,
             @StringRes messageId: Int,
             buttonPressed: Int,
@@ -97,7 +102,8 @@ class AppPermissionViewModel(
         REVOKE_BACKGROUND(8),
         GRANT_BOTH(GRANT_FOREGROUND.value or GRANT_BACKGROUND.value),
         REVOKE_BOTH(REVOKE_FOREGROUND.value or REVOKE_BACKGROUND.value),
-        GRANT_FOREGROUND_ONLY(GRANT_FOREGROUND.value or REVOKE_BACKGROUND.value);
+        GRANT_FOREGROUND_ONLY(GRANT_FOREGROUND.value or REVOKE_BACKGROUND.value),
+        GRANT_All_FILE_ACCESS(16);
 
         infix fun andValue(other: ChangeRequest): Int {
             return value and other.value
@@ -114,6 +120,7 @@ class AppPermissionViewModel(
         DENY_FOREGROUND(6);
     }
 
+    private val isStorage = permGroupName == Manifest.permission_group.STORAGE
     private var hasConfirmedRevoke = false
     private var lightAppPermGroup: LightAppPermGroup? = null
 
@@ -125,6 +132,31 @@ class AppPermissionViewModel(
      * A livedata which stores the device admin, if there is one
      */
     val showAdminSupportLiveData = MutableLiveData<RestrictedLockUtils.EnforcedAdmin>()
+
+    /**
+     * A livedata which determines which detail string, if any, should be shown
+     */
+    val fullStorageStateLiveData = object : SmartUpdateMediatorLiveData<FullStoragePackageState>() {
+        init {
+            if (isStorage) {
+                addSource(FullStoragePermissionAppsLiveData) {
+                    updateIfActive()
+                }
+            } else {
+                value = null
+            }
+        }
+        override fun onUpdate() {
+            for (state in FullStoragePermissionAppsLiveData.value ?: return) {
+                if (state.packageName == packageName && state.user == user) {
+                    value = state
+                    return
+                }
+            }
+            value = null
+            return
+        }
+    }
 
     data class ButtonState(
         var isChecked: Boolean,
@@ -150,9 +182,18 @@ class AppPermissionViewModel(
                 if (appPermGroupLiveData.isInitialized && appPermGroup == null) {
                     value = null
                 } else if (appPermGroup != null) {
+                    if (isStorage && !fullStorageStateLiveData.isInitialized) {
+                        return@addSource
+                    }
                     if (value == null) {
                         logAppPermissionFragmentViewed()
                     }
+                    updateIfActive()
+                }
+            }
+
+            if (isStorage) {
+                addSource(fullStorageStateLiveData) {
                     updateIfActive()
                 }
             }
@@ -222,6 +263,7 @@ class AppPermissionViewModel(
                     allowedState.isEnabled = false
                     askState.isEnabled = false
                     deniedState.isEnabled = false
+                    showAdminSupportLiveData.value = admin
                     val detailId = getDetailResIdForFixedByPolicyPermissionGroup(group,
                         admin != null)
                     if (detailId != 0) {
@@ -242,6 +284,31 @@ class AppPermissionViewModel(
                 deniedForegroundState.isChecked = askState.isChecked ||
                     deniedForegroundState.isChecked
             }
+
+            val storageState = fullStorageStateLiveData.value
+            if (isStorage && storageState?.isLegacy != true) {
+                val allowedAllFilesState = allowedAlwaysState
+                val allowedMediaOnlyState = allowedForegroundState
+                if (storageState != null) {
+                        // Set up the tri state permission for storage
+                        allowedAllFilesState.isEnabled = allowedState.isEnabled
+                        allowedAllFilesState.isShown = true
+                        if (storageState.isGranted) {
+                            allowedAllFilesState.isChecked = true
+                        } else if (allowedState.isChecked) {
+                            allowedMediaOnlyState.isChecked = true
+                        }
+                } else {
+                    allowedAllFilesState.isEnabled = false
+                    allowedAllFilesState.isShown = false
+                }
+                allowedMediaOnlyState.isShown = true
+                allowedMediaOnlyState.isEnabled = allowedState.isEnabled
+                allowedMediaOnlyState.isChecked = allowedState.isChecked
+                allowedState.isChecked = false
+                allowedState.isShown = false
+            }
+
             value = mapOf(ALLOW to allowedState, ALLOW_ALWAYS to allowedAlwaysState,
                 ALLOW_FOREGROUND to allowedForegroundState, ASK_ONCE to askOneTimeState,
                 ASK to askState, DENY to deniedState, DENY_FOREGROUND to deniedForegroundState)
@@ -325,18 +392,6 @@ class AppPermissionViewModel(
     }
 
     /**
-     * Finish the current activity due to a data error, and display a short message to the user
-     * saying "app not found".
-     *
-     * @param activity The current activity
-     */
-    fun finishActivity(activity: Activity) {
-        Toast.makeText(activity, R.string.app_not_found_dlg_title, Toast.LENGTH_LONG).show()
-        activity.setResult(Activity.RESULT_CANCELED)
-        activity.finish()
-    }
-
-    /**
      * Navigate to either the App Permission Groups screen, or the Permission Apps Screen.
      * @param fragment The current fragment
      * @param action The action to be taken
@@ -348,7 +403,7 @@ class AppPermissionViewModel(
             actionId = R.id.app_to_perm_apps
         }
 
-        fragment.findNavController().navigate(actionId, args)
+        fragment.findNavController().navigateSafe(actionId, args)
     }
 
     /**
@@ -376,7 +431,7 @@ class AppPermissionViewModel(
     fun requestChange(
         setOneTime: Boolean,
         fragment: Fragment,
-        defaultDeny: DefaultDenyShowingFragment,
+        defaultDeny: ConfirmDialogShowingFragment,
         changeRequest: ChangeRequest,
         buttonClicked: Int
     ) {
@@ -415,15 +470,14 @@ class AppPermissionViewModel(
         }
 
         if (showDefaultDenyDialog && !hasConfirmedRevoke && showGrantedByDefaultWarning) {
-            defaultDeny.showDefaultDenyDialog(changeRequest, R.string.system_warning, buttonClicked,
-                    setOneTime)
+            defaultDeny.showConfirmDialog(changeRequest, R.string.system_warning, buttonClicked,
+                setOneTime)
             return
         }
 
         if (showDefaultDenyDialog && !hasConfirmedRevoke) {
-            defaultDeny.showDefaultDenyDialog(changeRequest, R.string.old_sdk_deny_warning,
-                    buttonClicked,
-                    setOneTime)
+            defaultDeny.showConfirmDialog(changeRequest, R.string.old_sdk_deny_warning,
+                    buttonClicked, setOneTime)
             return
         }
 
@@ -516,13 +570,25 @@ class AppPermissionViewModel(
         }
     }
 
+    fun setAllFilesAccess(granted: Boolean) {
+        val aom =
+            PermissionControllerApplication.get().getSystemService(AppOpsManager::class.java)!!
+        val uid = lightAppPermGroup?.packageInfo?.uid ?: return
+        val mode = if (granted) {
+            MODE_ALLOWED
+        } else {
+            MODE_IGNORED
+        }
+        aom.setUidMode(OPSTR_MANAGE_EXTERNAL_STORAGE, uid, mode)
+    }
+
     /**
      * Show the All App Permissions screen with the proper filter group, package name, and user.
      *
      * @param fragment The current fragment we wish to transition from
      */
     fun showAllPermissions(fragment: Fragment, args: Bundle) {
-        fragment.findNavController().navigate(R.id.app_to_all_perms, args)
+        fragment.findNavController().navigateSafe(R.id.app_to_all_perms, args)
     }
 
     private fun getIndividualPermissionDetailResId(group: LightAppPermGroup): Pair<Int, Int> {

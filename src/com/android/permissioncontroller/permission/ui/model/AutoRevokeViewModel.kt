@@ -21,18 +21,17 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.os.Bundle
 import android.os.UserHandle
+import android.provider.Settings
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.navigation.fragment.findNavController
 import com.android.permissioncontroller.permission.data.AutoRevokedPackagesLiveData
 import com.android.permissioncontroller.permission.utils.Utils
-import com.android.permissioncontroller.R
 import com.android.permissioncontroller.permission.data.AllPackageInfosLiveData
-import com.android.permissioncontroller.permission.data.SmartUpdateMediatorLiveData
+import com.android.permissioncontroller.permission.data.SmartAsyncMediatorLiveData
 import com.android.permissioncontroller.permission.data.UsageStatsLiveData
+import kotlinx.coroutines.Job
 import java.util.concurrent.TimeUnit.DAYS
 
 /**
@@ -61,11 +60,12 @@ class AutoRevokeViewModel(private val app: Application) : ViewModel() {
         val packageName: String,
         val user: UserHandle,
         val shouldDisable: Boolean,
+        val canOpen: Boolean,
         val revokedGroups: Set<String>
     )
 
     val autoRevokedPackageCategoriesLiveData = object
-        : SmartUpdateMediatorLiveData<Map<Months, List<RevokedPackageInfo>>>() {
+        : SmartAsyncMediatorLiveData<Map<Months, List<RevokedPackageInfo>>>() {
         private val usageStatsLiveData = UsageStatsLiveData[SIX_MONTHS_MILLIS]
 
         init {
@@ -82,7 +82,7 @@ class AutoRevokeViewModel(private val app: Application) : ViewModel() {
             }
         }
 
-        override fun onUpdate() {
+        override suspend fun loadDataAndPostValue(job: Job) {
             if (!AutoRevokedPackagesLiveData.isInitialized || !usageStatsLiveData.isInitialized ||
                 !AllPackageInfosLiveData.isInitialized) {
                 return
@@ -116,9 +116,12 @@ class AutoRevokeViewModel(private val app: Application) : ViewModel() {
                         continue
                     }
 
+                    val canOpen = Utils.getUserContext(app, user).packageManager
+                            .getLaunchIntentForPackage(stat.packageName) != null
                     categorizedApps[Months.THREE]!!.add(
                         RevokedPackageInfo(stat.packageName, user,
-                            disableActionApps.contains(statPackage), unusedApps[statPackage]!!))
+                            disableActionApps.contains(statPackage), canOpen,
+                            unusedApps[statPackage]!!))
                     overSixMonthApps.remove(statPackage)
                 }
             }
@@ -139,10 +142,12 @@ class AutoRevokeViewModel(private val app: Application) : ViewModel() {
                 } else {
                     Months.SIX
                 }
+                val canOpen = Utils.getUserContext(app, user).packageManager
+                        .getLaunchIntentForPackage(packageName) != null
                 val userPackage = packageName to user
                 categorizedApps[months]!!.add(
                     RevokedPackageInfo(packageName, user, disableActionApps.contains(userPackage),
-                        unusedApps[userPackage]!!))
+                        canOpen, unusedApps[userPackage]!!))
             }
 
             postValue(categorizedApps)
@@ -153,23 +158,28 @@ class AutoRevokeViewModel(private val app: Application) : ViewModel() {
         return AutoRevokedPackagesLiveData.isInitialized
     }
 
-    fun navigateToAppPermissions(fragment: Fragment, args: Bundle) {
-        fragment.findNavController().navigate(R.id.auto_revoke_to_app_perms, args)
+    fun navigateToAppInfo(packageName: String, user: UserHandle, sessionId: Long) {
+        val userContext = Utils.getUserContext(app, user)
+        val packageUri = Uri.parse("package:$packageName")
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, packageUri)
+        intent.putExtra(Intent.ACTION_AUTO_REVOKE_PERMISSIONS, sessionId)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        userContext.startActivityAsUser(intent, user)
     }
 
     fun openApp(packageName: String, user: UserHandle) {
         val userContext = Utils.getUserContext(app, user)
         val intent = userContext.packageManager.getLaunchIntentForPackage(packageName)
         if (intent != null) {
-            userContext.startActivity(intent)
+            userContext.startActivityAsUser(intent, user)
         }
     }
 
-    fun requestUninstallApp(packageName: String, user: UserHandle) {
-        val userContext = Utils.getUserContext(app, user)
+    fun requestUninstallApp(fragment: Fragment, packageName: String, user: UserHandle) {
         val packageUri = Uri.parse("package:$packageName")
         val uninstallIntent = Intent(Intent.ACTION_UNINSTALL_PACKAGE, packageUri)
-        userContext.startActivity(uninstallIntent)
+        uninstallIntent.putExtra(Intent.EXTRA_USER, user)
+        fragment.startActivity(uninstallIntent)
     }
 
     fun disableApp(packageName: String, user: UserHandle) {

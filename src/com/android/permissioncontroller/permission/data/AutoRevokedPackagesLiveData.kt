@@ -70,7 +70,9 @@ object AutoRevokedPackagesLiveData
             }
             packageAutoRevokedPermsList.remove(pkg)
         }
-        postValue(packageAutoRevokedPermsList.toMap())
+        if (toRemove.isNotEmpty()) {
+            postCopyOfMap()
+        }
 
         toAdd.forEach { packagePermGroupsLiveDatas[it] = PackagePermissionsLiveData[it] }
 
@@ -103,23 +105,52 @@ object AutoRevokedPackagesLiveData
             }
         }
 
+        if (toRemove.isNotEmpty()) {
+            postCopyOfMap()
+        }
+
         toAdd.forEach { permStateLiveDatas[it] = PermStateLiveData[it] }
 
         toAdd.forEach { packagePermGroup ->
-            val liveData = permStateLiveDatas[packagePermGroup]!!
-            addSource(liveData) { permState ->
-                val packageUser = packagePermGroup.first to packagePermGroup.third
-                for ((_, state) in permState) {
-                    if (state.permFlags and FLAG_PERMISSION_AUTO_REVOKED != 0) {
-                        packageAutoRevokedPermsList.getOrPut(packageUser) { mutableSetOf() }
-                            .add(packagePermGroup.second)
-                        break
+            val permStateLiveData = permStateLiveDatas[packagePermGroup]!!
+            val packageUser = packagePermGroup.first to packagePermGroup.third
+
+            addSource(permStateLiveData) { permState ->
+                var added = false
+                if (permState == null && permStateLiveData.isInitialized) {
+                    permStateLiveDatas.remove(packagePermGroup)
+                    removeSource(permStateLiveData)
+                } else if (permState != null) {
+                    for ((_, state) in permState) {
+                        if (state.permFlags and FLAG_PERMISSION_AUTO_REVOKED != 0) {
+                            packageAutoRevokedPermsList.getOrPut(packageUser) { mutableSetOf() }
+                                    .add(packagePermGroup.second)
+                            added = true
+                            break
+                        }
                     }
                 }
+
+                if (!added) {
+                    packageAutoRevokedPermsList[packageUser]?.remove(packagePermGroup.second)
+                    if (packageAutoRevokedPermsList[packageUser]?.isEmpty() == true) {
+                        packageAutoRevokedPermsList.remove(packageUser)
+                    }
+                }
+
                 if (permStateLiveDatas.all { it.value.isInitialized }) {
-                    postValue(packageAutoRevokedPermsList.toMap())
+                    postCopyOfMap()
                 }
             }
         }
+    }
+
+    private fun postCopyOfMap() {
+        val autoRevokedCopy =
+            mutableMapOf<Pair<String, UserHandle>, Set<String>>()
+        for ((userPackage, permGroups) in packageAutoRevokedPermsList) {
+            autoRevokedCopy[userPackage] = permGroups.toSet()
+        }
+        postValue(autoRevokedCopy)
     }
 }

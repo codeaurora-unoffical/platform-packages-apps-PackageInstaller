@@ -18,7 +18,6 @@ package com.android.permissioncontroller.permission.ui.handheld
 
 import android.app.Application
 import android.content.Context
-import android.graphics.drawable.Drawable
 import android.os.UserHandle
 import android.view.View
 import android.widget.ImageButton
@@ -43,15 +42,15 @@ class AutoRevokePermissionPreference(
     private var openButton: ImageButton? = null
     private var removeButton: ImageButton? = null
 
-    var removeIcon: Drawable? = null
-        set(value) {
-            removeButton?.setImageDrawable(removeIcon)
-            field = value
-        }
     var openClickListener: View.OnClickListener? = null
         set(listener) {
             openButton?.setOnClickListener(listener)
             field = listener
+        }
+    var canOpen: Boolean = true
+        set(open) {
+            field = open
+            openButton?.isEnabled = open
         }
     var removeClickListener: View.OnClickListener? = null
         set(listener) {
@@ -68,12 +67,9 @@ class AutoRevokePermissionPreference(
 
         openButton = holder.findViewById(R.id.open_button) as ImageButton
         openButton?.setOnClickListener(openClickListener)
+        openButton?.isEnabled = canOpen
 
         removeButton = holder.findViewById(R.id.uninstall_button) as ImageButton
         removeButton?.setOnClickListener(removeClickListener)
-
-        removeIcon?.let { icon ->
-            removeButton?.setImageDrawable(icon)
-        }
     }
 }
