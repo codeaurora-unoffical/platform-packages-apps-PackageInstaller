@@ -16,6 +16,7 @@
 
 package com.android.permissioncontroller.role.ui.handheld;
 
+import android.app.ActionBar;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -41,7 +42,8 @@ import com.android.settingslib.HelpUtils;
 /**
  * Base class for settings fragments.
  */
-abstract class SettingsFragment extends PreferenceFragmentCompat {
+// Made public for com.android.permissioncontroller.role.ui.specialappaccess.handheld
+public abstract class SettingsFragment extends PreferenceFragmentCompat {
 
     private FrameLayout mContentLayout;
     private LinearLayout mPreferenceLayout;
@@ -82,7 +84,10 @@ abstract class SettingsFragment extends PreferenceFragmentCompat {
     public void onActivityCreated(@Nullable Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
 
-        requireActivity().getActionBar().setDisplayHomeAsUpEnabled(true);
+        ActionBar actionBar = requireActivity().getActionBar();
+        if (actionBar != null) {
+            actionBar.setDisplayHomeAsUpEnabled(true);
+        }
 
         mEmptyText.setText(getEmptyTextResource());
 

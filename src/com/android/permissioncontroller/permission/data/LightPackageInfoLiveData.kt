@@ -41,6 +41,7 @@ class LightPackageInfoLiveData private constructor(
     PermissionListenerMultiplexer.PermissionChangeCallback {
 
     private val LOG_TAG = LightPackageInfoLiveData::class.java.simpleName
+    private val userPackagesLiveData = UserPackageInfosLiveData[user]
 
     private var context = Utils.getUserContext(app, user)
     private var uid: Int? = null
@@ -48,6 +49,10 @@ class LightPackageInfoLiveData private constructor(
      * The currently registered UID on which this LiveData is listening for permission changes.
      */
     private var registeredUid: Int? = null
+    /**
+     * Whether or not this package livedata is watching the UserPackageInfosLiveData
+     */
+    private var watchingUserPackagesLiveData: Boolean = false
 
     /**
      * Callback from the PackageBroadcastReceiver. Either deletes or generates package data.
@@ -55,7 +60,9 @@ class LightPackageInfoLiveData private constructor(
      * @param packageName the name of the package which was updated. Ignored in this method
      */
     override fun onPackageUpdate(packageName: String) {
-        updateAsync()
+        if (!watchingUserPackagesLiveData) {
+            updateAsync()
+        }
     }
 
     override fun setValue(newValue: LightPackageInfo?) {
@@ -99,7 +106,33 @@ class LightPackageInfoLiveData private constructor(
             registeredUid = uid
             PermissionListenerMultiplexer.addCallback(it, this)
         }
-        updateAsync()
+        if (userPackagesLiveData.hasActiveObservers() && !watchingUserPackagesLiveData) {
+            watchingUserPackagesLiveData = true
+            addSource(userPackagesLiveData) {
+                updateFromUserPackageInfosLiveData()
+            }
+            if (userPackagesLiveData.isInitialized) {
+                // Set our value, but listen for new updates.
+                updateFromUserPackageInfosLiveData()
+            }
+        } else {
+            updateAsync()
+        }
+    }
+
+    private fun updateFromUserPackageInfosLiveData() {
+        val packageInfo = userPackagesLiveData.value!!.find { it.packageName == packageName }
+        if (packageInfo != null) {
+            postValue(packageInfo)
+        } else {
+            // If the UserPackageInfosLiveData does not contain this package, check for removal, and
+            // stop watching.
+            updateAsync()
+            if (watchingUserPackagesLiveData) {
+                removeSource(UserPackageInfosLiveData[user])
+                watchingUserPackagesLiveData = false
+            }
+        }
     }
 
     override fun onInactive() {
@@ -109,6 +142,10 @@ class LightPackageInfoLiveData private constructor(
         registeredUid?.let {
             PermissionListenerMultiplexer.removeCallback(it, this)
             registeredUid = null
+        }
+        if (watchingUserPackagesLiveData) {
+            removeSource(UserPackageInfosLiveData[user])
+            watchingUserPackagesLiveData = false
         }
     }
 
