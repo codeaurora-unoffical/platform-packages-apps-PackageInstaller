@@ -21,7 +21,10 @@ import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.app.usage.UsageStatsManager.INTERVAL_MONTHLY
 import android.os.UserHandle
+import android.os.UserManager
+import com.android.permissioncontroller.DeviceUtils
 import com.android.permissioncontroller.PermissionControllerApplication
+import com.android.permissioncontroller.permission.utils.Utils
 import kotlinx.coroutines.Job
 
 /**
@@ -51,9 +54,18 @@ class UsageStatsLiveData private constructor(
 
         val now = System.currentTimeMillis()
         val userMap = mutableMapOf<UserHandle, List<UsageStats>>()
+        val userManager = app.getSystemService(UserManager::class.java)!!
+        val enabledUsers = userManager.enabledProfiles
         for (user in UsersLiveData.value!!) {
-            userMap[user] = app.getSystemService(UsageStatsManager::class.java)!!.queryUsageStats(
-            interval, now - searchTimeMs, now)
+            // If the user is not enabled, or if the user is a managed profile, and this is not an
+            // android TV (where parental control accounts are managed profiles), do not get stats.
+            if (user !in enabledUsers || (userManager.isManagedProfile(user.identifier) &&
+                    !DeviceUtils.isTelevision(app))) {
+                continue
+            }
+            val statsManager = Utils.getUserContext(app, user).getSystemService(
+                UsageStatsManager::class.java)!!
+            userMap[user] = statsManager.queryUsageStats(interval, now - searchTimeMs, now)
         }
 
         postValue(userMap)
