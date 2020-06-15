@@ -36,6 +36,13 @@ filegroup {
     srcs: [
         "src/**/*.java",
         "src/**/*.kt",
+        ":permissioncontroller-protos",
+    ],
+}
+
+filegroup {
+    name: "permissioncontroller-protos",
+    srcs: [
         "src/**/*.proto",
     ],
 }
@@ -88,6 +95,7 @@ android_app {
         "permissioncontroller-statsd",
         "car-ui-lib",
         "libprotobuf-java-lite",
+        "SettingsLibUtils",
     ],
 
     proto: {

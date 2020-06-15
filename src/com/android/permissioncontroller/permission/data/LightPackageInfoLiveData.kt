@@ -20,6 +20,8 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.os.UserHandle
 import android.util.Log
+import androidx.annotation.MainThread
+import androidx.lifecycle.Observer
 import com.android.permissioncontroller.PermissionControllerApplication
 import com.android.permissioncontroller.permission.model.livedatatypes.LightPackageInfo
 import com.android.permissioncontroller.permission.utils.Utils
@@ -60,21 +62,31 @@ class LightPackageInfoLiveData private constructor(
      * @param packageName the name of the package which was updated. Ignored in this method
      */
     override fun onPackageUpdate(packageName: String) {
-        if (!watchingUserPackagesLiveData) {
-            updateAsync()
-        }
+        updateAsync()
     }
 
     override fun setValue(newValue: LightPackageInfo?) {
         newValue?.let { packageInfo ->
             if (packageInfo.uid != uid) {
                 uid = packageInfo.uid
-                PermissionListenerMultiplexer.addOrReplaceCallback(registeredUid,
-                    packageInfo.uid, this)
-                registeredUid = uid
+
+                if (hasActiveObservers()) {
+                    PermissionListenerMultiplexer.addOrReplaceCallback(registeredUid,
+                            packageInfo.uid, this)
+                    registeredUid = uid
+                }
             }
         }
         super.setValue(newValue)
+    }
+
+    override fun updateAsync() {
+        // If we were watching the userPackageInfosLiveData, stop, since we will override its value
+        if (watchingUserPackagesLiveData) {
+            removeSource(userPackagesLiveData)
+            watchingUserPackagesLiveData = false
+        }
+        super.updateAsync()
     }
 
     override suspend fun loadDataAndPostValue(job: Job) {
@@ -108,30 +120,36 @@ class LightPackageInfoLiveData private constructor(
         }
         if (userPackagesLiveData.hasActiveObservers() && !watchingUserPackagesLiveData) {
             watchingUserPackagesLiveData = true
-            addSource(userPackagesLiveData) {
-                updateFromUserPackageInfosLiveData()
-            }
-            if (userPackagesLiveData.isInitialized) {
-                // Set our value, but listen for new updates.
-                updateFromUserPackageInfosLiveData()
-            }
+            addSource(userPackagesLiveData, userPackageInfosObserver)
         } else {
             updateAsync()
         }
     }
 
+    val userPackageInfosObserver = Observer<List<LightPackageInfo>> {
+        updateFromUserPackageInfosLiveData()
+    }
+
+    @MainThread
     private fun updateFromUserPackageInfosLiveData() {
+        if (!userPackagesLiveData.isInitialized) {
+            return
+        }
+
         val packageInfo = userPackagesLiveData.value!!.find { it.packageName == packageName }
         if (packageInfo != null) {
-            postValue(packageInfo)
+            // Once we get one non-stale update, stop listening, as any further updates will likely
+            // be individual package updates.
+            if (!userPackagesLiveData.isStale) {
+                removeSource(UserPackageInfosLiveData[user])
+                watchingUserPackagesLiveData = false
+            }
+
+            value = packageInfo
         } else {
             // If the UserPackageInfosLiveData does not contain this package, check for removal, and
             // stop watching.
             updateAsync()
-            if (watchingUserPackagesLiveData) {
-                removeSource(UserPackageInfosLiveData[user])
-                watchingUserPackagesLiveData = false
-            }
         }
     }
 
@@ -144,7 +162,7 @@ class LightPackageInfoLiveData private constructor(
             registeredUid = null
         }
         if (watchingUserPackagesLiveData) {
-            removeSource(UserPackageInfosLiveData[user])
+            removeSource(userPackagesLiveData)
             watchingUserPackagesLiveData = false
         }
     }
@@ -159,18 +177,6 @@ class LightPackageInfoLiveData private constructor(
         override fun newValue(key: Pair<String, UserHandle>): LightPackageInfoLiveData {
             return LightPackageInfoLiveData(PermissionControllerApplication.get(),
                 key.first, key.second)
-        }
-
-        /**
-         * Sets the value of the specified PackageInfoLiveData to the provided PackageInfo, creating it
-         * if need be. Used only by the UserPackageInfoLiveData, since that gets fresh PackageInfos.
-         *
-         * @param packageInfo The PackageInfo we wish to set the value to
-         */
-        fun setPackageInfoLiveData(packageInfo: LightPackageInfo) {
-            val user = UserHandle.getUserHandleForUid(packageInfo.uid)
-            val liveData = get(packageInfo.packageName, user)
-            liveData.value = packageInfo
         }
     }
 }

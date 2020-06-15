@@ -47,7 +47,7 @@ import android.util.Xml;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.android.permissioncontroller.DumpableLog;
+import com.android.permissioncontroller.PermissionControllerProto.PermissionControllerDumpProto;
 import com.android.permissioncontroller.PermissionControllerStatsLog;
 import com.android.permissioncontroller.permission.model.AppPermissionGroup;
 import com.android.permissioncontroller.permission.model.AppPermissions;
@@ -55,6 +55,7 @@ import com.android.permissioncontroller.permission.model.Permission;
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo;
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo.PermGrantState;
 import com.android.permissioncontroller.permission.ui.AutoGrantPermissionsNotifier;
+import com.android.permissioncontroller.permission.utils.ArrayUtils;
 import com.android.permissioncontroller.permission.utils.KotlinUtils;
 import com.android.permissioncontroller.permission.utils.UserSensitiveFlagsUtils;
 import com.android.permissioncontroller.permission.utils.Utils;
@@ -63,6 +64,8 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -78,6 +81,8 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import kotlin.Pair;
+import kotlinx.coroutines.BuildersKt;
+import kotlinx.coroutines.GlobalScope;
 
 /**
  * Calls from the system into the permission controller.
@@ -88,7 +93,7 @@ import kotlin.Pair;
 public final class PermissionControllerServiceImpl extends PermissionControllerLifecycleService {
     private static final String LOG_TAG = PermissionControllerServiceImpl.class.getSimpleName();
     private static final int MAX_RETRY_ATTEMPTS = 3;
-    private static final long RETRY_DELAY_MS = 100;
+    private static final long RETRY_DELAY_MS = 500;
 
 
     private final PermissionControllerServiceModel mServiceModel = new
@@ -102,8 +107,26 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
 
     @Override
     public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
-        DumpableLog.INSTANCE.dump(writer);
-        writer.flush();
+        PermissionControllerDumpProto dump;
+        try {
+            dump = BuildersKt.runBlocking(
+                    GlobalScope.INSTANCE.getCoroutineContext(),
+                    (coroutineScope, continuation) -> mServiceModel.onDump(continuation));
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Cannot produce dump", e);
+            return;
+        }
+
+        if (ArrayUtils.contains(args, "--proto")) {
+            try (OutputStream out = new FileOutputStream(fd)) {
+                dump.writeTo(out);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "Cannot write dump", e);
+            }
+        } else {
+            writer.println(dump.toString());
+            writer.flush();
+        }
     }
 
     /**
@@ -553,7 +576,10 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
 
     private void onUpdateUserSensistivePermissionFlagsWithRetry(int uid, Executor executor,
             Runnable callback, int numAttempts) {
+        String idString = uid == Process.INVALID_UID
+                ? "user " + Process.myUserHandle().getIdentifier() : "uid " + uid;
         try {
+            Log.i(LOG_TAG, "Updating user sensitive for " + idString);
             if (uid == Process.INVALID_UID) {
                 UserSensitiveFlagsUtils.updateUserSensitiveForUser(Process.myUserHandle(),
                         () -> executor.execute(callback));
@@ -564,6 +590,8 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
         } catch (Exception e) {
             // We specifically want to catch DeadSystemExceptions, but cannot explicitly request
             // them, as it results in a compiler error
+            Log.w(LOG_TAG, "Failed to complete user sensitive update for " + idString
+                    + ", attempt number " + (numAttempts + 1) + " of " + MAX_RETRY_ATTEMPTS, e);
             if (numAttempts == MAX_RETRY_ATTEMPTS) {
                 throw e;
             } else {

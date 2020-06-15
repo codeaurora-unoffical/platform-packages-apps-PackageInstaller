@@ -46,6 +46,7 @@ import android.Manifest;
 import android.app.Application;
 import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -67,6 +68,8 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
+import android.service.carrier.CarrierService;
+import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
@@ -85,6 +88,8 @@ import androidx.core.util.Preconditions;
 
 import com.android.launcher3.icons.IconFactory;
 import com.android.permissioncontroller.Constants;
+import com.android.permissioncontroller.DeviceUtils;
+import com.android.permissioncontroller.PermissionControllerApplication;
 import com.android.permissioncontroller.R;
 import com.android.permissioncontroller.permission.model.AppPermissionGroup;
 
@@ -263,6 +268,14 @@ public final class Utils {
     }
 
     private static ArrayMap<UserHandle, Context> sUserContexts = new ArrayMap<>();
+
+    public enum ForegroundCapableType {
+        SOUND_TRIGGER,
+        ASSISTANT,
+        VOICE_INTERACTION,
+        CARRIER_SERVICE,
+        NONE
+    }
 
     /**
      * Creates and caches a PackageContext for the requested user, or returns the previously cached
@@ -1034,23 +1047,26 @@ public final class Utils {
     }
 
     /**
-     * This tells whether we should blame the app for potential background access. Intended to be
-     * used for creating Ui.
-     * @param context The context as the user of interest
-     * @param packageName The package to check
-     * @return true if the given package could possibly have foreground capabilities while in the
-     * background, otherwise false.
+     * If an app could have foreground capabilities it is because it meets some criteria. This
+     * function returns which criteria it meets.
+     * @param context The context as the user of interest.
+     * @param packageName The package to check.
+     * @return the type of foreground capable app.
+     * @throws NameNotFoundException
      */
-    public static boolean couldHaveForegroundCapabilities(@NonNull Context context,
+    public static @NonNull ForegroundCapableType getForegroundCapableType(@NonNull Context context,
             @NonNull String packageName) throws NameNotFoundException {
 
         PackageManager pm = context.getPackageManager();
 
         // Apps which can be bound by SoundTriggerService
         if (pm.checkPermission(CAPTURE_AUDIO_HOTWORD, packageName) == PERMISSION_GRANTED) {
-            for (ServiceInfo service : pm.getPackageInfo(packageName, GET_SERVICES).services) {
-                if (BIND_SOUND_TRIGGER_DETECTION_SERVICE.equals(service.permission)) {
-                    return true;
+            ServiceInfo[] services = pm.getPackageInfo(packageName, GET_SERVICES).services;
+            if (services != null) {
+                for (ServiceInfo service : services) {
+                    if (BIND_SOUND_TRIGGER_DETECTION_SERVICE.equals(service.permission)) {
+                        return ForegroundCapableType.SOUND_TRIGGER;
+                    }
                 }
             }
         }
@@ -1058,13 +1074,57 @@ public final class Utils {
         // VoiceInteractionService
         if (context.getSystemService(RoleManager.class).getRoleHolders(RoleManager.ROLE_ASSISTANT)
                 .contains(packageName)) {
-            return true;
+            return ForegroundCapableType.ASSISTANT;
         }
-        if (packageName.equals(Settings.Secure.getString(context.getContentResolver(),
-                "voice_interaction_service"))) {
-            return true;
+        String voiceInteraction = Settings.Secure.getString(context.getContentResolver(),
+                "voice_interaction_service");
+        if (!TextUtils.isEmpty(voiceInteraction)) {
+            ComponentName component = ComponentName.unflattenFromString(voiceInteraction);
+            if (component != null && packageName.equals(component.getPackageName())) {
+                return ForegroundCapableType.VOICE_INTERACTION;
+            }
         }
 
-        return false;
+        // Carrier privileged apps implementing the carrier service
+        final TelephonyManager telephonyManager =
+                context.getSystemService(TelephonyManager.class);
+        int numPhones = telephonyManager.getActiveModemCount();
+        for (int phoneId = 0; phoneId < numPhones; phoneId++) {
+            List<String> packages = telephonyManager.getCarrierPackageNamesForIntentAndPhone(
+                    new Intent(CarrierService.CARRIER_SERVICE_INTERFACE), phoneId);
+            if (packages != null && packages.contains(packageName)) {
+                return ForegroundCapableType.CARRIER_SERVICE;
+            }
+        }
+
+        return ForegroundCapableType.NONE;
+    }
+
+    /**
+     * This tells whether we should blame the app for potential background access. Intended to be
+     * used for creating Ui.
+     * @param context The context as the user of interest
+     * @param packageName The package to check
+     * @return true if the given package could possibly have foreground capabilities while in the
+     * background, otherwise false.
+     * @throws NameNotFoundException
+     */
+    public static boolean couldHaveForegroundCapabilities(@NonNull Context context,
+            @NonNull String packageName) throws NameNotFoundException {
+        return getForegroundCapableType(context, packageName) != ForegroundCapableType.NONE;
+    }
+
+    /**
+     * Determines if a given user is disabled, or is a work profile.
+     * @param user The user to check
+     * @return true if the user is disabled, or the user is a work profile
+     */
+    public static boolean isUserDisabledOrWorkProfile(UserHandle user) {
+        Application app = PermissionControllerApplication.get();
+        UserManager userManager = app.getSystemService(UserManager.class);
+        // In android TV, parental control accounts are managed profiles
+        return !userManager.getEnabledProfiles().contains(user)
+                || (userManager.isManagedProfile(user.getIdentifier())
+                && !DeviceUtils.isTelevision(app));
     }
 }

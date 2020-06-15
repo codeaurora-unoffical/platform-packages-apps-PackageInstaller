@@ -26,6 +26,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.Observer
+import com.android.permissioncontroller.permission.utils.KotlinUtils
 import com.android.permissioncontroller.permission.utils.ensureMainThread
 import com.android.permissioncontroller.permission.utils.getInitializedValue
 import com.android.permissioncontroller.permission.utils.shortStackTrace
@@ -67,6 +68,8 @@ abstract class SmartUpdateMediatorLiveData<T> : MediatorLiveData<T>(),
 
     private val children =
         mutableListOf<Triple<SmartUpdateMediatorLiveData<*>, Observer<in T>, Boolean>>()
+
+    private val stacktraceExceptionMessage = "Caller of coroutine"
 
     @MainThread
     override fun setValue(newValue: T?) {
@@ -146,13 +149,31 @@ abstract class SmartUpdateMediatorLiveData<T> : MediatorLiveData<T>(),
     }
 
     override fun <S : Any?> addSource(source: LiveData<S>, onChanged: Observer<in S>) {
+        addSourceWithError(source, onChanged)
+    }
+
+    private fun <S : Any?> addSourceWithError(
+        source: LiveData<S>,
+        onChanged: Observer<in S>,
+        e: IllegalStateException? = null
+    ) {
+        // Get the stacktrace of the call to addSource, so it isn't lost in any errors
+        val exception = e ?: IllegalStateException(stacktraceExceptionMessage)
+
         GlobalScope.launch(Main.immediate) {
             if (source is SmartUpdateMediatorLiveData) {
+                if (source in sources) {
+                    return@launch
+                }
                 source.addChild(this@SmartUpdateMediatorLiveData, onChanged,
                     staleObservers.isNotEmpty() || children.any { it.third })
                 sources.add(source)
             }
-            super.addSource(source, onChanged)
+            try {
+                super.addSource(source, onChanged)
+            } catch (other: IllegalStateException) {
+                throw other.apply { initCause(exception) }
+            }
         }
     }
 
@@ -163,6 +184,59 @@ abstract class SmartUpdateMediatorLiveData<T> : MediatorLiveData<T>(),
                 sources.remove(toRemote)
             }
             super.removeSource(toRemote)
+        }
+    }
+
+    /**
+     * Gets the difference between a list and a map of livedatas, and then will add as a source all
+     * livedatas which are in the list, but not the map, and will remove all livedatas which are in
+     * the map, but not the list
+     *
+     * @param desired The list of liveDatas we want in our map, represented by a key
+     * @param have The map of livedatas we currently have as sources
+     * @param getLiveDataFun A function to turn a key into a liveData
+     * @param onUpdateFun An optional function which will update differently based on different
+     * LiveDatas. If blank, will simply call update.
+     */
+    fun <K, V : LiveData<*>> setSourcesToDifference(
+        desired: Collection<K>,
+        have: MutableMap<K, V>,
+        getLiveDataFun: (K) -> V,
+        onUpdateFun: ((K) -> Unit)? = null
+    ) {
+        // Ensure the map is correct when method returns
+        val (toAdd, toRemove) = KotlinUtils.getMapAndListDifferences(desired, have)
+        for (key in toAdd) {
+            have[key] = getLiveDataFun(key)
+        }
+
+        val removed = toRemove.map { have.remove(it) }.toMutableList()
+
+        val stackTraceException = java.lang.IllegalStateException(stacktraceExceptionMessage)
+
+        GlobalScope.launch(Main.immediate) {
+            // If any state got out of sorts before this coroutine ran, correct it
+            for (key in toRemove) {
+                removed.add(have.remove(key) ?: continue)
+            }
+
+            for (liveData in removed) {
+                removeSource(liveData ?: continue)
+            }
+
+            for (key in toAdd) {
+                val liveData = getLiveDataFun(key)
+                // Should be a no op, but there is a slight possibility it isn't
+                have[key] = liveData
+                val observer = Observer<Any> {
+                    if (onUpdateFun != null) {
+                        onUpdateFun(key)
+                    } else {
+                        updateIfActive()
+                    }
+                }
+                addSourceWithError(liveData, observer, stackTraceException)
+            }
         }
     }
 

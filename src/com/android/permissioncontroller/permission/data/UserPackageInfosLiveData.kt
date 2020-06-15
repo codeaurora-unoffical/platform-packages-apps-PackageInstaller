@@ -20,6 +20,7 @@ import android.app.Application
 import android.content.pm.PackageManager.GET_PERMISSIONS
 import android.content.pm.PackageManager.MATCH_ALL
 import android.os.UserHandle
+import android.util.Log
 import com.android.permissioncontroller.PermissionControllerApplication
 import com.android.permissioncontroller.permission.model.livedatatypes.LightPackageInfo
 import kotlinx.coroutines.Job
@@ -36,17 +37,6 @@ class UserPackageInfosLiveData private constructor(
 ) : SmartAsyncMediatorLiveData<@kotlin.jvm.JvmSuppressWildcards List<LightPackageInfo>>(),
     PackageBroadcastReceiver.PackageBroadcastListener {
 
-    override fun setValue(newValue: List<LightPackageInfo>?) {
-        newValue?.let {
-            for (packageInfo in newValue) {
-                // This is an optimization, since setting the individual package liveDatas is
-                // very low cost, and will save time and computation later down the line.
-                LightPackageInfoLiveData.setPackageInfoLiveData(packageInfo)
-            }
-        }
-        super.setValue(newValue)
-    }
-
     override fun onPackageUpdate(packageName: String) {
         updateAsync()
     }
@@ -58,6 +48,9 @@ class UserPackageInfosLiveData private constructor(
         if (job.isCancelled) {
             return
         }
+        // TODO ntmyren: remove once b/154796729 is fixed
+        Log.i("UserPackageInfos", "updating UserPackageInfosLiveData for user " +
+            "${user.identifier}")
         val packageInfos = app.applicationContext.packageManager
             .getInstalledPackagesAsUser(GET_PERMISSIONS or MATCH_ALL, user.identifier)
         postValue(packageInfos.map { packageInfo -> LightPackageInfo(packageInfo) })

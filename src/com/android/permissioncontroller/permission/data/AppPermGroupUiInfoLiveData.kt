@@ -51,13 +51,18 @@ class AppPermGroupUiInfoLiveData private constructor(
     private val packageName: String,
     private val permGroupName: String,
     private val user: UserHandle
-) : SmartUpdateMediatorLiveData<AppPermGroupUiInfo>() {
+) : SmartUpdateMediatorLiveData<AppPermGroupUiInfo>(), LocationUtils.LocationListener {
 
+    private var isSpecialLocation = false
     private val packageInfoLiveData = LightPackageInfoLiveData[packageName, user]
     private val permGroupLiveData = PermGroupLiveData[permGroupName]
     private val permissionStateLiveData = PermStateLiveData[packageName, permGroupName, user]
 
     init {
+        isSpecialLocation = LocationUtils.isLocationGroupAndProvider(app,
+            permGroupName, packageName) ||
+            LocationUtils.isLocationGroupAndControllerExtraPackage(app, permGroupName, packageName)
+
         addSource(packageInfoLiveData) {
             updateIfActive()
         }
@@ -117,8 +122,7 @@ class AppPermGroupUiInfoLiveData private constructor(
 
         val isSystemApp = !isUserSensitive(permissionState)
 
-        val isGranted = getGrantedIncludingBackground(permissionState, allPermInfos,
-                packageInfo.packageName)
+        val isGranted = getGrantedIncludingBackground(permissionState, allPermInfos)
 
         return AppPermGroupUiInfo(shouldShow, isGranted, isSystemApp)
     }
@@ -157,7 +161,7 @@ class AppPermGroupUiInfoLiveData private constructor(
         }
 
         if (groupInfo.packageName == Utils.OS_PKG &&
-            !Utils.isModernPermissionGroup(groupInfo.name)) {
+            !isModernPermissionGroup(groupInfo.name)) {
             return false
         }
         return true
@@ -209,9 +213,9 @@ class AppPermGroupUiInfoLiveData private constructor(
      */
     private fun getGrantedIncludingBackground(
         permissionState: Map<String, PermState>,
-        allPermInfos: Map<String, LightPermInfo>,
-        packageName: String
+        allPermInfos: Map<String, LightPermInfo>
     ): PermGrantState {
+        val specialLocationState = getIsSpecialLocationState()
 
         var hasPermWithBackground = false
         var isUserFixed = false
@@ -220,7 +224,8 @@ class AppPermGroupUiInfoLiveData private constructor(
             val permInfo = allPermInfos[permName] ?: continue
             permInfo.backgroundPermission?.let { backgroundPerm ->
                 hasPermWithBackground = true
-                if (permissionState[backgroundPerm]?.granted == true) {
+                if (permissionState[backgroundPerm]?.granted == true &&
+                    specialLocationState != false) {
                     return PermGrantState.PERMS_ALLOWED_ALWAYS
                 }
             }
@@ -230,12 +235,13 @@ class AppPermGroupUiInfoLiveData private constructor(
                     permState.permFlags and PackageManager.FLAG_PERMISSION_ONE_TIME != 0
         }
 
-        val anyAllowed = getIsSpecialLocationState() ?: permissionState.any { it.value.granted }
+        val anyAllowed = specialLocationState ?: permissionState.any { it.value.granted }
         if (anyAllowed && (hasPermWithBackground || shouldShowAsForegroundGroup())) {
             if (isOneTime) {
                 return PermGrantState.PERMS_ASK
             } else {
-                if (Utils.couldHaveForegroundCapabilities(app.applicationContext, packageName)) {
+                if (Utils.couldHaveForegroundCapabilities(
+                                Utils.getUserContext(app, user), packageName)) {
                     return PermGrantState.PERMS_ALLOWED_ALWAYS
                 } else {
                     return PermGrantState.PERMS_ALLOWED_FOREGROUND_ONLY
@@ -258,9 +264,12 @@ class AppPermGroupUiInfoLiveData private constructor(
     }
 
     private fun getIsSpecialLocationState(): Boolean? {
+        if (!isSpecialLocation) {
+            return null
+        }
+
         val userContext = Utils.getUserContext(app, user)
-        if (LocationUtils.isLocationGroupAndProvider(userContext, permGroupName,
-                packageName)) {
+        if (LocationUtils.isLocationGroupAndProvider(userContext, permGroupName, packageName)) {
             return LocationUtils.isLocationEnabled(userContext)
         }
         // The permission of the extra location controller package is determined by the
@@ -276,6 +285,27 @@ class AppPermGroupUiInfoLiveData private constructor(
     private fun shouldShowAsForegroundGroup(): Boolean {
         return permGroupName.equals(Manifest.permission_group.CAMERA) ||
                 permGroupName.equals(Manifest.permission_group.MICROPHONE)
+    }
+
+    override fun onLocationStateChange(enabled: Boolean) {
+        updateIfActive()
+    }
+
+    override fun onActive() {
+        super.onActive()
+
+        if (isSpecialLocation) {
+            LocationUtils.addLocationListener(this)
+            updateIfActive()
+        }
+    }
+
+    override fun onInactive() {
+        super.onInactive()
+
+        if (isSpecialLocation) {
+            LocationUtils.removeLocationListener(this)
+        }
     }
 
     /**

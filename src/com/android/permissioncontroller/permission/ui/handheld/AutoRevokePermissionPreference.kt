@@ -39,19 +39,7 @@ class AutoRevokePermissionPreference(
     user: UserHandle,
     context: Context
 ) : SmartIconLoadPackagePermissionPreference(app, packageName, user, context) {
-    private var openButton: ImageButton? = null
     private var removeButton: ImageButton? = null
-
-    var openClickListener: View.OnClickListener? = null
-        set(listener) {
-            openButton?.setOnClickListener(listener)
-            field = listener
-        }
-    var canOpen: Boolean = true
-        set(open) {
-            field = open
-            openButton?.isEnabled = open
-        }
     var removeClickListener: View.OnClickListener? = null
         set(listener) {
             removeButton?.setOnClickListener(listener)
@@ -59,15 +47,11 @@ class AutoRevokePermissionPreference(
         }
 
     init {
-        widgetLayoutResource = R.xml.two_button_preference_widget
+        widgetLayoutResource = R.xml.uninstall_button_preference_widget
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
-
-        openButton = holder.findViewById(R.id.open_button) as ImageButton
-        openButton?.setOnClickListener(openClickListener)
-        openButton?.isEnabled = canOpen
 
         removeButton = holder.findViewById(R.id.uninstall_button) as ImageButton
         removeButton?.setOnClickListener(removeClickListener)
