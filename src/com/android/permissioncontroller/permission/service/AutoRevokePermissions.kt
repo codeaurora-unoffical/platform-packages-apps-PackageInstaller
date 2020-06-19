@@ -163,10 +163,6 @@ fun isAutoRevokeEnabled(context: Context): Boolean {
             getUnusedThresholdMs(context) != Long.MAX_VALUE
 }
 
-fun isInAutoRevokeDogfood(context: Context): Boolean {
-    return TeamfoodSettings.get(context)?.enabledForPreRApps ?: false
-}
-
 /**
  * @return dump of auto revoke service as a proto
  */
@@ -177,7 +173,7 @@ suspend fun dumpAutoRevokePermissions(context: Context): AutoRevokePermissionsDu
     }
 
     val dumpData = GlobalScope.async(IPC) {
-        AutoRevokeDumpLiveData(context).getInitializedValue(staleOk = true)
+        AutoRevokeDumpLiveData(context).getInitializedValue()
     }
 
     return AutoRevokePermissionsDumpProto.newBuilder()
@@ -226,6 +222,8 @@ class AutoRevokeOnBootReceiver : BroadcastReceiver() {
             DumpableLog.e(LOG_TAG,
                 "Could not schedule ${AutoRevokeService::class.java.simpleName}: $status")
         }
+
+        reGrantAutoRevokedPermissionsIfNeeded(context)
     }
 }
 
@@ -242,7 +240,10 @@ private suspend fun revokePermissionsOnUnusedApps(
     val now = System.currentTimeMillis()
     val firstBootTime = context.firstBootTime
 
-    val unusedApps = AllPackageInfosLiveData.getInitializedValue(staleOk = true).toMutableMap()
+    // TODO ntmyren: remove once b/154796729 is fixed
+    Log.i(LOG_TAG, "getting UserPackageInfoLiveData for all users " +
+        "in AutoRevokePermissions")
+    val unusedApps = AllPackageInfosLiveData.getInitializedValue().toMutableMap()
 
     val userStats = UsageStatsLiveData[getUnusedThresholdMs(context),
         if (DEBUG_OVERRIDE_THRESHOLDS) INTERVAL_DAILY else INTERVAL_MONTHLY].getInitializedValue()
@@ -254,7 +255,7 @@ private suspend fun revokePermissionsOnUnusedApps(
                     }.toMap())
         }
     }
-    for (user in unusedApps.keys) {
+    for (user in unusedApps.keys.toList()) {
         if (user !in userStats.keys) {
             if (DEBUG) {
                 DumpableLog.i(LOG_TAG, "Ignoring user ${user.identifier}")
@@ -275,10 +276,7 @@ private suspend fun revokePermissionsOnUnusedApps(
             lastTimeVisible = Math.max(lastTimeVisible, packageInfo.firstInstallTime)
 
             // Limit by first boot time
-            // TODO eugenesusla: temporarily disabled for dogfooders for troubleshooting
-            if (!isInAutoRevokeDogfood(context)) {
-                lastTimeVisible = Math.max(lastTimeVisible, firstBootTime)
-            }
+            lastTimeVisible = Math.max(lastTimeVisible, firstBootTime)
 
             // Handle cross-profile apps
             if (context.isPackageCrossProfile(pkgName)) {
@@ -303,12 +301,12 @@ private suspend fun revokePermissionsOnUnusedApps(
 
     // TODO: Support more than the current user
     val manifestExemptPackages = AutoRevokeManifestExemptPackagesLiveData[myUserHandle()]
-            .getInitializedValue(staleOk = true)
+            .getInitializedValue()
 
     // Exempt important system-bound services
     // TODO: Support more than the current user
     val exemptServicePackages = ExemptServicesLiveData[myUserHandle()]
-            .getInitializedValue(staleOk = true).keys
+            .getInitializedValue().keys
 
     val revokedApps = mutableListOf<Pair<String, UserHandle>>()
     val userManager = context.getSystemService(UserManager::class.java)
@@ -334,7 +332,7 @@ private suspend fun revokePermissionsOnUnusedApps(
             val anyPermsRevoked = AtomicBoolean(false)
             val pkgPermGroups: Map<String, List<String>>? =
                 PackagePermissionsLiveData[packageName, user]
-                    .getInitializedValue(staleOk = true)
+                    .getInitializedValue()
 
             pkgPermGroups?.entries?.forEachInParallel(Main) { (groupName, _) ->
                 if (groupName == PackagePermissionsLiveData.NON_RUNTIME_NORMAL_PERMS) {
@@ -343,7 +341,7 @@ private suspend fun revokePermissionsOnUnusedApps(
 
                 val group: LightAppPermGroup =
                     LightAppPermGroupLiveData[packageName, groupName, user]
-                        .getInitializedValue(staleOk = true)
+                        .getInitializedValue()
                         ?: return@forEachInParallel
 
                 val fixed = group.isBackgroundFixed || group.isForegroundFixed
@@ -432,8 +430,15 @@ private suspend fun revokePermissionsOnUnusedApps(
     return revokedApps
 }
 
-private fun List<UsageStats>.lastTimeVisible(pkgName: String) =
-        find { it.packageName == pkgName }?.lastTimeVisible ?: 0L
+private fun List<UsageStats>.lastTimeVisible(pkgName: String): Long {
+    var result = 0L
+    for (stat in this) {
+        if (stat.packageName == pkgName) {
+            result = Math.max(result, stat.lastTimeVisible)
+        }
+    }
+    return result
+}
 
 suspend fun isPackageAutoRevokeExempt(
     context: Context,
@@ -507,6 +512,16 @@ private val Context.firstBootTime: Long get() {
     time = System.currentTimeMillis()
     sharedPreferences.edit().putLong(PREF_KEY_FIRST_BOOT_TIME, time).apply()
     return time
+}
+
+private fun reGrantAutoRevokedPermissionsIfNeeded(context: Context) {
+    val sharedPreferences = context.sharedPreferences
+    val key = "auto_revoke_regrant_done"
+    if (!sharedPreferences.getBoolean(key, false)) {
+        context.startService(
+                Intent().setComponent(ComponentName(context, AutoRevokeReGrantService::class.java)))
+        sharedPreferences.edit().putBoolean(key, true).apply()
+    }
 }
 
 /**
@@ -1010,23 +1025,26 @@ private class AutoRevokeDumpLiveData(context: Context) :
                             continue
                         }
 
-                        pkgPermGroups[user to pkg.packageName]!![groupName]!!.value!!.apply {
-                            groups.add(AutoRevokeDumpGroupData(groupName,
-                                    isBackgroundFixed || isForegroundFixed,
-                                    permissions.any { (_, p) -> p.isGrantedIncludingAppOp },
-                                    isGrantedByDefault,
-                                    isGrantedByRole,
-                                    isUserSensitive,
-                                    revokedPermGroupNames.value!![pkg.packageName to user]
-                                            ?.contains(groupName) ?: false
-                            ))
+                        pkgPermGroups[user to pkg.packageName]?.let {
+                            it[groupName]?.value?.apply {
+                                groups.add(AutoRevokeDumpGroupData(groupName,
+                                        isBackgroundFixed || isForegroundFixed,
+                                        permissions.any { (_, p) -> p.isGrantedIncludingAppOp },
+                                        isGrantedByDefault,
+                                        isGrantedByRole,
+                                        isUserSensitive,
+                                        revokedPermGroupNames.value?.let {
+                                            it[pkg.packageName to user]
+                                                    ?.contains(groupName)
+                                        } ?: false
+                                ))
+                            }
                         }
                     }
 
                     pkgs.add(AutoRevokeDumpPackageData(pkg.uid, pkg.packageName,
                             pkg.firstInstallTime,
-                            usages.value!![user]
-                                    ?.find { it.packageName == pkg.packageName }?.lastTimeVisible,
+                            usages.value!![user]?.lastTimeVisible(pkg.packageName),
                             autoRevokeManifestExemptPackages!![user]!!.value!!
                                     .contains(pkg.packageName),
                             pkgAutoRevokeState!![user to pkg.packageName]!!.value
