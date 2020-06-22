@@ -30,18 +30,32 @@ java_library {
     ],
 }
 
+// File to be included by permission controller app an mocking tests
+filegroup {
+    name: "permissioncontroller-sources",
+    srcs: [
+        "src/**/*.java",
+        "src/**/*.kt",
+        ":permissioncontroller-protos",
+    ],
+}
+
+filegroup {
+    name: "permissioncontroller-protos",
+    srcs: [
+        "src/**/*.proto",
+    ],
+}
+
 android_app {
     name: "PermissionController",
     sdk_version: "system_current",
     min_sdk_version: "28",
+    updatable: true,
     privileged: true,
     certificate: "platform",
 
-    srcs: [
-        "src/**/*.java",
-        "src/**/*.kt",
-        "src/**/*.proto",
-    ],
+    srcs: [":permissioncontroller-sources"],
 
     libs: ["android.car-stubs"],
 
@@ -63,6 +77,7 @@ android_app {
         "androidx.leanback_leanback-preference",
         "androidx.lifecycle_lifecycle-extensions",
         "androidx.lifecycle_lifecycle-common-java8",
+        "kotlin-stdlib",
         "kotlinx-coroutines-android",
         "androidx.navigation_navigation-common-ktx",
         "androidx.navigation_navigation-fragment-ktx",
@@ -78,7 +93,9 @@ android_app {
         "SettingsLibProgressBar",
         "androidx.annotation_annotation",
         "permissioncontroller-statsd",
-        "car-ui-lib"
+        "car-ui-lib",
+        "libprotobuf-java-lite",
+        "SettingsLibUtils",
     ],
 
     proto: {

@@ -28,7 +28,6 @@ import android.os.Bundle;
 import android.os.UserHandle;
 import android.text.BidiFormatter;
 import android.text.TextUtils;
-import android.widget.ImageView;
 import android.widget.Switch;
 
 import androidx.annotation.IntDef;
@@ -36,7 +35,6 @@ import androidx.annotation.LayoutRes;
 import androidx.fragment.app.DialogFragment;
 import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceFragmentCompat;
-import androidx.preference.PreferenceViewHolder;
 
 import com.android.permissioncontroller.R;
 import com.android.permissioncontroller.permission.model.AppPermissionGroup;
@@ -64,7 +62,6 @@ class PermissionPreference extends MultiTargetSwitchPreference {
     private final PreferenceFragmentCompat mFragment;
     private final PermissionPreferenceChangeListener mCallBacks;
     private final @LayoutRes int mOriginalWidgetLayoutRes;
-    private final int mIconSize;
 
     /** Callbacks for the permission to the fragment showing a list of permissions */
     interface PermissionPreferenceChangeListener {
@@ -121,14 +118,13 @@ class PermissionPreference extends MultiTargetSwitchPreference {
     }
 
     PermissionPreference(PreferenceFragmentCompat fragment, AppPermissionGroup group,
-            PermissionPreferenceChangeListener callbacks, int iconSize) {
+            PermissionPreferenceChangeListener callbacks) {
         super(fragment.getPreferenceManager().getContext());
 
         mFragment = fragment;
         mGroup = group;
         mCallBacks = callbacks;
         mOriginalWidgetLayoutRes = getWidgetLayoutResource();
-        mIconSize = iconSize;
 
         setPersistent(false);
         updateUi();
@@ -443,18 +439,6 @@ class PermissionPreference extends MultiTargetSwitchPreference {
                         .toString());
     }
 
-    @Override
-    public void onBindViewHolder(PreferenceViewHolder holder) {
-        if (mIconSize > 0) {
-            ImageView icon = ((ImageView) holder.findViewById(android.R.id.icon));
-
-            icon.setMaxWidth(mIconSize);
-            icon.setMaxHeight(mIconSize);
-        }
-
-        super.onBindViewHolder(holder);
-    }
-
     /**
      * Request to grant/revoke permissions group.
      *
@@ -482,11 +466,11 @@ class PermissionPreference extends MultiTargetSwitchPreference {
             mCallBacks.onPreferenceChanged(getKey());
 
             if ((changeTarget & CHANGE_FOREGROUND) != 0) {
-                mGroup.grantRuntimePermissions(false);
+                mGroup.grantRuntimePermissions(true, false);
             }
             if ((changeTarget & CHANGE_BACKGROUND) != 0) {
                 if (mGroup.getBackgroundPermissions() != null) {
-                    mGroup.getBackgroundPermissions().grantRuntimePermissions(false);
+                    mGroup.getBackgroundPermissions().grantRuntimePermissions(true, false);
                 }
             }
         } else {

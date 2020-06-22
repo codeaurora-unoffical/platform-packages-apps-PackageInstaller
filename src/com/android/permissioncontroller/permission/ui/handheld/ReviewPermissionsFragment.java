@@ -179,7 +179,7 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
             }
         }
         if (permissionsToGrant != null) {
-            group.grantRuntimePermissions(false, permissionsToGrant);
+            group.grantRuntimePermissions(true, false, permissionsToGrant);
         }
     }
 
@@ -468,7 +468,7 @@ public final class ReviewPermissionsFragment extends PreferenceFragmentCompat
 
         PermissionReviewPreference(PreferenceFragmentCompat fragment, AppPermissionGroup group,
                 PermissionPreferenceChangeListener callbacks) {
-            super(fragment, group, callbacks, 0);
+            super(fragment, group, callbacks);
 
             mGroup = group;
             updateUi();

@@ -20,16 +20,23 @@ import android.app.AppOpsManager
 import android.app.AppOpsManager.MODE_ALLOWED
 import android.app.AppOpsManager.MODE_IGNORED
 import android.app.AppOpsManager.OPSTR_AUTO_REVOKE_PERMISSIONS_IF_UNUSED
+import android.Manifest
 import android.os.Bundle
 import android.os.UserHandle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
 import com.android.permissioncontroller.PermissionControllerApplication
+import com.android.permissioncontroller.PermissionControllerStatsLog
+import com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION
+import com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION__ACTION__SWITCH_DISABLED
+import com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION__ACTION__SWITCH_ENABLED
 import com.android.permissioncontroller.R
 import com.android.permissioncontroller.permission.data.AppPermGroupUiInfoLiveData
 import com.android.permissioncontroller.permission.data.AutoRevokeStateLiveData
+import com.android.permissioncontroller.permission.data.FullStoragePermissionAppsLiveData
 import com.android.permissioncontroller.permission.data.LightPackageInfoLiveData
 import com.android.permissioncontroller.permission.data.PackagePermissionsLiveData
 import com.android.permissioncontroller.permission.data.PackagePermissionsLiveData.Companion.NON_RUNTIME_NORMAL_PERMS
@@ -38,8 +45,8 @@ import com.android.permissioncontroller.permission.data.get
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo.PermGrantState
 import com.android.permissioncontroller.permission.ui.Category
 import com.android.permissioncontroller.permission.utils.IPC
-import com.android.permissioncontroller.permission.utils.KotlinUtils
 import com.android.permissioncontroller.permission.utils.Utils
+import com.android.permissioncontroller.permission.utils.navigateSafe
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
@@ -52,8 +59,31 @@ import kotlinx.coroutines.launch
  */
 class AppPermissionGroupsViewModel(
     private val packageName: String,
-    private val user: UserHandle
+    private val user: UserHandle,
+    private val sessionId: Long
 ) : ViewModel() {
+
+    companion object {
+        val LOG_TAG: String = AppPermissionGroupsViewModel::class.java.simpleName
+    }
+
+    enum class PermSubtitle(val value: Int) {
+        NONE(0),
+        MEDIA_ONLY(1),
+        ALL_FILES(2),
+        FOREGROUND_ONLY(3),
+    }
+
+    data class GroupUiInfo(
+        val groupName: String,
+        val isSystem: Boolean = false,
+        val subtitle: PermSubtitle
+    ) {
+        constructor(groupName: String, isSystem: Boolean) :
+            this(groupName, isSystem, PermSubtitle.NONE)
+    }
+
+    val autoRevokeLiveData = AutoRevokeStateLiveData[packageName, user]
 
     /**
      * LiveData whose data is a map of grant category (either allowed or denied) to a list
@@ -66,9 +96,17 @@ class AppPermissionGroupsViewModel(
         private val packagePermsLiveData =
             PackagePermissionsLiveData[packageName, user]
         private val appPermGroupUiInfoLiveDatas = mutableMapOf<String, AppPermGroupUiInfoLiveData>()
+        private val fullStoragePermsLiveData = FullStoragePermissionAppsLiveData
 
         init {
             addSource(packagePermsLiveData) {
+                updateIfActive()
+            }
+            addSource(fullStoragePermsLiveData) {
+                updateIfActive()
+            }
+            addSource(autoRevokeLiveData) {
+                removeSource(autoRevokeLiveData)
                 updateIfActive()
             }
             updateIfActive()
@@ -79,11 +117,19 @@ class AppPermissionGroupsViewModel(
             if (groups == null && packagePermsLiveData.isInitialized) {
                 value = null
                 return
-            } else if (groups == null) {
+            } else if (groups == null || (Manifest.permission_group.STORAGE in groups &&
+                    !fullStoragePermsLiveData.isInitialized) || !autoRevokeLiveData.isInitialized) {
                 return
             }
 
-            addAndRemoveAppPermGroupLiveDatas(groups)
+            val hasFullStorage = fullStoragePermsLiveData.value?.any { pkg ->
+                pkg.packageName == packageName && pkg.user == user && pkg.isGranted
+            } ?: false
+
+            val getLiveData = { groupName: String ->
+                AppPermGroupUiInfoLiveData[packageName, groupName, user]
+            }
+            setSourcesToDifference(groups, appPermGroupUiInfoLiveDatas, getLiveData)
 
             if (!appPermGroupUiInfoLiveDatas.all { it.value.isInitialized }) {
                 return
@@ -99,13 +145,23 @@ class AppPermissionGroupsViewModel(
                 val isSystem = Utils.getPlatformPermissionGroups().contains(groupName)
                 appPermGroupUiInfoLiveDatas[groupName]?.value?.let { uiInfo ->
                     when (uiInfo.permGrantState) {
-                        PermGrantState.PERMS_ALLOWED -> groupGrantStates[Category.ALLOWED]!!.add(
-                            GroupUiInfo(groupName, isSystem))
+                        PermGrantState.PERMS_ALLOWED -> {
+                            var subtitle = PermSubtitle.NONE
+                            if (groupName == Manifest.permission_group.STORAGE) {
+                                subtitle = if (hasFullStorage) {
+                                    PermSubtitle.ALL_FILES
+                                } else {
+                                    PermSubtitle.MEDIA_ONLY
+                                }
+                            }
+                            groupGrantStates[Category.ALLOWED]!!.add(
+                                GroupUiInfo(groupName, isSystem, subtitle))
+                        }
                         PermGrantState.PERMS_ALLOWED_ALWAYS -> groupGrantStates[
                             Category.ALLOWED]!!.add(GroupUiInfo(groupName, isSystem))
                         PermGrantState.PERMS_ALLOWED_FOREGROUND_ONLY -> groupGrantStates[
                             Category.ALLOWED]!!.add(GroupUiInfo(groupName, isSystem,
-                            isForeground = true))
+                            PermSubtitle.FOREGROUND_ONLY))
                         PermGrantState.PERMS_DENIED -> groupGrantStates[Category.DENIED]!!.add(
                             GroupUiInfo(groupName, isSystem))
                         PermGrantState.PERMS_ASK -> groupGrantStates[Category.ASK]!!.add(
@@ -116,58 +172,42 @@ class AppPermissionGroupsViewModel(
 
             value = groupGrantStates
         }
-
-        private fun addAndRemoveAppPermGroupLiveDatas(groupNames: List<String>) {
-            val (toAdd, toRemove) = KotlinUtils.getMapAndListDifferences(groupNames,
-                appPermGroupUiInfoLiveDatas)
-
-            for (groupToAdd in toAdd) {
-                val appPermGroupUiInfoLiveData =
-                    AppPermGroupUiInfoLiveData[packageName, groupToAdd, user]
-                appPermGroupUiInfoLiveDatas[groupToAdd] = appPermGroupUiInfoLiveData
-            }
-
-            for (groupToAdd in toAdd) {
-                addSource(appPermGroupUiInfoLiveDatas[groupToAdd]!!) {
-                    updateIfActive()
-                }
-            }
-
-            for (groupToRemove in toRemove) {
-                removeSource(appPermGroupUiInfoLiveDatas[groupToRemove]!!)
-                appPermGroupUiInfoLiveDatas.remove(groupToRemove)
-            }
-        }
     }
-
-    data class GroupUiInfo(
-        val groupName: String,
-        val isSystem: Boolean = false,
-        val isForeground: Boolean = false
-    )
-
-    val autoRevokeLiveData = AutoRevokeStateLiveData[packageName, user]
 
     fun setAutoRevoke(enabled: Boolean) {
         GlobalScope.launch(IPC) {
             val aom = PermissionControllerApplication.get()
                 .getSystemService(AppOpsManager::class.java)!!
-            val packageInfo = LightPackageInfoLiveData[packageName, user].getInitializedValue()
-            val mode = if (enabled) {
-                MODE_ALLOWED
-            } else {
-                MODE_IGNORED
+            val uid = LightPackageInfoLiveData[packageName, user].getInitializedValue()?.uid
+
+            if (uid != null) {
+                Log.i(LOG_TAG, "sessionId $sessionId setting auto revoke enabled to $enabled for" +
+                    "$packageName $user")
+                val tag = if (enabled) {
+                    APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION__ACTION__SWITCH_ENABLED
+                } else {
+                    APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION__ACTION__SWITCH_DISABLED
+                }
+                PermissionControllerStatsLog.write(
+                    APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION, sessionId, uid, packageName,
+                    tag)
+
+                val mode = if (enabled) {
+                    MODE_ALLOWED
+                } else {
+                    MODE_IGNORED
+                }
+                aom.setUidMode(OPSTR_AUTO_REVOKE_PERMISSIONS_IF_UNUSED, uid, mode)
             }
-            aom.setUidMode(OPSTR_AUTO_REVOKE_PERMISSIONS_IF_UNUSED, packageInfo.uid, mode)
         }
     }
 
     fun showExtraPerms(fragment: Fragment, args: Bundle) {
-        fragment.findNavController().navigate(R.id.perm_groups_to_extra, args)
+        fragment.findNavController().navigateSafe(R.id.perm_groups_to_custom, args)
     }
 
     fun showAllPermissions(fragment: Fragment, args: Bundle) {
-        fragment.findNavController().navigate(R.id.perm_groups_to_all_perms, args)
+        fragment.findNavController().navigateSafe(R.id.perm_groups_to_all_perms, args)
     }
 }
 
@@ -179,11 +219,12 @@ class AppPermissionGroupsViewModel(
  */
 class AppPermissionGroupsViewModelFactory(
     private val packageName: String,
-    private val user: UserHandle
+    private val user: UserHandle,
+    private val sessionId: Long
 ) : ViewModelProvider.Factory {
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
-        return AppPermissionGroupsViewModel(packageName, user) as T
+        return AppPermissionGroupsViewModel(packageName, user, sessionId) as T
     }
 }

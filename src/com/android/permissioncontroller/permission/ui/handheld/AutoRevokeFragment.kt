@@ -21,9 +21,8 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.UserHandle
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import androidx.fragment.app.DialogFragment
@@ -32,12 +31,17 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
 import com.android.permissioncontroller.Constants.EXTRA_SESSION_ID
+import com.android.permissioncontroller.Constants.INVALID_SESSION_ID
 import com.android.permissioncontroller.R
 import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModel
 import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModel.Months
 import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModel.RevokedPackageInfo
 import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModelFactory
+import com.android.permissioncontroller.permission.utils.IPC
 import com.android.permissioncontroller.permission.utils.KotlinUtils
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.Collator
 
 /**
@@ -49,9 +53,13 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
     private lateinit var viewModel: AutoRevokeViewModel
     private lateinit var collator: Collator
     private var sessionId: Long = 0L
+    private var isFirstLoad = false
 
     companion object {
         private const val SHOW_LOAD_DELAY_MS = 200L
+        private const val INFO_MSG_KEY = "info_msg"
+        private const val ELEVATION_HIGH = 8f
+        private val LOG_TAG = AutoRevokeFragment::class.java.simpleName
 
         @JvmStatic
         fun newInstance(): AutoRevokeFragment {
@@ -74,12 +82,14 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        mUseShadowController = false
         super.onCreate(savedInstanceState)
+        isFirstLoad = true
 
         collator = Collator.getInstance(
             context!!.getResources().getConfiguration().getLocales().get(0))
-        sessionId = getArguments()?.getLong(EXTRA_SESSION_ID) ?: sessionId
-        val factory = AutoRevokeViewModelFactory(activity!!.application)
+        sessionId = arguments!!.getLong(EXTRA_SESSION_ID, INVALID_SESSION_ID)
+        val factory = AutoRevokeViewModelFactory(activity!!.application, sessionId)
         viewModel = ViewModelProvider(this, factory).get(AutoRevokeViewModel::class.java)
         viewModel.autoRevokedPackageCategoriesLiveData.observe(this, Observer {
             it?.let { pkgs ->
@@ -92,23 +102,28 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
         activity?.getActionBar()?.setDisplayHomeAsUpEnabled(true)
 
         if (!viewModel.areAutoRevokedPackagesLoaded()) {
-            Handler(Looper.getMainLooper()).postDelayed(Runnable {
+            GlobalScope.launch(IPC) {
+                delay(SHOW_LOAD_DELAY_MS)
                 if (!viewModel.areAutoRevokedPackagesLoaded()) {
                     setLoading(true, false)
                 }
-            }, SHOW_LOAD_DELAY_MS)
+            }
         }
     }
 
     override fun onStart() {
         super.onStart()
-        activity!!.title = getString(R.string.unused_apps)
+        val ab = activity?.actionBar
+        if (ab != null) {
+            ab!!.setElevation(ELEVATION_HIGH)
+        }
+        activity!!.title = getString(R.string.permission_removed_page_title)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
-                activity!!.onBackPressed()
-                return true
+            this.pressBack()
+            return true
         }
         return super.onOptionsItemSelected(item)
     }
@@ -116,6 +131,8 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
     private fun updatePackages(categorizedPackages: Map<Months, List<RevokedPackageInfo>>) {
         if (preferenceScreen == null) {
             addPreferencesFromResource(R.xml.unused_app_categories)
+            val infoPref = preferenceScreen?.findPreference<FooterPreference>(INFO_MSG_KEY)
+            infoPref?.secondSummary = getString(R.string.auto_revoke_open_app_message)
         }
 
         val removedPrefs = mutableMapOf<String, AutoRevokePermissionPreference>()
@@ -144,9 +161,8 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
             } else {
                 getString(R.string.last_opened_category_title, "6")
             }
-            if (packages.isEmpty()) {
-                category.isVisible = false
-            }
+            category.isVisible = packages.isNotEmpty()
+
             for ((pkgName, user, shouldDisable, permSet) in packages) {
                 val revokedPerms = permSet.toList()
                 val key = createKey(pkgName, user)
@@ -159,23 +175,18 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
                     pref.title = KotlinUtils.getPackageLabel(activity!!.application, pkgName, user)
                 }
 
-                pref.openClickListener = View.OnClickListener {
-                    viewModel.openApp(pkgName, user)
-                }
                 if (shouldDisable) {
-                    pref.removeIcon = resources.getDrawable(R.drawable.ic_settings_disable)
                     pref.removeClickListener = View.OnClickListener {
                         createDisableDialog(pkgName, user)
                     }
                 } else {
                     pref.removeClickListener = View.OnClickListener {
-                        viewModel.requestUninstallApp(pkgName, user)
+                        viewModel.requestUninstallApp(this, pkgName, user)
                     }
                 }
 
                 pref.onPreferenceClickListener = Preference.OnPreferenceClickListener { _ ->
-                    val args = AppPermissionGroupsFragment.createArgs(pkgName, user, sessionId)
-                    viewModel.navigateToAppPermissions(this, args)
+                    viewModel.navigateToAppInfo(pkgName, user, sessionId)
                     true
                 }
 
@@ -197,6 +208,25 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
                 }
                 category.addPreference(pref)
                 KotlinUtils.sortPreferenceGroup(category, this::comparePreference, false)
+            }
+        }
+
+        if (isFirstLoad) {
+            if (categorizedPackages[Months.SIX]!!.isNotEmpty() ||
+                    categorizedPackages[Months.THREE]!!.isNotEmpty()) {
+                isFirstLoad = false
+            }
+            Log.i(LOG_TAG, "sessionId: $sessionId Showed Auto Revoke Page")
+            for (month in Months.values()) {
+                Log.i(LOG_TAG, "sessionId: $sessionId $month unused: " +
+                    "${categorizedPackages[month]}")
+                for (revokedPackageInfo in categorizedPackages[month]!!) {
+                    for (groupName in revokedPackageInfo.revokedGroups) {
+                        val isNewlyRevoked = month == Months.THREE
+                        viewModel.logAppView(revokedPackageInfo.packageName,
+                            revokedPackageInfo.user, groupName, isNewlyRevoked)
+                    }
+                }
             }
         }
     }

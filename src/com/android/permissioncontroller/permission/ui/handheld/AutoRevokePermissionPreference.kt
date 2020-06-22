@@ -18,7 +18,6 @@ package com.android.permissioncontroller.permission.ui.handheld
 
 import android.app.Application
 import android.content.Context
-import android.graphics.drawable.Drawable
 import android.os.UserHandle
 import android.view.View
 import android.widget.ImageButton
@@ -40,19 +39,7 @@ class AutoRevokePermissionPreference(
     user: UserHandle,
     context: Context
 ) : SmartIconLoadPackagePermissionPreference(app, packageName, user, context) {
-    private var openButton: ImageButton? = null
     private var removeButton: ImageButton? = null
-
-    var removeIcon: Drawable? = null
-        set(value) {
-            removeButton?.setImageDrawable(removeIcon)
-            field = value
-        }
-    var openClickListener: View.OnClickListener? = null
-        set(listener) {
-            openButton?.setOnClickListener(listener)
-            field = listener
-        }
     var removeClickListener: View.OnClickListener? = null
         set(listener) {
             removeButton?.setOnClickListener(listener)
@@ -60,20 +47,13 @@ class AutoRevokePermissionPreference(
         }
 
     init {
-        widgetLayoutResource = R.xml.two_button_preference_widget
+        widgetLayoutResource = R.xml.uninstall_button_preference_widget
     }
 
     override fun onBindViewHolder(holder: PreferenceViewHolder) {
         super.onBindViewHolder(holder)
 
-        openButton = holder.findViewById(R.id.open_button) as ImageButton
-        openButton?.setOnClickListener(openClickListener)
-
         removeButton = holder.findViewById(R.id.uninstall_button) as ImageButton
         removeButton?.setOnClickListener(removeClickListener)
-
-        removeIcon?.let { icon ->
-            removeButton?.setImageDrawable(icon)
-        }
     }
 }

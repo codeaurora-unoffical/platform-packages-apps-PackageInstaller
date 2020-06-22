@@ -18,16 +18,20 @@ package com.android.permissioncontroller.permission.data
 
 import android.content.pm.PackageManager.FLAG_PERMISSION_AUTO_REVOKED
 import android.os.UserHandle
+import com.android.permissioncontroller.PermissionControllerApplication
 import com.android.permissioncontroller.permission.data.PackagePermissionsLiveData.Companion.NON_RUNTIME_NORMAL_PERMS
+import com.android.permissioncontroller.permission.service.getUnusedThresholdMs
 import com.android.permissioncontroller.permission.utils.KotlinUtils
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 /**
  * Tracks which packages have been auto-revoked, and which groups have been auto revoked for those
  * packages.
  */
 object AutoRevokedPackagesLiveData
-    : SmartAsyncMediatorLiveData<Map<Pair<String, UserHandle>, Set<String>>>() {
+    : SmartUpdateMediatorLiveData<Map<Pair<String, UserHandle>, Set<String>>>() {
 
     init {
         addSource(AllPackageInfosLiveData) {
@@ -42,7 +46,7 @@ object AutoRevokedPackagesLiveData
     private val packageAutoRevokedPermsList =
         mutableMapOf<Pair<String, UserHandle>, MutableSet<String>>()
 
-    override suspend fun loadDataAndPostValue(job: Job) {
+    override fun onUpdate() {
         if (!AllPackageInfosLiveData.isInitialized) {
             return
         }
@@ -58,26 +62,30 @@ object AutoRevokedPackagesLiveData
             })
         }
 
-        val (toAdd, toRemove) =
-            KotlinUtils.getMapAndListDifferences(packageNames, packagePermGroupsLiveDatas)
+        GlobalScope.launch(Main.immediate) {
+            val (toAdd, toRemove) =
+                KotlinUtils.getMapAndListDifferences(packageNames, packagePermGroupsLiveDatas)
 
-        for (pkg in toRemove) {
-            val packagePermissionsLiveData = packagePermGroupsLiveDatas.remove(pkg) ?: continue
-            removeSource(packagePermissionsLiveData)
-            for ((groupName, _) in packagePermissionsLiveData.value ?: continue) {
-                removeSource(permStateLiveDatas.remove(Triple(pkg.first, groupName, pkg.second))
-                    ?: continue)
+            for (pkg in toRemove) {
+                val packagePermissionsLiveData = packagePermGroupsLiveDatas.remove(pkg) ?: continue
+                removeSource(packagePermissionsLiveData)
+                for ((groupName, _) in packagePermissionsLiveData.value ?: continue) {
+                    removeSource(permStateLiveDatas.remove(Triple(pkg.first, groupName, pkg.second))
+                        ?: continue)
+                }
+                packageAutoRevokedPermsList.remove(pkg)
             }
-            packageAutoRevokedPermsList.remove(pkg)
-        }
-        postValue(packageAutoRevokedPermsList.toMap())
+            if (toRemove.isNotEmpty()) {
+                postCopyOfMap()
+            }
 
-        toAdd.forEach { packagePermGroupsLiveDatas[it] = PackagePermissionsLiveData[it] }
+            toAdd.forEach { packagePermGroupsLiveDatas[it] = PackagePermissionsLiveData[it] }
 
-        toAdd.forEach { userPackage ->
-            addSource(packagePermGroupsLiveDatas[userPackage]!!) {
-                if (packagePermGroupsLiveDatas.all { it.value.isInitialized }) {
-                    observePermStateLiveDatas()
+            toAdd.forEach { userPackage ->
+                addSource(packagePermGroupsLiveDatas[userPackage]!!) {
+                    if (packagePermGroupsLiveDatas.all { it.value.isInitialized }) {
+                        observePermStateLiveDatas()
+                    }
                 }
             }
         }
@@ -86,40 +94,120 @@ object AutoRevokedPackagesLiveData
     private fun observePermStateLiveDatas() {
         val packageGroups = mutableListOf<Triple<String, String, UserHandle>>()
         packageGroups.addAll(packagePermGroupsLiveDatas.flatMap { (pkgPair, liveData) ->
-                liveData.value?.keys?.toMutableSet()?.let { permGroups ->
-                    permGroups.remove(NON_RUNTIME_NORMAL_PERMS)
-                    permGroups.map { Triple(pkgPair.first, it, pkgPair.second) }
-                } ?: emptyList()
-            })
-        val (toAdd, toRemove) =
-            KotlinUtils.getMapAndListDifferences(packageGroups, permStateLiveDatas)
+            liveData.value?.keys?.toMutableSet()?.let { permGroups ->
+                permGroups.remove(NON_RUNTIME_NORMAL_PERMS)
+                permGroups.map { Triple(pkgPair.first, it, pkgPair.second) }
+            } ?: emptyList()
+        })
 
-        for (packagePermGroup in toRemove) {
-            removeSource(permStateLiveDatas.remove(packagePermGroup) ?: continue)
-            val packageUser = packagePermGroup.first to packagePermGroup.third
-            packageAutoRevokedPermsList[packageUser]?.remove(packagePermGroup.second)
-            if (packageAutoRevokedPermsList[packageUser]?.isEmpty() == true) {
-                packageAutoRevokedPermsList.remove(packageUser)
-            }
-        }
+        GlobalScope.launch(Main.immediate) {
 
-        toAdd.forEach { permStateLiveDatas[it] = PermStateLiveData[it] }
+            val (toAdd, toRemove) =
+                KotlinUtils.getMapAndListDifferences(packageGroups, permStateLiveDatas)
 
-        toAdd.forEach { packagePermGroup ->
-            val liveData = permStateLiveDatas[packagePermGroup]!!
-            addSource(liveData) { permState ->
+            for (packagePermGroup in toRemove) {
+                removeSource(permStateLiveDatas.remove(packagePermGroup) ?: continue)
                 val packageUser = packagePermGroup.first to packagePermGroup.third
-                for ((_, state) in permState) {
-                    if (state.permFlags and FLAG_PERMISSION_AUTO_REVOKED != 0) {
-                        packageAutoRevokedPermsList.getOrPut(packageUser) { mutableSetOf() }
-                            .add(packagePermGroup.second)
-                        break
+                packageAutoRevokedPermsList[packageUser]?.remove(packagePermGroup.second)
+                if (packageAutoRevokedPermsList[packageUser]?.isEmpty() == true) {
+                    packageAutoRevokedPermsList.remove(packageUser)
+                }
+            }
+
+            if (toRemove.isNotEmpty()) {
+                postCopyOfMap()
+            }
+
+            for (packagePermGroup in toAdd) {
+                permStateLiveDatas[packagePermGroup] = PermStateLiveData[packagePermGroup]
+            }
+
+            for (packagePermGroup in toAdd) {
+                val permStateLiveData = permStateLiveDatas[packagePermGroup]!!
+                val packageUser = packagePermGroup.first to packagePermGroup.third
+
+                addSource(permStateLiveData) { permState ->
+                    var added = false
+                    if (permState == null && permStateLiveData.isInitialized) {
+                        permStateLiveDatas.remove(packagePermGroup)
+                        removeSource(permStateLiveData)
+                    } else if (permState != null) {
+                        for ((_, state) in permState) {
+                            if (state.permFlags and FLAG_PERMISSION_AUTO_REVOKED != 0) {
+                                packageAutoRevokedPermsList.getOrPut(packageUser) { mutableSetOf() }
+                                    .add(packagePermGroup.second)
+                                added = true
+                                break
+                            }
+                        }
+                    }
+
+                    if (!added) {
+                        packageAutoRevokedPermsList[packageUser]?.remove(packagePermGroup.second)
+                        if (packageAutoRevokedPermsList[packageUser]?.isEmpty() == true) {
+                            packageAutoRevokedPermsList.remove(packageUser)
+                        }
+                    }
+
+                    if (permStateLiveDatas.all { it.value.isInitialized }) {
+                        postCopyOfMap()
                     }
                 }
-                if (permStateLiveDatas.all { it.value.isInitialized }) {
-                    postValue(packageAutoRevokedPermsList.toMap())
+            }
+        }
+    }
+
+    private fun postCopyOfMap() {
+        val autoRevokedCopy =
+            mutableMapOf<Pair<String, UserHandle>, Set<String>>()
+        for ((userPackage, permGroups) in packageAutoRevokedPermsList) {
+            autoRevokedCopy[userPackage] = permGroups.toSet()
+        }
+        postValue(autoRevokedCopy)
+    }
+}
+
+/**
+ * Gets all Auto Revoked packages that have not been opened in a few months. This will let us remove
+ * used apps from the Auto Revoke screen.
+ */
+object UnusedAutoRevokedPackagesLiveData
+    : SmartUpdateMediatorLiveData<Map<Pair<String, UserHandle>, Set<String>>>() {
+    private val unusedThreshold = getUnusedThresholdMs(PermissionControllerApplication.get())
+    private val usageStatsLiveData = UsageStatsLiveData[unusedThreshold]
+
+    init {
+        addSource(usageStatsLiveData) {
+            updateIfActive()
+        }
+        addSource(AutoRevokedPackagesLiveData) {
+            updateIfActive()
+        }
+    }
+
+    override fun onUpdate() {
+        if (!usageStatsLiveData.isInitialized || !AutoRevokedPackagesLiveData.isInitialized) {
+            return
+        }
+
+        val autoRevokedPackages = AutoRevokedPackagesLiveData.value!!
+
+        val unusedPackages = mutableMapOf<Pair<String, UserHandle>, Set<String>>()
+        for ((userPackage, perms) in autoRevokedPackages) {
+            unusedPackages[userPackage] = perms.toSet()
+        }
+
+        val now = System.currentTimeMillis()
+        for ((user, stats) in usageStatsLiveData.value!!) {
+            for (stat in stats) {
+                val userPackage = stat.packageName to user
+                if (userPackage in autoRevokedPackages &&
+                    (now - stat.lastTimeVisible) < unusedThreshold) {
+                    unusedPackages.remove(userPackage)
                 }
             }
         }
+
+        value = unusedPackages
     }
 }

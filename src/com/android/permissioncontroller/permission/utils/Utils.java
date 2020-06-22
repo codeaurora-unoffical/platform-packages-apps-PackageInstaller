@@ -16,6 +16,8 @@
 
 package com.android.permissioncontroller.permission.utils;
 
+import static android.Manifest.permission.BIND_SOUND_TRIGGER_DETECTION_SERVICE;
+import static android.Manifest.permission.CAPTURE_AUDIO_HOTWORD;
 import static android.Manifest.permission_group.ACTIVITY_RECOGNITION;
 import static android.Manifest.permission_group.CALENDAR;
 import static android.Manifest.permission_group.CALL_LOG;
@@ -28,15 +30,23 @@ import static android.Manifest.permission_group.SENSORS;
 import static android.Manifest.permission_group.SMS;
 import static android.Manifest.permission_group.STORAGE;
 import static android.content.Context.MODE_PRIVATE;
+import static android.content.pm.PackageManager.FLAG_PERMISSION_RESTRICTION_INSTALLER_EXEMPT;
+import static android.content.pm.PackageManager.FLAG_PERMISSION_RESTRICTION_SYSTEM_EXEMPT;
+import static android.content.pm.PackageManager.FLAG_PERMISSION_RESTRICTION_UPGRADE_EXEMPT;
 import static android.content.pm.PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_DENIED;
 import static android.content.pm.PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_GRANTED;
+import static android.content.pm.PackageManager.GET_SERVICES;
+import static android.content.pm.PackageManager.MATCH_SYSTEM_ONLY;
+import static android.content.pm.PackageManager.PERMISSION_GRANTED;
 import static android.os.UserHandle.myUserId;
 
 import static com.android.permissioncontroller.Constants.INVALID_SESSION_ID;
 
 import android.Manifest;
 import android.app.Application;
+import android.app.role.RoleManager;
 import android.content.ActivityNotFoundException;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -45,6 +55,8 @@ import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.pm.PermissionInfo;
+import android.content.pm.ResolveInfo;
+import android.content.pm.ServiceInfo;
 import android.content.res.Resources;
 import android.content.res.Resources.Theme;
 import android.graphics.Bitmap;
@@ -56,6 +68,8 @@ import android.os.UserHandle;
 import android.os.UserManager;
 import android.provider.DeviceConfig;
 import android.provider.Settings;
+import android.service.carrier.CarrierService;
+import android.telephony.TelephonyManager;
 import android.text.Html;
 import android.text.TextUtils;
 import android.text.format.DateFormat;
@@ -74,6 +88,8 @@ import androidx.core.util.Preconditions;
 
 import com.android.launcher3.icons.IconFactory;
 import com.android.permissioncontroller.Constants;
+import com.android.permissioncontroller.DeviceUtils;
+import com.android.permissioncontroller.PermissionControllerApplication;
 import com.android.permissioncontroller.R;
 import com.android.permissioncontroller.permission.model.AppPermissionGroup;
 
@@ -101,7 +117,7 @@ public final class Utils {
 
     /** The timeout for auto-revoke permissions */
     public static final String PROPERTY_AUTO_REVOKE_UNUSED_THRESHOLD_MILLIS =
-            "auto_revoke_unused_threshold_millis";
+            "auto_revoke_unused_threshold_millis2";
 
     /** The frequency of running the job for auto-revoke permissions */
     public static final String PROPERTY_AUTO_REVOKE_CHECK_FREQUENCY_MILLIS =
@@ -116,6 +132,12 @@ public final class Utils {
             PackageManager.FLAG_PERMISSION_WHITELIST_SYSTEM
                     | PackageManager.FLAG_PERMISSION_WHITELIST_UPGRADE
                     | PackageManager.FLAG_PERMISSION_WHITELIST_INSTALLER;
+
+    /** All permission restriction excemptions. */
+    public static final int FLAGS_PERMISSION_RESTRICTION_ANY_EXEMPT =
+            FLAG_PERMISSION_RESTRICTION_SYSTEM_EXEMPT
+                    | FLAG_PERMISSION_RESTRICTION_UPGRADE_EXEMPT
+                    | FLAG_PERMISSION_RESTRICTION_INSTALLER_EXEMPT;
 
     /**
      * The default length of the timeout for one-time permissions
@@ -171,6 +193,7 @@ public final class Utils {
         PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_CALL_LOG, CALL_LOG);
         PLATFORM_PERMISSIONS.put(Manifest.permission.PROCESS_OUTGOING_CALLS, CALL_LOG);
 
+        PLATFORM_PERMISSIONS.put(Manifest.permission.READ_PHONE_STATE, PHONE);
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_PHONE_NUMBERS, PHONE);
         PLATFORM_PERMISSIONS.put(Manifest.permission.CALL_PHONE, PHONE);
         PLATFORM_PERMISSIONS.put(Manifest.permission.ADD_VOICEMAIL, PHONE);
@@ -245,6 +268,14 @@ public final class Utils {
     }
 
     private static ArrayMap<UserHandle, Context> sUserContexts = new ArrayMap<>();
+
+    public enum ForegroundCapableType {
+        SOUND_TRIGGER,
+        ASSISTANT,
+        VOICE_INTERACTION,
+        CARRIER_SERVICE,
+        NONE
+    }
 
     /**
      * Creates and caches a PackageContext for the requested user, or returns the previously cached
@@ -600,6 +631,15 @@ public final class Utils {
     }
 
     /**
+     * Is the permissions a platform runtime permission
+     *
+     * @return the names of the runtime platform permissions.
+     */
+    public static boolean isRuntimePlatformPermission(@NonNull String permission) {
+        return PLATFORM_PERMISSIONS.containsKey(permission);
+    }
+
+    /**
      * Should UI show this permission.
      *
      * <p>If the user cannot change the group, it should not be shown.
@@ -719,33 +759,6 @@ public final class Utils {
         } else {
             return DateFormat.getMediumDateFormat(context).format(lastAccessTime);
         }
-    }
-
-    /**
-     * Build a string representing the number of milliseconds passed in.  It rounds to the nearest
-     * unit.  For example, given a duration of 3500 and an English locale, this can return
-     * "3 seconds".
-     * @param context The context.
-     * @param duration The number of milliseconds.
-     * @return a string representing the given number of milliseconds.
-     */
-    public static @NonNull String getTimeDiffStr(@NonNull Context context, long duration) {
-        long seconds = Math.max(1, duration / 1000);
-        if (seconds < 60) {
-            return context.getResources().getQuantityString(R.plurals.seconds, (int) seconds,
-                    seconds);
-        }
-        long minutes = seconds / 60;
-        if (minutes < 60) {
-            return context.getResources().getQuantityString(R.plurals.minutes, (int) minutes,
-                    minutes);
-        }
-        long hours = minutes / 60;
-        if (hours < 24) {
-            return context.getResources().getQuantityString(R.plurals.hours, (int) hours, hours);
-        }
-        long days = hours / 24;
-        return context.getResources().getQuantityString(R.plurals.days, (int) days, days);
     }
 
     /**
@@ -995,7 +1008,7 @@ public final class Utils {
             if ((pm.getPermissionFlags(permissionName, packageName, Process.myUserHandle())
                     & PackageManager.FLAG_PERMISSION_ONE_TIME) != 0
                     && pm.checkPermission(permissionName, packageName)
-                    == PackageManager.PERMISSION_GRANTED) {
+                    == PERMISSION_GRANTED) {
                 return true;
             }
         }
@@ -1013,5 +1026,105 @@ public final class Utils {
             sessionId = new Random().nextLong();
         }
         return sessionId;
+    }
+
+    /**
+     * Gets the label of the Settings application
+     *
+     * @param pm The packageManager used to get the activity resolution
+     *
+     * @return The CharSequence title of the settings app
+     */
+    @Nullable
+    public static CharSequence getSettingsLabelForNotifications(PackageManager pm) {
+        // We pretend we're the Settings app sending the notification, so figure out its name.
+        Intent openSettingsIntent = new Intent(Settings.ACTION_SETTINGS);
+        ResolveInfo resolveInfo = pm.resolveActivity(openSettingsIntent, MATCH_SYSTEM_ONLY);
+        if (resolveInfo == null) {
+            return null;
+        }
+        return pm.getApplicationLabel(resolveInfo.activityInfo.applicationInfo);
+    }
+
+    /**
+     * If an app could have foreground capabilities it is because it meets some criteria. This
+     * function returns which criteria it meets.
+     * @param context The context as the user of interest.
+     * @param packageName The package to check.
+     * @return the type of foreground capable app.
+     * @throws NameNotFoundException
+     */
+    public static @NonNull ForegroundCapableType getForegroundCapableType(@NonNull Context context,
+            @NonNull String packageName) throws NameNotFoundException {
+
+        PackageManager pm = context.getPackageManager();
+
+        // Apps which can be bound by SoundTriggerService
+        if (pm.checkPermission(CAPTURE_AUDIO_HOTWORD, packageName) == PERMISSION_GRANTED) {
+            ServiceInfo[] services = pm.getPackageInfo(packageName, GET_SERVICES).services;
+            if (services != null) {
+                for (ServiceInfo service : services) {
+                    if (BIND_SOUND_TRIGGER_DETECTION_SERVICE.equals(service.permission)) {
+                        return ForegroundCapableType.SOUND_TRIGGER;
+                    }
+                }
+            }
+        }
+
+        // VoiceInteractionService
+        if (context.getSystemService(RoleManager.class).getRoleHolders(RoleManager.ROLE_ASSISTANT)
+                .contains(packageName)) {
+            return ForegroundCapableType.ASSISTANT;
+        }
+        String voiceInteraction = Settings.Secure.getString(context.getContentResolver(),
+                "voice_interaction_service");
+        if (!TextUtils.isEmpty(voiceInteraction)) {
+            ComponentName component = ComponentName.unflattenFromString(voiceInteraction);
+            if (component != null && packageName.equals(component.getPackageName())) {
+                return ForegroundCapableType.VOICE_INTERACTION;
+            }
+        }
+
+        // Carrier privileged apps implementing the carrier service
+        final TelephonyManager telephonyManager =
+                context.getSystemService(TelephonyManager.class);
+        int numPhones = telephonyManager.getActiveModemCount();
+        for (int phoneId = 0; phoneId < numPhones; phoneId++) {
+            List<String> packages = telephonyManager.getCarrierPackageNamesForIntentAndPhone(
+                    new Intent(CarrierService.CARRIER_SERVICE_INTERFACE), phoneId);
+            if (packages != null && packages.contains(packageName)) {
+                return ForegroundCapableType.CARRIER_SERVICE;
+            }
+        }
+
+        return ForegroundCapableType.NONE;
+    }
+
+    /**
+     * This tells whether we should blame the app for potential background access. Intended to be
+     * used for creating Ui.
+     * @param context The context as the user of interest
+     * @param packageName The package to check
+     * @return true if the given package could possibly have foreground capabilities while in the
+     * background, otherwise false.
+     * @throws NameNotFoundException
+     */
+    public static boolean couldHaveForegroundCapabilities(@NonNull Context context,
+            @NonNull String packageName) throws NameNotFoundException {
+        return getForegroundCapableType(context, packageName) != ForegroundCapableType.NONE;
+    }
+
+    /**
+     * Determines if a given user is disabled, or is a work profile.
+     * @param user The user to check
+     * @return true if the user is disabled, or the user is a work profile
+     */
+    public static boolean isUserDisabledOrWorkProfile(UserHandle user) {
+        Application app = PermissionControllerApplication.get();
+        UserManager userManager = app.getSystemService(UserManager.class);
+        // In android TV, parental control accounts are managed profiles
+        return !userManager.getEnabledProfiles().contains(user)
+                || (userManager.isManagedProfile(user.getIdentifier())
+                && !DeviceUtils.isTelevision(app));
     }
 }

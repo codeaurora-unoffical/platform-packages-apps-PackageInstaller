@@ -20,8 +20,6 @@ import android.app.Application
 import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
-import android.os.Handler
-import android.os.Looper
 import android.os.Process
 import android.os.Process.INVALID_UID
 import android.os.UserHandle
@@ -50,7 +48,6 @@ class UserSensitivityLiveData private constructor(
 
     private val context: Context
     private val packageLiveDatas = mutableMapOf<String, LightPackageInfoLiveData>()
-    private val mainHandler = Handler(Looper.getMainLooper())
     private val userPackageInfosLiveData = UserPackageInfosLiveData[user]
     private val getAllUids = uid == INVALID_UID
 
@@ -65,8 +62,10 @@ class UserSensitivityLiveData private constructor(
             addSource(userPackageInfosLiveData) {
                 updateIfActive()
             }
-        }
-        addSource(LauncherPackagesLiveData) {
+            addSource(LauncherPackagesLiveData) {
+                updateIfActive()
+            }
+        } else {
             updateIfActive()
         }
     }
@@ -74,10 +73,12 @@ class UserSensitivityLiveData private constructor(
     override suspend fun loadDataAndPostValue(job: Job) {
         val pm = context.packageManager
         if (!getAllUids) {
-            getAndObservePackageLiveDatas()
+            val uidHasPackages = getAndObservePackageLiveDatas()
 
-            if (packageLiveDatas.isEmpty() || packageLiveDatas.all { it.value.isInitialized &&
-                it.value.value == null }) {
+            if (!uidHasPackages || packageLiveDatas.all {
+                    it.value.isInitialized &&
+                        it.value.value == null
+                }) {
                 packageLiveDatas.clear()
                 invalidateSingle(uid to user)
                 postValue(null)
@@ -95,9 +96,6 @@ class UserSensitivityLiveData private constructor(
             return
         }
 
-        // The launcher packages set will only be null when it is uninitialized.
-        val pkgsWithLauncherIcon = LauncherPackagesLiveData.value ?: return
-
         // map of <uid, userSensitiveState>
         val sensitiveStatePerUid = mutableMapOf<Int, UidSensitivityState>()
 
@@ -111,7 +109,12 @@ class UserSensitivityLiveData private constructor(
             }
             userSensitiveState.packages.add(pkg)
 
-            val pkgHasLauncherIcon = pkgsWithLauncherIcon.contains(pkg.packageName)
+            val pkgHasLauncherIcon = if (getAllUids) {
+                // The launcher packages set will only be null when it is uninitialized.
+                LauncherPackagesLiveData.value?.contains(pkg.packageName) ?: return
+            } else {
+                KotlinUtils.packageHasLaunchIntent(context, pkg.packageName)
+            }
             val pkgIsSystemApp = pkg.appFlags and ApplicationInfo.FLAG_SYSTEM != 0
             // Iterate through all runtime perms, setting their keys
             for (perm in pkg.requestedPermissions.intersect(runtimePerms)) {
@@ -160,25 +163,11 @@ class UserSensitivityLiveData private constructor(
         postValue(sensitiveStatePerUid)
     }
 
-    private fun getAndObservePackageLiveDatas() {
+    private fun getAndObservePackageLiveDatas(): Boolean {
         val packageNames = app.packageManager.getPackagesForUid(uid)?.toList() ?: emptyList()
-        val (toAdd, toRemove) = KotlinUtils.getMapAndListDifferences(packageNames, packageLiveDatas)
-        for (packageName in toRemove) {
-            val liveData = packageLiveDatas.remove(packageName) ?: continue
-            mainHandler.post {
-                removeSource(liveData)
-            }
-        }
-        for (packageName in toAdd) {
-            val liveData = LightPackageInfoLiveData[packageName, user]
-            mainHandler.post {
-                addSource(liveData) {
-                    updateIfActive()
-                }
-            }
-            packageLiveDatas[packageName] = liveData
-        }
-        return
+        val getLiveData = { packageName: String -> LightPackageInfoLiveData[packageName, user] }
+        setSourcesToDifference(packageNames, packageLiveDatas, getLiveData)
+        return packageNames.isNotEmpty()
     }
 
     /**

@@ -18,10 +18,14 @@ package com.android.permissioncontroller.permission.model.livedatatypes
 
 import android.content.pm.PackageManager
 import android.content.pm.PermissionInfo
+import com.android.permissioncontroller.permission.utils.SoftRestrictedPermissionPolicy
+import com.android.permissioncontroller.permission.utils.Utils
+import com.android.permissioncontroller.permission.utils.Utils.isRuntimePlatformPermission
 
 /**
  * Represents a single permission, and its state
  *
+ * @param pkgInfo The package requesting the permission
  * @param permInfo The permissionInfo this represents
  * @param isGrantedIncludingAppOp Whether or not this permission is functionally granted.
  * A non-granted app op but granted permission is counted as not granted
@@ -30,14 +34,20 @@ import android.content.pm.PermissionInfo
  * permission is a background permission
  */
 data class LightPermission(
+    val pkgInfo: LightPackageInfo,
     val permInfo: LightPermInfo,
     val isGrantedIncludingAppOp: Boolean,
     val flags: Int,
     val foregroundPerms: List<String>?
 ) {
 
-    constructor(permInfo: LightPermInfo, permState: PermState, foregroundPerms: List<String>?) :
-        this(permInfo, permState.granted, permState.permFlags, foregroundPerms)
+    constructor(
+        pkgInfo: LightPackageInfo,
+        permInfo: LightPermInfo,
+        permState: PermState,
+        foregroundPerms: List<String>?
+    ) :
+        this(pkgInfo, permInfo, permState.granted, permState.permFlags, foregroundPerms)
 
     /** The name of this permission */
     val name = permInfo.name
@@ -69,14 +79,29 @@ data class LightPermission(
     /** Whether this permission is granted by role */
     val isGrantedByRole = flags and PackageManager.FLAG_PERMISSION_GRANTED_BY_ROLE != 0
     /** Whether this permission is user sensitive in its current grant state */
-    val isUserSensitive = (isGrantedIncludingAppOp &&
-        (flags and PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_GRANTED) != 0) ||
-        (!isGrantedIncludingAppOp &&
-        (flags and PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_DENIED) != 0)
+    val isUserSensitive = !isRuntimePlatformPermission(permInfo.name) ||
+            (isGrantedIncludingAppOp &&
+                    (flags and PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_GRANTED) != 0) ||
+            (!isGrantedIncludingAppOp &&
+                    (flags and PackageManager.FLAG_PERMISSION_USER_SENSITIVE_WHEN_DENIED) != 0)
+    /** Whether the permission is restricted */
+    val isRestricted = when {
+        (permInfo.flags and PermissionInfo.FLAG_HARD_RESTRICTED) != 0 -> {
+            flags and Utils.FLAGS_PERMISSION_RESTRICTION_ANY_EXEMPT == 0
+        }
+        (permInfo.flags and PermissionInfo.FLAG_SOFT_RESTRICTED) != 0 -> {
+            !SoftRestrictedPermissionPolicy.shouldShow(pkgInfo, permInfo.name, flags)
+        }
+        else -> {
+            false
+        }
+    }
+    /** Whether the permission is auto revoked */
+    val isAutoRevoked = flags and PackageManager.FLAG_PERMISSION_AUTO_REVOKED != 0
 
     override fun toString() = buildString {
         append(name)
-        if (isGrantedIncludingAppOp) append(", Granted")
+        if (isGrantedIncludingAppOp) append(", Granted") else append(", NotGranted")
         if (isPolicyFixed) append(", PolicyFixed")
         if (isSystemFixed) append(", SystemFixed")
         if (isUserFixed) append(", UserFixed")
@@ -86,5 +111,8 @@ data class LightPermission(
         if (isOneTime) append(", OneTime")
         if (isGrantedByDefault) append(", GrantedByDefault")
         if (isGrantedByRole) append(", GrantedByRole")
+        if (isUserSensitive) append(", UserSensitive")
+        if (isRestricted) append(", Restricted")
+        if (isAutoRevoked) append(", AutoRevoked")
     }
 }

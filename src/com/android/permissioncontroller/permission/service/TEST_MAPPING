@@ -7,6 +7,9 @@
                     "include-filter": "android.permission.cts.PermissionControllerTest"
                 },
                 {
+                    "include-filter": "android.permission.cts.OneTimePermissionTest"
+                },
+                {
                     "exclude-annotation": "androidx.test.filters.FlakyTest"
                 }
             ]
@@ -19,6 +22,14 @@
                 },
                 {
                     "exclude-annotation": "androidx.test.filters.FlakyTest"
+                }
+            ]
+        },
+        {
+            "name": "PermissionControllerOutOfProcessTests",
+            "options": [
+                {
+                    "include-filter": "com.android.permissioncontroller.tests.outofprocess.DumpTest"
                 }
             ]
         }

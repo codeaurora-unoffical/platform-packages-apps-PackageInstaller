@@ -20,25 +20,22 @@ import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_DEFAU
 import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_DENIED;
 import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED;
 import static android.content.pm.PackageManager.GET_PERMISSIONS;
-import static android.permission.PermissionControllerManager.COUNT_ONLY_WHEN_GRANTED;
-import static android.permission.PermissionControllerManager.COUNT_WHEN_SYSTEM;
 import static android.permission.PermissionControllerManager.REASON_INSTALLER_POLICY_VIOLATION;
 import static android.permission.PermissionControllerManager.REASON_MALWARE;
 import static android.util.Xml.newSerializer;
 
 import static com.android.permissioncontroller.PermissionControllerStatsLog.PERMISSION_GRANT_REQUEST_RESULT_REPORTED__RESULT__AUTO_ONE_TIME_PERMISSION_REVOKED;
-import static com.android.permissioncontroller.permission.utils.Utils.shouldShowPermission;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.Process;
 import android.os.UserHandle;
-import android.permission.PermissionControllerService;
 import android.permission.PermissionManager;
 import android.permission.RuntimePermissionPresentationInfo;
 import android.permission.RuntimePermissionUsageInfo;
@@ -50,6 +47,7 @@ import android.util.Xml;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.android.permissioncontroller.PermissionControllerProto.PermissionControllerDumpProto;
 import com.android.permissioncontroller.PermissionControllerStatsLog;
 import com.android.permissioncontroller.permission.model.AppPermissionGroup;
 import com.android.permissioncontroller.permission.model.AppPermissions;
@@ -57,6 +55,7 @@ import com.android.permissioncontroller.permission.model.Permission;
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo;
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo.PermGrantState;
 import com.android.permissioncontroller.permission.ui.AutoGrantPermissionsNotifier;
+import com.android.permissioncontroller.permission.utils.ArrayUtils;
 import com.android.permissioncontroller.permission.utils.KotlinUtils;
 import com.android.permissioncontroller.permission.utils.UserSensitiveFlagsUtils;
 import com.android.permissioncontroller.permission.utils.Utils;
@@ -64,8 +63,12 @@ import com.android.permissioncontroller.permission.utils.Utils;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlSerializer;
 
+import java.io.FileDescriptor;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,6 +81,8 @@ import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
 import kotlin.Pair;
+import kotlinx.coroutines.BuildersKt;
+import kotlinx.coroutines.GlobalScope;
 
 /**
  * Calls from the system into the permission controller.
@@ -87,6 +92,8 @@ import kotlin.Pair;
  */
 public final class PermissionControllerServiceImpl extends PermissionControllerLifecycleService {
     private static final String LOG_TAG = PermissionControllerServiceImpl.class.getSimpleName();
+    private static final int MAX_RETRY_ATTEMPTS = 3;
+    private static final long RETRY_DELAY_MS = 500;
 
 
     private final PermissionControllerServiceModel mServiceModel = new
@@ -96,6 +103,30 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
     public boolean onUnbind(@Nullable Intent intent) {
         mServiceModel.removeObservers();
         return super.onUnbind(intent);
+    }
+
+    @Override
+    public void dump(FileDescriptor fd, PrintWriter writer, String[] args) {
+        PermissionControllerDumpProto dump;
+        try {
+            dump = BuildersKt.runBlocking(
+                    GlobalScope.INSTANCE.getCoroutineContext(),
+                    (coroutineScope, continuation) -> mServiceModel.onDump(continuation));
+        } catch (Exception e) {
+            Log.e(LOG_TAG, "Cannot produce dump", e);
+            return;
+        }
+
+        if (ArrayUtils.contains(args, "--proto")) {
+            try (OutputStream out = new FileOutputStream(fd)) {
+                dump.writeTo(out);
+            } catch (IOException e) {
+                Log.e(LOG_TAG, "Cannot write dump", e);
+            }
+        } else {
+            writer.println(dump.toString());
+            writer.flush();
+        }
     }
 
     /**
@@ -409,37 +440,6 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
         });
     }
 
-    /**
-     * Implementation of {@link PermissionControllerService#onGetAppPermissions(String)}}.
-     * Called by the legacy implementation.
-     */
-    static @NonNull List<RuntimePermissionPresentationInfo> onGetAppPermissions(
-            @NonNull Context context, @NonNull String packageName) {
-        final PackageInfo packageInfo;
-        try {
-            packageInfo = context.getPackageManager().getPackageInfo(packageName, GET_PERMISSIONS);
-        } catch (PackageManager.NameNotFoundException e) {
-            Log.e(LOG_TAG, "Error getting package:" + packageName, e);
-            return Collections.emptyList();
-        }
-
-        List<RuntimePermissionPresentationInfo> permissions = new ArrayList<>();
-
-        AppPermissions appPermissions = new AppPermissions(context, packageInfo, false, null);
-        for (AppPermissionGroup group : appPermissions.getPermissionGroups()) {
-            if (shouldShowPermission(context, group)) {
-                final boolean granted = group.areRuntimePermissionsGranted();
-                final boolean standard = Utils.OS_PKG.equals(group.getDeclaringPackage());
-                RuntimePermissionPresentationInfo permission =
-                        new RuntimePermissionPresentationInfo(group.getLabel(),
-                                granted, standard);
-                permissions.add(permission);
-            }
-        }
-
-        return permissions;
-    }
-
     @Override
     public void onRevokeRuntimePermission(@NonNull String packageName,
             @NonNull String permissionName, @NonNull Runnable callback) {
@@ -474,58 +474,6 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
         // There is no data processing needed, so we just directly pass the result onto the callback
         mServiceModel.onCountPermissionAppsLiveData(permissionNames, flags,
                 callback);
-    }
-
-    private int onCountPermissionApps(@NonNull List<String> permissionNames, int flags) {
-        boolean countSystem = (flags & COUNT_WHEN_SYSTEM) != 0;
-        boolean countOnlyGranted = (flags & COUNT_ONLY_WHEN_GRANTED) != 0;
-
-        List<PackageInfo> pkgs = getPackageManager().getInstalledPackages(GET_PERMISSIONS);
-
-        int numApps = 0;
-
-        int numPkgs = pkgs.size();
-        for (int pkgNum = 0; pkgNum < numPkgs; pkgNum++) {
-            PackageInfo pkg = pkgs.get(pkgNum);
-
-            int numPerms = permissionNames.size();
-            for (int permNum = 0; permNum < numPerms; permNum++) {
-                String perm = permissionNames.get(permNum);
-
-                AppPermissionGroup group = AppPermissionGroup.create(this, pkg,
-                        permissionNames.get(permNum), true);
-                if (group == null || !shouldShowPermission(this, group)) {
-                    continue;
-                }
-
-                AppPermissionGroup subGroup = null;
-                if (group.hasPermission(perm)) {
-                    subGroup = group;
-                } else {
-                    AppPermissionGroup bgGroup = group.getBackgroundPermissions();
-                    if (bgGroup != null && bgGroup.hasPermission(perm)) {
-                        subGroup = bgGroup;
-                    }
-                }
-
-                if (subGroup != null) {
-                    if (!countSystem && !subGroup.isUserSensitive()) {
-                        continue;
-                    }
-
-                    if (!countOnlyGranted || subGroup.areRuntimePermissionsGranted()) {
-                        // The permission might not be granted, but some permissions of the group
-                        // are granted. In this case the permission is granted silently when the app
-                        // asks for it.
-                        // Hence this is as-good-as-granted and we count it.
-                        numApps++;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return numApps;
     }
 
     /**
@@ -586,7 +534,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
             switch (grantState) {
                 case PERMISSION_GRANT_STATE_GRANTED:
                     perm.setPolicyFixed(true);
-                    group.grantRuntimePermissions(false, new String[]{permName});
+                    group.grantRuntimePermissions(false, false, new String[]{permName});
                     autoGrantPermissionsNotifier.onPermissionAutoGranted(permName);
                     break;
                 case PERMISSION_GRANT_STATE_DENIED:
@@ -623,13 +571,37 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
     @Override
     public void onUpdateUserSensitivePermissionFlags(int uid, Executor executor,
             Runnable callback) {
-        if (uid == Process.INVALID_UID) {
-            UserSensitiveFlagsUtils.updateUserSensitiveForUser(Process.myUserHandle(),
-                    () -> executor.execute(callback));
-        } else {
-            UserSensitiveFlagsUtils.updateUserSensitiveForUid(uid,
-                    () -> executor.execute(callback));
+        onUpdateUserSensistivePermissionFlagsWithRetry(uid, executor, callback, 0);
+    }
+
+    private void onUpdateUserSensistivePermissionFlagsWithRetry(int uid, Executor executor,
+            Runnable callback, int numAttempts) {
+        String idString = uid == Process.INVALID_UID
+                ? "user " + Process.myUserHandle().getIdentifier() : "uid " + uid;
+        try {
+            Log.i(LOG_TAG, "Updating user sensitive for " + idString);
+            if (uid == Process.INVALID_UID) {
+                UserSensitiveFlagsUtils.updateUserSensitiveForUser(Process.myUserHandle(),
+                        () -> executor.execute(callback));
+            } else {
+                UserSensitiveFlagsUtils.updateUserSensitiveForUid(uid,
+                        () -> executor.execute(callback));
+            }
+        } catch (Exception e) {
+            // We specifically want to catch DeadSystemExceptions, but cannot explicitly request
+            // them, as it results in a compiler error
+            Log.w(LOG_TAG, "Failed to complete user sensitive update for " + idString
+                    + ", attempt number " + (numAttempts + 1) + " of " + MAX_RETRY_ATTEMPTS, e);
+            if (numAttempts == MAX_RETRY_ATTEMPTS) {
+                throw e;
+            } else {
+                int attempts = numAttempts + 1;
+                Handler h = new Handler(Looper.getMainLooper());
+                h.postDelayed(() -> onUpdateUserSensistivePermissionFlagsWithRetry(uid,
+                        executor, callback, attempts), RETRY_DELAY_MS);
+            }
         }
+
     }
 
     @Override

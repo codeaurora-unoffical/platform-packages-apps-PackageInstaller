@@ -1,12 +1,7 @@
 {
     "presubmit": [
         {
-            "name": "CtsPermissionTestCases",
-            "options": [
-                {
-                    "include-filter": "android.permission.cts.BackgroundPermissionsTest"
-                }
-            ]
+            "name": "PermissionControllerMockingTests"
         },
         {
             "name": "CtsRoleTestCases",
@@ -16,14 +11,11 @@
                 }
             ],
             "file_patterns": ["res/xml/roles\\.xml"]
-        },
+        }
+    ],
+    "imports": [
         {
-            "name": "CtsPermission3TestCases",
-            "options": [
-                {
-                    "exclude-annotation": "android.platform.test.annotations.FlakyTest"
-                }
-            ]
+            "path": "vendor/xts/gts-tests/hostsidetests/permissioncontroller"
         }
     ]
 }

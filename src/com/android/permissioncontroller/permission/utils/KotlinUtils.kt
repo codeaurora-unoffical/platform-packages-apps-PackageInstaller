@@ -26,15 +26,29 @@ import android.app.AppOpsManager.MODE_IGNORED
 import android.app.AppOpsManager.permissionToOp
 import android.app.Application
 import android.content.Context
+import android.content.Intent
+import android.content.Intent.ACTION_MAIN
+import android.content.Intent.CATEGORY_INFO
+import android.content.Intent.CATEGORY_LAUNCHER
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.FLAG_PERMISSION_AUTO_REVOKED
+import android.content.pm.PackageManager.FLAG_PERMISSION_ONE_TIME
+import android.content.pm.PackageManager.FLAG_PERMISSION_REVIEW_REQUIRED
+import android.content.pm.PackageManager.FLAG_PERMISSION_REVOKED_COMPAT
+import android.content.pm.PackageManager.FLAG_PERMISSION_USER_FIXED
+import android.content.pm.PackageManager.FLAG_PERMISSION_USER_SET
+import android.content.pm.PackageManager.MATCH_DIRECT_BOOT_AWARE
+import android.content.pm.PackageManager.MATCH_DIRECT_BOOT_UNAWARE
 import android.content.pm.PermissionGroupInfo
 import android.content.pm.PermissionInfo
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Bundle
 import android.os.UserHandle
 import android.text.TextUtils
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
+import androidx.navigation.NavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceGroup
 import com.android.permissioncontroller.R
@@ -61,6 +75,14 @@ import kotlin.coroutines.suspendCoroutine
  */
 object KotlinUtils {
 
+    private const val PERMISSION_CONTROLLER_CHANGED_FLAG_MASK = FLAG_PERMISSION_USER_SET or
+        FLAG_PERMISSION_USER_FIXED or
+        FLAG_PERMISSION_ONE_TIME or
+        FLAG_PERMISSION_REVOKED_COMPAT or
+        FLAG_PERMISSION_ONE_TIME or
+        FLAG_PERMISSION_REVIEW_REQUIRED or
+        FLAG_PERMISSION_AUTO_REVOKED
+
     private const val KILL_REASON_APP_OP_CHANGE = "Permission related app op changed"
 
     /**
@@ -75,11 +97,11 @@ object KotlinUtils {
      * second is all keys in the map, but not the list
      */
     fun <K> getMapAndListDifferences(
-        newValues: List<K>,
+        newValues: Collection<K>,
         oldValues: Map<K, *>
-    ): Pair<List<K>, List<K>> {
-        val mapHas = oldValues.keys.toMutableList()
-        val listHas = newValues.toMutableList()
+    ): Pair<Set<K>, Set<K>> {
+        val mapHas = oldValues.keys.toMutableSet()
+        val listHas = newValues.toMutableSet()
         for (newVal in newValues) {
             if (oldValues.containsKey(newVal)) {
                 mapHas.remove(newVal)
@@ -468,19 +490,13 @@ object KotlinUtils {
         }
 
         if (perm.flags != newFlags) {
-            val flagMask = PackageManager.FLAG_PERMISSION_USER_SET or
-                PackageManager.FLAG_PERMISSION_USER_FIXED or
-                PackageManager.FLAG_PERMISSION_ONE_TIME or
-                PackageManager.FLAG_PERMISSION_REVOKED_COMPAT or
-                PackageManager.FLAG_PERMISSION_ONE_TIME or
-                PackageManager.FLAG_PERMISSION_REVIEW_REQUIRED
-
             app.packageManager.updatePermissionFlags(perm.name, group.packageInfo.packageName,
-                flagMask, newFlags, user)
+                PERMISSION_CONTROLLER_CHANGED_FLAG_MASK, newFlags, user)
         }
 
         val newState = PermState(newFlags, isGranted)
-        return LightPermission(perm.permInfo, newState, perm.foregroundPerms) to shouldKill
+        return LightPermission(perm.pkgInfo, perm.permInfo, newState,
+            perm.foregroundPerms) to shouldKill
     }
 
     /**
@@ -626,21 +642,16 @@ object KotlinUtils {
         else newFlags.setFlag(PackageManager.FLAG_PERMISSION_USER_SET)
         newFlags = if (oneTime) newFlags.setFlag(PackageManager.FLAG_PERMISSION_ONE_TIME)
         else newFlags.clearFlag(PackageManager.FLAG_PERMISSION_ONE_TIME)
+        newFlags = newFlags.clearFlag(PackageManager.FLAG_PERMISSION_AUTO_REVOKED)
 
         if (perm.flags != newFlags) {
-            val flagMask = PackageManager.FLAG_PERMISSION_USER_SET or
-                PackageManager.FLAG_PERMISSION_USER_FIXED or
-                PackageManager.FLAG_PERMISSION_ONE_TIME or
-                PackageManager.FLAG_PERMISSION_REVOKED_COMPAT or
-                PackageManager.FLAG_PERMISSION_ONE_TIME or
-                PackageManager.FLAG_PERMISSION_REVIEW_REQUIRED
-
             app.packageManager.updatePermissionFlags(perm.name, group.packageInfo.packageName,
-                flagMask, newFlags, user)
+                PERMISSION_CONTROLLER_CHANGED_FLAG_MASK, newFlags, user)
         }
 
         val newState = PermState(newFlags, isGranted)
-        return LightPermission(perm.permInfo, newState, perm.foregroundPerms) to shouldKill
+        return LightPermission(perm.pkgInfo, perm.permInfo, newState,
+            perm.foregroundPerms) to shouldKill
     }
 
     private fun Int.setFlag(flagToSet: Int): Int {
@@ -791,6 +802,32 @@ object KotlinUtils {
         manager.setUidMode(op, uid, mode)
         return true
     }
+
+    /**
+     * Determine if a given package has a launch intent. Will function correctly even if called
+     * before user is unlocked.
+     *
+     * @param context: The context from which to retrieve the package
+     * @param packageName: The package name to check
+     *
+     * @return whether or not the given package has a launch intent
+     */
+    fun packageHasLaunchIntent(context: Context, packageName: String): Boolean {
+        val intentToResolve = Intent(ACTION_MAIN)
+        intentToResolve.addCategory(CATEGORY_INFO)
+        intentToResolve.setPackage(packageName)
+        var resolveInfos = context.packageManager.queryIntentActivities(intentToResolve,
+            MATCH_DIRECT_BOOT_AWARE or MATCH_DIRECT_BOOT_UNAWARE)
+
+        if (resolveInfos == null || resolveInfos.size <= 0) {
+            intentToResolve.removeCategory(CATEGORY_INFO)
+            intentToResolve.addCategory(CATEGORY_LAUNCHER)
+            intentToResolve.setPackage(packageName)
+            resolveInfos = context.packageManager.queryIntentActivities(intentToResolve,
+                MATCH_DIRECT_BOOT_AWARE or MATCH_DIRECT_BOOT_UNAWARE)
+        }
+        return resolveInfos != null && resolveInfos.size > 0
+    }
 }
 
 /**
@@ -846,4 +883,20 @@ suspend inline fun <T> Iterable<T>.forEachInParallel(
     crossinline action: suspend CoroutineScope.(T) -> Unit
 ) {
     mapInParallel(context, scope) { action(it) }
+}
+
+/**
+ * Check that we haven't already started transitioning to a given destination. If we haven't,
+ * start navigating to that destination.
+ *
+ * @param destResId The ID of the desired destination
+ * @param args The optional bundle of args to be passed to the destination
+ */
+fun NavController.navigateSafe(destResId: Int, args: Bundle? = null) {
+    val navAction = currentDestination?.getAction(destResId) ?: graph.getAction(destResId)
+    navAction?.let { action ->
+        if (currentDestination?.id != action.destinationId) {
+            navigate(destResId, args)
+        }
+    }
 }

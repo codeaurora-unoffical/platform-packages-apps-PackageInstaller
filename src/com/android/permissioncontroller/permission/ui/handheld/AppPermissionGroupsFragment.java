@@ -22,6 +22,7 @@ import static com.android.permissioncontroller.PermissionControllerStatsLog.APP_
 import static com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSIONS_FRAGMENT_VIEWED__CATEGORY__ALLOWED;
 import static com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSIONS_FRAGMENT_VIEWED__CATEGORY__ALLOWED_FOREGROUND;
 import static com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSIONS_FRAGMENT_VIEWED__CATEGORY__DENIED;
+import static com.android.permissioncontroller.permission.ui.handheld.UtilsKt.pressBack;
 
 import android.app.ActionBar;
 import android.app.Activity;
@@ -44,7 +45,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
-import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
@@ -57,6 +57,7 @@ import com.android.permissioncontroller.permission.model.livedatatypes.AutoRevok
 import com.android.permissioncontroller.permission.ui.Category;
 import com.android.permissioncontroller.permission.ui.model.AppPermissionGroupsViewModel;
 import com.android.permissioncontroller.permission.ui.model.AppPermissionGroupsViewModel.GroupUiInfo;
+import com.android.permissioncontroller.permission.ui.model.AppPermissionGroupsViewModel.PermSubtitle;
 import com.android.permissioncontroller.permission.ui.model.AppPermissionGroupsViewModelFactory;
 import com.android.permissioncontroller.permission.utils.KotlinUtils;
 import com.android.permissioncontroller.permission.utils.Utils;
@@ -80,7 +81,6 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
     private static final String AUTO_REVOKE_CATEGORY_KEY = "_AUTO_REVOKE_KEY";
     private static final String AUTO_REVOKE_SWITCH_KEY = "_AUTO_REVOKE_SWITCH_KEY";
     private static final String AUTO_REVOKE_SUMMARY_KEY = "_AUTO_REVOKE_SUMMARY_KEY";
-    private static final String AUTO_REVOKE_PERMS_KEY = "_AUTO_REVOKE_PERMS_KEY";
 
     static final String EXTRA_HIDE_INFO_BUTTON = "hideInfoButton";
 
@@ -91,17 +91,6 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
     private UserHandle mUser;
 
     private Collator mCollator;
-
-    /**
-     * @return A new fragment
-     */
-    public static AppPermissionGroupsFragment newInstance(@NonNull String packageName,
-            @NonNull UserHandle userHandle, long sessionId) {
-        AppPermissionGroupsFragment fragment = new AppPermissionGroupsFragment();
-        fragment.setArguments(createArgs(packageName, userHandle, sessionId, true));
-        return setPackageNameAndUserHandleAndSessionId(
-                new AppPermissionGroupsFragment(), packageName, userHandle, sessionId);
-    }
 
     /**
      * Create a bundle with the arguments needed by this fragment
@@ -138,21 +127,11 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
         return createArgs(packageName, userHandle, sessionId, true);
     }
 
-    private static <T extends Fragment> T setPackageNameAndUserHandleAndSessionId(
-            @NonNull T fragment, @NonNull String packageName, @NonNull UserHandle userHandle,
-            long sessionId) {
-        Bundle arguments = new Bundle();
-        arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
-        arguments.putParcelable(Intent.EXTRA_USER, userHandle);
-        arguments.putLong(EXTRA_SESSION_ID, sessionId);
-        fragment.setArguments(arguments);
-        return fragment;
-    }
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
+        mIsFirstLoad = true;
         final ActionBar ab = getActivity().getActionBar();
         if (ab != null) {
             ab.setDisplayHomeAsUpEnabled(true);
@@ -162,8 +141,9 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
         mUser = getArguments().getParcelable(Intent.EXTRA_USER);
         mIsSystemPermsScreen = getArguments().getBoolean(IS_SYSTEM_PERMS_SCREEN, true);
 
-        AppPermissionGroupsViewModelFactory factory = new AppPermissionGroupsViewModelFactory(
-                mPackageName, mUser);
+        AppPermissionGroupsViewModelFactory factory =
+                new AppPermissionGroupsViewModelFactory(mPackageName, mUser,
+                        getArguments().getLong(EXTRA_SESSION_ID, 0));
 
         mViewModel = new ViewModelProvider(this, factory).get(AppPermissionGroupsViewModel.class);
         mViewModel.getPackagePermGroupsLiveData().observe(this, this::updatePreferences);
@@ -188,7 +168,7 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home: {
-                getActivity().onBackPressed();
+                pressBack(this);
                 return true;
             }
 
@@ -246,7 +226,10 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
         if (groupMap == null && mViewModel.getPackagePermGroupsLiveData().isInitialized()) {
             Toast.makeText(
                     getActivity(), R.string.app_not_found_dlg_title, Toast.LENGTH_LONG).show();
-            getActivity().finish();
+            Log.w(LOG_TAG, "invalid package " + mPackageName);
+
+            pressBack(this);
+
             return;
         }
 
@@ -273,8 +256,8 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
                 }
             }
 
-            for (GroupUiInfo uiInfo : groupMap.get(grantCategory)) {
-                String groupName = uiInfo.getGroupName();
+            for (GroupUiInfo groupInfo : groupMap.get(grantCategory)) {
+                String groupName = groupInfo.getGroupName();
 
                 PermissionControlPreference preference = new PermissionControlPreference(context,
                         mPackageName, groupName, mUser, AppPermissionGroupsFragment.class.getName(),
@@ -282,12 +265,23 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
                 preference.setTitle(KotlinUtils.INSTANCE.getPermGroupLabel(context, groupName));
                 preference.setIcon(KotlinUtils.INSTANCE.getPermGroupIcon(context, groupName));
                 preference.setKey(groupName);
-                if (uiInfo.isForeground()) {
+                switch (groupInfo.getSubtitle()) {
+                    case FOREGROUND_ONLY:
+                        preference.setSummary(R.string.permission_subtitle_only_in_foreground);
+                        break;
+                    case MEDIA_ONLY:
+                        preference.setSummary(R.string.permission_subtitle_media_only);
+                        break;
+                    case ALL_FILES:
+                        preference.setSummary(R.string.permission_subtitle_all_files);
+                        break;
+                }
+                if (groupInfo.getSubtitle() == PermSubtitle.FOREGROUND_ONLY) {
                     preference.setSummary(R.string.permission_subtitle_only_in_foreground);
                 }
-                if (uiInfo.isSystem() == mIsSystemPermsScreen) {
+                if (groupInfo.isSystem() == mIsSystemPermsScreen) {
                     category.addPreference(preference);
-                } else if (!uiInfo.isSystem()) {
+                } else if (!groupInfo.isSystem()) {
                     numExtraPerms++;
                 }
             }
@@ -336,12 +330,7 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
         autoRevokeSummary.setIcon(Utils.applyTint(getActivity(), R.drawable.ic_info_outline,
                 android.R.attr.colorControlNormal));
         autoRevokeSummary.setKey(AUTO_REVOKE_SUMMARY_KEY);
-        autoRevokeSummary.setSummary(R.string.auto_revoke_summary);
         autoRevokeCategory.addPreference(autoRevokeSummary);
-
-        Preference autoRevokePerms = new Preference(context);
-        autoRevokePerms.setKey(AUTO_REVOKE_PERMS_KEY);
-        autoRevokeCategory.addPreference(autoRevokePerms);
     }
 
     private void setAutoRevokeToggleState(AutoRevokeState state) {
@@ -354,17 +343,14 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
                 .findPreference(AUTO_REVOKE_CATEGORY_KEY);
         SwitchPreference autoRevokeSwitch = autoRevokeCategory.findPreference(
                 AUTO_REVOKE_SWITCH_KEY);
-        Preference autoRevokePerms = autoRevokeCategory.findPreference(AUTO_REVOKE_PERMS_KEY);
         Preference autoRevokeSummary = autoRevokeCategory.findPreference(AUTO_REVOKE_SUMMARY_KEY);
 
         if (!state.isEnabledGlobal() || !state.getShouldShowSwitch()) {
             autoRevokeSwitch.setVisible(false);
-            autoRevokePerms.setVisible(false);
             autoRevokeSummary.setVisible(false);
             return;
         }
         autoRevokeSwitch.setVisible(true);
-        autoRevokePerms.setVisible(true);
         autoRevokeSummary.setVisible(true);
         autoRevokeSwitch.setChecked(state.isEnabledForApp());
 
@@ -380,16 +366,9 @@ public final class AppPermissionGroupsFragment extends SettingsWithLargeHeader {
 
         groupLabels.sort(mCollator);
         if (groupLabels.isEmpty()) {
-            autoRevokePerms.setSummary(R.string.auto_revocable_permissions_none);
-        } else if (groupLabels.size() == 1) {
-            autoRevokePerms.setSummary(getString(R.string.auto_revocable_permissions_one,
-                    groupLabels.get(0)));
-        } else if (groupLabels.size() == 2) {
-            autoRevokePerms.setSummary(getString(R.string.auto_revocable_permissions_two,
-                    groupLabels.get(0), groupLabels.get(1)));
-
+            autoRevokeSummary.setSummary(R.string.auto_revoke_summary);
         } else {
-            autoRevokePerms.setSummary(getString(R.string.auto_revocable_permissions_many,
+            autoRevokeSummary.setSummary(getString(R.string.auto_revoke_summary_with_permissions,
                     ListFormatter.getInstance().format(groupLabels)));
         }
     }
