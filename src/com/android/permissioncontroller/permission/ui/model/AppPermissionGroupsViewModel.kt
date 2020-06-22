@@ -45,7 +45,6 @@ import com.android.permissioncontroller.permission.data.get
 import com.android.permissioncontroller.permission.model.livedatatypes.AppPermGroupUiInfo.PermGrantState
 import com.android.permissioncontroller.permission.ui.Category
 import com.android.permissioncontroller.permission.utils.IPC
-import com.android.permissioncontroller.permission.utils.KotlinUtils
 import com.android.permissioncontroller.permission.utils.Utils
 import com.android.permissioncontroller.permission.utils.navigateSafe
 import kotlinx.coroutines.GlobalScope
@@ -84,6 +83,8 @@ class AppPermissionGroupsViewModel(
             this(groupName, isSystem, PermSubtitle.NONE)
     }
 
+    val autoRevokeLiveData = AutoRevokeStateLiveData[packageName, user]
+
     /**
      * LiveData whose data is a map of grant category (either allowed or denied) to a list
      * of permission group names that match the key, and two booleans representing if this is a
@@ -104,6 +105,10 @@ class AppPermissionGroupsViewModel(
             addSource(fullStoragePermsLiveData) {
                 updateIfActive()
             }
+            addSource(autoRevokeLiveData) {
+                removeSource(autoRevokeLiveData)
+                updateIfActive()
+            }
             updateIfActive()
         }
 
@@ -113,7 +118,7 @@ class AppPermissionGroupsViewModel(
                 value = null
                 return
             } else if (groups == null || (Manifest.permission_group.STORAGE in groups &&
-                    !fullStoragePermsLiveData.isInitialized)) {
+                    !fullStoragePermsLiveData.isInitialized) || !autoRevokeLiveData.isInitialized) {
                 return
             }
 
@@ -121,7 +126,10 @@ class AppPermissionGroupsViewModel(
                 pkg.packageName == packageName && pkg.user == user && pkg.isGranted
             } ?: false
 
-            addAndRemoveAppPermGroupLiveDatas(groups)
+            val getLiveData = { groupName: String ->
+                AppPermGroupUiInfoLiveData[packageName, groupName, user]
+            }
+            setSourcesToDifference(groups, appPermGroupUiInfoLiveDatas, getLiveData)
 
             if (!appPermGroupUiInfoLiveDatas.all { it.value.isInitialized }) {
                 return
@@ -164,31 +172,7 @@ class AppPermissionGroupsViewModel(
 
             value = groupGrantStates
         }
-
-        private fun addAndRemoveAppPermGroupLiveDatas(groupNames: List<String>) {
-            val (toAdd, toRemove) = KotlinUtils.getMapAndListDifferences(groupNames,
-                appPermGroupUiInfoLiveDatas)
-
-            for (groupToAdd in toAdd) {
-                val appPermGroupUiInfoLiveData =
-                    AppPermGroupUiInfoLiveData[packageName, groupToAdd, user]
-                appPermGroupUiInfoLiveDatas[groupToAdd] = appPermGroupUiInfoLiveData
-            }
-
-            for (groupToAdd in toAdd) {
-                addSource(appPermGroupUiInfoLiveDatas[groupToAdd]!!) {
-                    updateIfActive()
-                }
-            }
-
-            for (groupToRemove in toRemove) {
-                removeSource(appPermGroupUiInfoLiveDatas[groupToRemove]!!)
-                appPermGroupUiInfoLiveDatas.remove(groupToRemove)
-            }
-        }
     }
-
-    val autoRevokeLiveData = AutoRevokeStateLiveData[packageName, user]
 
     fun setAutoRevoke(enabled: Boolean) {
         GlobalScope.launch(IPC) {

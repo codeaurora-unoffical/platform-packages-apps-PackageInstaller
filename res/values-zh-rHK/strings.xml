@@ -21,6 +21,7 @@
     <string name="permission_search_keyword" msgid="1652964722383449182">"權限"</string>
     <string name="cancel" msgid="7279939269964834974">"取消"</string>
     <string name="back" msgid="8739808065891653074">"返回"</string>
+    <string name="uninstall_or_disable" msgid="2397169592250216844">"取消安裝或停用"</string>
     <string name="app_not_found_dlg_title" msgid="8897078571059217849">"找不到應用程式"</string>
     <string name="grant_dialog_button_deny" msgid="1649644200597601964">"拒絕"</string>
     <string name="grant_dialog_button_deny_and_dont_ask_again" msgid="5716583584580362144">"拒絕，不要再詢問"</string>
@@ -119,7 +120,7 @@
     <string name="auto_revoke_summary" msgid="308686883215278993">"為保護您的資料，系統已移除您在過去幾個月未曾使用的應用程式的權限。"</string>
     <string name="auto_revoke_summary_with_permissions" msgid="5460568151204648005">"為保護您的資料，如果應用程式在過去幾個月未曾使用，系統將會移除以下權限：<xliff:g id="PERMS">%1$s</xliff:g>。"</string>
     <string name="auto_revoked_apps_page_summary" msgid="2780912986594704165">"為保護您的資料，系統已移除您在過去幾個月未曾使用的應用程式的權限。"</string>
-    <string name="auto_revoke_open_app_message" msgid="7960965074929429500">"如要重新授予權限，請開啟應用程式"</string>
+    <string name="auto_revoke_open_app_message" msgid="7159193262034433811">"如要重新授予權限，請開啟應用程式。"</string>
     <string name="auto_revoke_disabled" msgid="4480748641016277290">"此應用程式已停用自動移除功能。"</string>
     <string name="auto_revocable_permissions_none" msgid="2908881351941596829">"目前沒有授予任何自動撤銷權限"</string>
     <string name="auto_revocable_permissions_one" msgid="8790555940010364058">"「<xliff:g id="PERM">%1$s</xliff:g>」權限將被移除。"</string>
@@ -130,7 +131,7 @@
     <string name="auto_revoked_app_summary_one" msgid="8225130145550153436">"已移除「<xliff:g id="PERMISSION_NAME">%s</xliff:g>」權限"</string>
     <string name="auto_revoked_app_summary_two" msgid="7221373533369007890">"已移除「<xliff:g id="PERMISSION_NAME_0">%1$s</xliff:g>」及「<xliff:g id="PERMISSION_NAME_1">%2$s</xliff:g>」權限"</string>
     <string name="auto_revoked_app_summary_many" msgid="7190907278970377826">"已移除「<xliff:g id="PERMISSION_NAME">%1$s</xliff:g>」及另外 <xliff:g id="NUMBER">%2$s</xliff:g> 個權限"</string>
-    <string name="last_opened_category_title" msgid="4204626487716958146">"上次於超過 <xliff:g id="NUMBER">%s</xliff:g> 個月前開啟"</string>
+    <string name="last_opened_category_title" msgid="4204626487716958146">"距離上次開啟已超過 <xliff:g id="NUMBER">%s</xliff:g> 個月"</string>
     <string name="last_opened_summary" msgid="8038737442154732">"應用程式上次於 <xliff:g id="DATE">%s</xliff:g>開啟"</string>
     <string name="last_opened_summary_short" msgid="403134890404955437">"上次開啟日期：<xliff:g id="DATE">%s</xliff:g>"</string>
     <string name="app_permission_footer_special_file_access" msgid="2257708354000512325">"如允許管理所有檔案，此應用程式便可存取、修改和刪除此裝置或已連接儲存裝置上一般儲存的任何檔案。應用程式可能會在未通知您的情況下存取檔案。"</string>
@@ -144,7 +145,7 @@
     <string name="permission_description_summary_location" msgid="687820658574645201">"擁有此權限的應用程式可以存取此裝置的位置資訊"</string>
     <string name="permission_description_summary_microphone" msgid="2300290217308759293">"擁有此權限的應用程式可以錄音"</string>
     <string name="permission_description_summary_phone" msgid="3773977614654088578">"擁有此權限的應用程式可以撥打電話和管理通話"</string>
-    <string name="permission_description_summary_sensors" msgid="6733606479604624853">"擁有此權限的應用程式，可以取得與身體機能相關的感應器資料"</string>
+    <string name="permission_description_summary_sensors" msgid="6733606479604624853">"擁有此權限的應用程式，可以從感應器取得與身體機能相關的資料"</string>
     <string name="permission_description_summary_sms" msgid="8850213022386508528">"擁有此權限的應用程式可以傳送及查看短訊"</string>
     <string name="permission_description_summary_storage" msgid="2265909502600142621">"擁有此權限的應用程式可以存取裝置上的相片、媒體和檔案"</string>
     <string name="app_permission_most_recent_summary" msgid="7435245857128891808">"上次存取時間：<xliff:g id="TIME_DATE">%1$s</xliff:g>"</string>
@@ -178,6 +179,21 @@
     <string name="auto_revoke_permission_reminder_notification_title_one" msgid="5769691038915584486">"1 個未使用的應用程式"</string>
     <string name="auto_revoke_permission_reminder_notification_title_many" msgid="9035362208572362215">"<xliff:g id="NUMBER_OF_APPS">%s</xliff:g> 個未使用的應用程式"</string>
     <string name="auto_revoke_permission_reminder_notification_content" msgid="5952076530125261716">"為保護您的私隱，系統已移除權限。輕按即可查看"</string>
+    <string name="auto_revoke_permission_notification_title" msgid="7216492977743895366">"已移除沒有用過的應用程式的權限"</string>
+    <string name="auto_revoke_permission_notification_content" msgid="7535335306414309309">"部分應用程式在過去幾個月都沒有用過。輕按即可查看。"</string>
+    <plurals name="auto_revoke_permission_notification_content_count" formatted="false" msgid="3130723967533728039">
+      <item quantity="other"><xliff:g id="COUNT_1">%1$d</xliff:g> 個應用程式在過去幾個月都沒有用過。輕按即可查看</item>
+      <item quantity="one"><xliff:g id="COUNT_0">%1$d</xliff:g> 個應用程式在過去幾個月都沒有用過。輕按即可查看</item>
+    </plurals>
+    <string name="auto_revoke_setting_subtitle" msgid="8151093881906344464">"部分應用程式在過去幾個月都沒有用過。"</string>
+    <plurals name="auto_revoke_setting_subtitle_count" formatted="false" msgid="8360897918922510305">
+      <item quantity="other"><xliff:g id="COUNT_1">%1$d</xliff:g> 個應用程式在過去幾個月都沒有用過。</item>
+      <item quantity="one"><xliff:g id="COUNT_0">%1$d</xliff:g> 個應用程式在過去幾個月都沒有用過。</item>
+    </plurals>
+    <string name="permissions_removed_category_title" msgid="189425131292668991">"已移除權限的應用程式"</string>
+    <string name="permission_removed_page_title" msgid="6249023142431438359">"已移除權限的應用程式"</string>
+    <string name="all_unused_apps_category_title" msgid="7882561467377852786">"所有沒有用過的應用程式"</string>
+    <string name="months_ago" msgid="6541240625299588045">"<xliff:g id="COUNT">%1$d</xliff:g> 個月前"</string>
     <string name="auto_revoke_preference_summary" msgid="422689541593333180">"為保護您的私隱，系統已移除權限"</string>
     <string name="background_location_access_reminder_notification_title" msgid="458109692937364585">"<xliff:g id="APP_NAME">%s</xliff:g>在背景存取了您的位置資訊"</string>
     <string name="background_location_access_reminder_notification_content" msgid="2715202570602748060">"此應用程式可隨時存取您的位置資訊。輕按即可變更權限。"</string>
@@ -194,6 +210,7 @@
     <string name="unused_permissions_subtitle_two" msgid="8377946866912481356">"<xliff:g id="PERM_NAME_0">%1$s</xliff:g>和<xliff:g id="PERM_NAME_1">%2$s</xliff:g>"</string>
     <string name="unused_permissions_subtitle_many" msgid="3293109339018555084">"<xliff:g id="PERM_NAME_0">%1$s</xliff:g>、<xliff:g id="PERM_NAME_1">%2$s</xliff:g> 和另外 <xliff:g id="NUMBER_OF_PERMISSIONS">%3$s</xliff:g> 個權限"</string>
     <string name="unused_app_permissions_removed_summary" msgid="323483158593998019">"為保護您的資料，系統已移除您在過去幾個月未使用應用程式的權限"</string>
+    <string name="unused_app_permissions_removed_summary_some" msgid="6280714834316090266">"為保護您的資料，系統已移除您在過去幾個月沒有用過的部分應用程式的權限。"</string>
     <string name="one_unused_app_summary" msgid="4609894550969723046">"1 個應用程式在過去幾個月未曾使用"</string>
     <string name="num_unused_apps_summary" msgid="2950515592303103371">"<xliff:g id="NUMBER_OF_APPS">%s</xliff:g> 個應用程式在過去幾個月未曾使用"</string>
     <string name="permission_subtitle_only_in_foreground" msgid="3101936262905298459">"只在使用應用程式時"</string>
@@ -250,9 +267,9 @@
     <string name="role_call_redirection_description" msgid="769231030043298555">"此類應用程式允許您將撥出電話轉駁至其他手機號碼"</string>
     <string name="role_call_redirection_request_title" msgid="5719129486575088263">"要將「<xliff:g id="APP_NAME">%1$s</xliff:g>」設為預設通話重新導向應用程式嗎？"</string>
     <string name="role_call_redirection_request_description" msgid="6117172580087594081">"無需任何權限"</string>
-    <string name="role_call_screening_label" msgid="5366988848919437946">"預設來電顯示與垃圾郵件應用程式"</string>
+    <string name="role_call_screening_label" msgid="5366988848919437946">"預設來電顯示與騷擾電話應用程式"</string>
     <string name="role_call_screening_short_label" msgid="7596133131034442273">"來電顯示與垃圾郵件應用程式"</string>
-    <string name="role_call_screening_description" msgid="4470066768170089758">"此類應用程式允許您辨識來電、封鎖垃圾電話和預錄電話，並將騷擾電話號碼加入黑名單"</string>
+    <string name="role_call_screening_description" msgid="4470066768170089758">"此類應用程式讓您識別來電、封鎖垃圾電話和錄音電話，並將騷擾電話號碼加入黑名單"</string>
     <string name="role_call_screening_request_title" msgid="4775643776524356653">"要將「<xliff:g id="APP_NAME">%1$s</xliff:g>」設為預設來電顯示與垃圾郵件應用程式嗎？"</string>
     <string name="role_call_screening_request_description" msgid="7788142583532880646">"無需任何權限"</string>
     <string name="request_role_current_default" msgid="7512045433655289638">"目前預設"</string>
@@ -313,4 +330,8 @@
     <string name="auto_granted_permissions" msgid="5726065128917092357">"由管理員控制的權限"</string>
     <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"應用程式可存取位置"</string>
     <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"您的 IT 管理員允許「<xliff:g id="APP_NAME">%s</xliff:g>」存取您的位置"</string>
+    <string name="fg_capabilities_sound_trigger" msgid="4937457992874270459">"由於此應用程式需要偵測聲音，因此部分選項無法使用"</string>
+    <string name="fg_capabilities_assistant" msgid="6285681832588297471">"由於此應用程式為預設數碼助理，因此部分選項無法使用"</string>
+    <string name="fg_capabilities_voice_interaction" msgid="5211466473396010463">"由於此應用程式用於語音輸入，因此部分選項無法使用"</string>
+    <string name="fg_capabilities_carrier" msgid="4063467791736574406">"由於此應用程式由您的流動網絡供應商管理，因此部分選項無法使用"</string>
 </resources>

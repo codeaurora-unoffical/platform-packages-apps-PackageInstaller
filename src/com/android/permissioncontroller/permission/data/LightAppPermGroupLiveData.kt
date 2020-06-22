@@ -28,7 +28,6 @@ import com.android.permissioncontroller.permission.model.livedatatypes.LightAppP
 import com.android.permissioncontroller.permission.model.livedatatypes.LightPackageInfo
 import com.android.permissioncontroller.permission.model.livedatatypes.LightPermission
 import com.android.permissioncontroller.permission.utils.LocationUtils
-import com.android.permissioncontroller.permission.utils.SoftRestrictedPermissionPolicy
 import com.android.permissioncontroller.permission.utils.Utils
 import com.android.permissioncontroller.permission.utils.Utils.OS_PKG
 
@@ -45,16 +44,21 @@ class LightAppPermGroupLiveData private constructor(
     private val packageName: String,
     private val permGroupName: String,
     private val user: UserHandle
-) : SmartUpdateMediatorLiveData<LightAppPermGroup?>() {
+) : SmartUpdateMediatorLiveData<LightAppPermGroup?>(), LocationUtils.LocationListener {
 
     val LOG_TAG = this::class.java.simpleName
 
+    private var isSpecialLocation = false
     private val permStateLiveData = PermStateLiveData[packageName, permGroupName, user]
     private val permGroupLiveData = PermGroupLiveData[permGroupName]
     private val packageInfoLiveData = LightPackageInfoLiveData[packageName, user]
     private val fgPermNamesLiveData = ForegroundPermNamesLiveData
 
     init {
+        isSpecialLocation = LocationUtils.isLocationGroupAndProvider(app,
+            permGroupName, packageName) ||
+            LocationUtils.isLocationGroupAndControllerExtraPackage(app, permGroupName, packageName)
+
         addSource(fgPermNamesLiveData) {
             updateIfActive()
         }
@@ -114,15 +118,15 @@ class LightAppPermGroupLiveData private constructor(
         var specialLocationGrant: Boolean? = null
         val userContext = Utils.getUserContext(app, user)
         if (LocationUtils.isLocationGroupAndProvider(userContext, permGroupName, packageName)) {
-            specialLocationGrant = LocationUtils.isLocationEnabled(app)
-        }
-        // The permission of the extra location controller package is determined by the status of
-        // the controller package itself.
-        if (LocationUtils.isLocationGroupAndControllerExtraPackage(app, permGroupName,
+            specialLocationGrant = LocationUtils.isLocationEnabled(userContext)
+        } else if (LocationUtils.isLocationGroupAndControllerExtraPackage(app, permGroupName,
                 packageName)) {
+            // The permission of the extra location controller package is determined by the status
+            // of the controller package itself.
             specialLocationGrant = LocationUtils.isExtraLocationControllerPackageEnabled(
                 userContext)
         }
+
         val hasInstallToRuntimeSplit = hasInstallToRuntimeSplit(packageInfo, permissionMap)
         value = LightAppPermGroup(packageInfo, permGroup.groupInfo, permissionMap,
             hasInstallToRuntimeSplit, specialLocationGrant)
@@ -170,6 +174,27 @@ class LightAppPermGroupLiveData private constructor(
             }
         }
         return false
+    }
+
+    override fun onLocationStateChange(enabled: Boolean) {
+        updateIfActive()
+    }
+
+    override fun onActive() {
+        super.onActive()
+
+        if (isSpecialLocation) {
+            LocationUtils.addLocationListener(this)
+            updateIfActive()
+        }
+    }
+
+    override fun onInactive() {
+        super.onInactive()
+
+        if (isSpecialLocation) {
+            LocationUtils.removeLocationListener(this)
+        }
     }
 
     /**

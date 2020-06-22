@@ -93,7 +93,7 @@ import kotlinx.coroutines.GlobalScope;
 public final class PermissionControllerServiceImpl extends PermissionControllerLifecycleService {
     private static final String LOG_TAG = PermissionControllerServiceImpl.class.getSimpleName();
     private static final int MAX_RETRY_ATTEMPTS = 3;
-    private static final long RETRY_DELAY_MS = 100;
+    private static final long RETRY_DELAY_MS = 500;
 
 
     private final PermissionControllerServiceModel mServiceModel = new
@@ -112,7 +112,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
             dump = BuildersKt.runBlocking(
                     GlobalScope.INSTANCE.getCoroutineContext(),
                     (coroutineScope, continuation) -> mServiceModel.onDump(continuation));
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             Log.e(LOG_TAG, "Cannot produce dump", e);
             return;
         }
@@ -576,7 +576,10 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
 
     private void onUpdateUserSensistivePermissionFlagsWithRetry(int uid, Executor executor,
             Runnable callback, int numAttempts) {
+        String idString = uid == Process.INVALID_UID
+                ? "user " + Process.myUserHandle().getIdentifier() : "uid " + uid;
         try {
+            Log.i(LOG_TAG, "Updating user sensitive for " + idString);
             if (uid == Process.INVALID_UID) {
                 UserSensitiveFlagsUtils.updateUserSensitiveForUser(Process.myUserHandle(),
                         () -> executor.execute(callback));
@@ -587,6 +590,8 @@ public final class PermissionControllerServiceImpl extends PermissionControllerL
         } catch (Exception e) {
             // We specifically want to catch DeadSystemExceptions, but cannot explicitly request
             // them, as it results in a compiler error
+            Log.w(LOG_TAG, "Failed to complete user sensitive update for " + idString
+                    + ", attempt number " + (numAttempts + 1) + " of " + MAX_RETRY_ATTEMPTS, e);
             if (numAttempts == MAX_RETRY_ATTEMPTS) {
                 throw e;
             } else {

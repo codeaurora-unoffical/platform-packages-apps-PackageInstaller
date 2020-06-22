@@ -97,11 +97,11 @@ object KotlinUtils {
      * second is all keys in the map, but not the list
      */
     fun <K> getMapAndListDifferences(
-        newValues: List<K>,
+        newValues: Collection<K>,
         oldValues: Map<K, *>
-    ): Pair<List<K>, List<K>> {
-        val mapHas = oldValues.keys.toMutableList()
-        val listHas = newValues.toMutableList()
+    ): Pair<Set<K>, Set<K>> {
+        val mapHas = oldValues.keys.toMutableSet()
+        val listHas = newValues.toMutableSet()
         for (newVal in newValues) {
             if (oldValues.containsKey(newVal)) {
                 mapHas.remove(newVal)

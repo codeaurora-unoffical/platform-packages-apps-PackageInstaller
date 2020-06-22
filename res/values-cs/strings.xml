@@ -21,6 +21,7 @@
     <string name="permission_search_keyword" msgid="1652964722383449182">"oprávnění"</string>
     <string name="cancel" msgid="7279939269964834974">"Zrušit"</string>
     <string name="back" msgid="8739808065891653074">"Zpět"</string>
+    <string name="uninstall_or_disable" msgid="2397169592250216844">"Odinstalovat nebo deaktivovat"</string>
     <string name="app_not_found_dlg_title" msgid="8897078571059217849">"Aplikace nebyla nalezena"</string>
     <string name="grant_dialog_button_deny" msgid="1649644200597601964">"Zakázat"</string>
     <string name="grant_dialog_button_deny_and_dont_ask_again" msgid="5716583584580362144">"Odmítnout a už se neptat"</string>
@@ -121,7 +122,7 @@
     <string name="auto_revoke_summary" msgid="308686883215278993">"Pokud tuto aplikaci několik měsíců nepoužijete, kvůli ochraně vašich dat jí budou odebrána oprávnění."</string>
     <string name="auto_revoke_summary_with_permissions" msgid="5460568151204648005">"Pokud tuto aplikaci několik měsíců nepoužijete, budou jí kvůli ochraně vašich dat odebrána následující oprávnění: <xliff:g id="PERMS">%1$s</xliff:g>"</string>
     <string name="auto_revoked_apps_page_summary" msgid="2780912986594704165">"Za účelem ochrany vašich dat byla odebrána oprávnění aplikacím, které jste několik měsíců nepoužili."</string>
-    <string name="auto_revoke_open_app_message" msgid="7960965074929429500">"Pokud aplikaci chcete oprávnění znovu povolit, znovu ji otevřete"</string>
+    <string name="auto_revoke_open_app_message" msgid="7159193262034433811">"Pokud chcete oprávnění znovu povolit, aplikaci otevřete."</string>
     <string name="auto_revoke_disabled" msgid="4480748641016277290">"Automatické odebrání je pro tuto aplikaci momentálně zakázáno."</string>
     <string name="auto_revocable_permissions_none" msgid="2908881351941596829">"Aktuálně nejsou udělena žádná automaticky odvolatelná oprávnění"</string>
     <string name="auto_revocable_permissions_one" msgid="8790555940010364058">"Bude odebráno <xliff:g id="PERM">%1$s</xliff:g> oprávnění."</string>
@@ -138,17 +139,17 @@
     <string name="app_permission_footer_special_file_access" msgid="2257708354000512325">"Pokud aplikaci povolíte spravovat všechny soubory, bude moci číst, upravovat a mazat všechny soubory ve společném úložišti na tomto zařízení a na připojených úložných zařízeních. Aplikace může přistupovat k souborům, aniž by se vás zeptala."</string>
     <string name="special_file_access_dialog" msgid="7325467268782278105">"Chcete této aplikaci povolit číst, upravovat a mazat soubory v tomto zařízení a v připojených úložných zařízeních? Aplikace může přistupovat k souborům, aniž by se vás zeptala."</string>
     <string name="permission_description_summary_generic" msgid="5479202003136667039">"Možnosti aplikace s tímto oprávněním: <xliff:g id="DESCRIPTION">%1$s</xliff:g>"</string>
-    <string name="permission_description_summary_activity_recognition" msgid="7914828358811635600">"Aplikace s tímto oprávněním mají přístup k vaší fyzické aktivitě, jako je chůze, jízda na kole, jízda autem, počet kroků a další"</string>
+    <string name="permission_description_summary_activity_recognition" msgid="7914828358811635600">"Aplikace s tímto oprávněním mají přístup k  vaší fyzické aktivitě, jako je chůze, jízda na kole, jízda autem, počet kroků a další"</string>
     <string name="permission_description_summary_calendar" msgid="2846128908236787586">"Aplikace s tímto oprávněním mají přístup ke kalendáři"</string>
     <string name="permission_description_summary_call_log" msgid="2429916962093948340">"Aplikace s tímto oprávněním mohou číst a zapisovat do seznamu hovorů v telefonu"</string>
     <string name="permission_description_summary_camera" msgid="6699611334403400091">"Aplikace s tímto oprávněním mohou fotit a nahrávat video"</string>
     <string name="permission_description_summary_contacts" msgid="5169995707720233126">"Aplikace s tímto oprávněním mají přístup ke kontaktům"</string>
-    <string name="permission_description_summary_location" msgid="687820658574645201">"Aplikace s tímto oprávněním mají přístup k poloze zařízení"</string>
+    <string name="permission_description_summary_location" msgid="687820658574645201">"Aplikace s tímto oprávněním mají přístup k  poloze zařízení"</string>
     <string name="permission_description_summary_microphone" msgid="2300290217308759293">"Aplikace s tímto oprávněním mohou nahrávat zvuk"</string>
     <string name="permission_description_summary_phone" msgid="3773977614654088578">"Aplikace s tímto oprávněním mohou realizovat a spravovat telefonické hovory"</string>
-    <string name="permission_description_summary_sensors" msgid="6733606479604624853">"Aplikace s tímto oprávněním mají přístup k datům ze snímačů vašich životních funkcí"</string>
+    <string name="permission_description_summary_sensors" msgid="6733606479604624853">"Aplikace s tímto oprávněním mají přístup k  datům ze snímačů vašich životních funkcí"</string>
     <string name="permission_description_summary_sms" msgid="8850213022386508528">"Aplikace s tímto oprávněním mohou odesílat a zobrazovat SMS"</string>
-    <string name="permission_description_summary_storage" msgid="2265909502600142621">"Aplikace s tímto oprávněním mají přístup k fotkám, médiím a souborům v zařízení"</string>
+    <string name="permission_description_summary_storage" msgid="2265909502600142621">"Aplikace s tímto oprávněním mají přístup k  fotkám, médiím a souborům v zařízení"</string>
     <string name="app_permission_most_recent_summary" msgid="7435245857128891808">"Poslední přístup: <xliff:g id="TIME_DATE">%1$s</xliff:g>"</string>
     <string name="app_permission_most_recent_denied_summary" msgid="127066792562419809">"Zakázáno / naposledy použito: <xliff:g id="TIME_DATE">%1$s</xliff:g>"</string>
     <string name="app_permission_never_accessed_summary" msgid="594285912530635023">"Žádný přístup"</string>
@@ -185,25 +186,45 @@
       <item quantity="one">1 sekunda</item>
     </plurals>
     <string name="permission_reminders" msgid="8040710767178843151">"Připomenutí o oprávněních"</string>
-    <string name="auto_revoke_permission_reminder_notification_title_one" msgid="5769691038915584486">"Jednu aplikaci nepoužíváte"</string>
-    <string name="auto_revoke_permission_reminder_notification_title_many" msgid="9035362208572362215">"Některé aplikace (<xliff:g id="NUMBER_OF_APPS">%s</xliff:g>) nepoužíváte"</string>
-    <string name="auto_revoke_permission_reminder_notification_content" msgid="5952076530125261716">"Kvůli ochraně vašeho soukromí byla odebrána oprávnění. Klepnutím to zkontrolujete"</string>
+    <string name="auto_revoke_permission_reminder_notification_title_one" msgid="5769691038915584486">"Nepoužívané aplikace: 1"</string>
+    <string name="auto_revoke_permission_reminder_notification_title_many" msgid="9035362208572362215">"Nepoužívané aplikace: <xliff:g id="NUMBER_OF_APPS">%s</xliff:g>"</string>
+    <string name="auto_revoke_permission_reminder_notification_content" msgid="5952076530125261716">"Kvůli ochraně vašeho soukromí byla odebrána oprávnění. Klepnutím provedete kontrolu."</string>
+    <string name="auto_revoke_permission_notification_title" msgid="7216492977743895366">"Nepoužívaným aplikacím byla odebrána oprávnění"</string>
+    <string name="auto_revoke_permission_notification_content" msgid="7535335306414309309">"Některé aplikace jste několik měsíců nepoužili. Klepnutím to zkontrolujete."</string>
+    <plurals name="auto_revoke_permission_notification_content_count" formatted="false" msgid="3130723967533728039">
+      <item quantity="few"><xliff:g id="COUNT_1">%1$d</xliff:g> aplikace nebyly několik měsíců použity. Klepnutím to zkontrolujete</item>
+      <item quantity="many"><xliff:g id="COUNT_1">%1$d</xliff:g> aplikace nebylo několik měsíců použito. Klepnutím to zkontrolujete</item>
+      <item quantity="other"><xliff:g id="COUNT_1">%1$d</xliff:g> aplikací nebylo několik měsíců použito. Klepnutím to zkontrolujete</item>
+      <item quantity="one"><xliff:g id="COUNT_0">%1$d</xliff:g> aplikace nebyla několik měsíců použita. Klepnutím to zkontrolujete</item>
+    </plurals>
+    <string name="auto_revoke_setting_subtitle" msgid="8151093881906344464">"Některé aplikace jste několik měsíců nepoužili"</string>
+    <plurals name="auto_revoke_setting_subtitle_count" formatted="false" msgid="8360897918922510305">
+      <item quantity="few"><xliff:g id="COUNT_1">%1$d</xliff:g> aplikace nebyly několik měsíců použity</item>
+      <item quantity="many"><xliff:g id="COUNT_1">%1$d</xliff:g> aplikace nebylo několik měsíců použito</item>
+      <item quantity="other"><xliff:g id="COUNT_1">%1$d</xliff:g> aplikací nebylo několik měsíců použito</item>
+      <item quantity="one"><xliff:g id="COUNT_0">%1$d</xliff:g> aplikace nebyla několik měsíců použita</item>
+    </plurals>
+    <string name="permissions_removed_category_title" msgid="189425131292668991">"Odebraná oprávnění"</string>
+    <string name="permission_removed_page_title" msgid="6249023142431438359">"Oprávnění byla odebrána"</string>
+    <string name="all_unused_apps_category_title" msgid="7882561467377852786">"Všechny nepoužívané aplikace"</string>
+    <string name="months_ago" msgid="6541240625299588045">"Před <xliff:g id="COUNT">%1$d</xliff:g> měsíci"</string>
     <string name="auto_revoke_preference_summary" msgid="422689541593333180">"Kvůli ochraně vašeho soukromí byla odebrána oprávnění"</string>
     <string name="background_location_access_reminder_notification_title" msgid="458109692937364585">"<xliff:g id="APP_NAME">%s</xliff:g> má přístup k poloze na pozadí"</string>
     <string name="background_location_access_reminder_notification_content" msgid="2715202570602748060">"Tato aplikace má neomezený přístup k poloze. Klepnutím to změníte."</string>
     <string name="auto_revoke_after_notification_title" msgid="6256474332719286120">"Oprávnění aplikace byla za účelem ochrany soukromí odebrána"</string>
-    <string name="auto_revoke_after_notification_content_one" msgid="2599193525413390339">"Aplikace <xliff:g id="APP_NAME">%s</xliff:g> nebyla několik měsíců použita. Klepnutím to zkontrolujete."</string>
-    <string name="auto_revoke_after_notification_content_two" msgid="1866307724849983054">"<xliff:g id="APP_NAME">%s</xliff:g> a 1 další aplikace nebyly několik měsíců použity. Klepnutím to zkontrolujete."</string>
-    <string name="auto_revoke_after_notification_content_many" msgid="830111995719692890">"<xliff:g id="APP_NAME">%1$s</xliff:g> a další aplikace (<xliff:g id="NUMBER_OF_APPS">%2$s</xliff:g>) nebyly několik měsíců použity. Klepnutím to zkontrolujete."</string>
+    <string name="auto_revoke_after_notification_content_one" msgid="2599193525413390339">"Aplikace <xliff:g id="APP_NAME">%s</xliff:g> nebyla několik měsíců použita. Klepnutím provedete kontrolu."</string>
+    <string name="auto_revoke_after_notification_content_two" msgid="1866307724849983054">"<xliff:g id="APP_NAME">%s</xliff:g> a 1 další aplikace nebyly několik měsíců použity. Klepnutím provedete kontrolu."</string>
+    <string name="auto_revoke_after_notification_content_many" msgid="830111995719692890">"<xliff:g id="APP_NAME">%1$s</xliff:g> a další aplikace (<xliff:g id="NUMBER_OF_APPS">%2$s</xliff:g>) nebyly několik měsíců použity. Klepnutím provedete kontrolu."</string>
     <string name="auto_revoke_before_notification_title_one" msgid="5487334486889306216">"Máte 1 nepoužívanou aplikaci"</string>
     <string name="auto_revoke_before_notification_title_many" msgid="1512657862051262697">"Máte nepoužívané aplikace (<xliff:g id="NUMBER_OF_APPS">%s</xliff:g>)"</string>
-    <string name="auto_revoke_before_notification_content_one" msgid="2070547291547064792">"Oprávnění budou za účelem ochrany soukromí odebrána. Klepnutím to zkontrolujete."</string>
+    <string name="auto_revoke_before_notification_content_one" msgid="2070547291547064792">"Oprávnění budou za účelem ochrany soukromí odebrána. Klepnutím provedete kontrolu."</string>
     <string name="unused_apps_title" msgid="4528745145780586943">"Nepoužívané aplikace"</string>
     <string name="unused_apps_subtitle_after" msgid="7664277360480735253">"Oprávnění byla odebrána od aplikací"</string>
     <string name="unused_apps_subtitle_before" msgid="6907087239793765525">"Oprávnění budou odebrána od aplikací"</string>
     <string name="unused_permissions_subtitle_two" msgid="8377946866912481356">"<xliff:g id="PERM_NAME_0">%1$s</xliff:g> a <xliff:g id="PERM_NAME_1">%2$s</xliff:g>"</string>
     <string name="unused_permissions_subtitle_many" msgid="3293109339018555084">"<xliff:g id="PERM_NAME_0">%1$s</xliff:g>, <xliff:g id="PERM_NAME_1">%2$s</xliff:g>, a ještě <xliff:g id="NUMBER_OF_PERMISSIONS">%3$s</xliff:g>"</string>
     <string name="unused_app_permissions_removed_summary" msgid="323483158593998019">"Za účelem ochrany vašich dat byla odebrána oprávnění od aplikací, které jste několik měsíců nepoužili"</string>
+    <string name="unused_app_permissions_removed_summary_some" msgid="6280714834316090266">"Za účelem ochrany vašich dat byla odebrána oprávnění některých aplikací, které jste několik měsíců nepoužili"</string>
     <string name="one_unused_app_summary" msgid="4609894550969723046">"Jednu aplikaci jste několik měsíců nepoužili"</string>
     <string name="num_unused_apps_summary" msgid="2950515592303103371">"Počet aplikací, které jste několik měsíců nepoužili: <xliff:g id="NUMBER_OF_APPS">%s</xliff:g>"</string>
     <string name="permission_subtitle_only_in_foreground" msgid="3101936262905298459">"Jen během používání aplikace"</string>
@@ -260,7 +281,7 @@
     <string name="role_call_redirection_description" msgid="769231030043298555">"Aplikace, které vám umožňují přesměrovat odchozí hovory na jiné číslo"</string>
     <string name="role_call_redirection_request_title" msgid="5719129486575088263">"Nastavit <xliff:g id="APP_NAME">%1$s</xliff:g> jako výchozí aplikaci na přesměrování hovorů?"</string>
     <string name="role_call_redirection_request_description" msgid="6117172580087594081">"Není potřeba žádné oprávnění"</string>
-    <string name="role_call_screening_label" msgid="5366988848919437946">"Výchozí ap. na ID a spam"</string>
+    <string name="role_call_screening_label" msgid="5366988848919437946">"Výchozí apl. na ID a spam"</string>
     <string name="role_call_screening_short_label" msgid="7596133131034442273">"Ap. na ID volajícího a spam"</string>
     <string name="role_call_screening_description" msgid="4470066768170089758">"Aplikace, které umožňují identifikovat hovory, blokovat spam a automatické hovory a vytvořit seznam zakázaných čísel"</string>
     <string name="role_call_screening_request_title" msgid="4775643776524356653">"Nastavit <xliff:g id="APP_NAME">%1$s</xliff:g> jako výchozí aplikaci k identifikaci volajícího a prevenci spamu?"</string>
@@ -323,4 +344,8 @@
     <string name="auto_granted_permissions" msgid="5726065128917092357">"Spravovaná oprávnění"</string>
     <string name="auto_granted_location_permission_notification_title" msgid="6496820273286832200">"Lze získat přístup k poloze"</string>
     <string name="auto_granted_permission_notification_body" msgid="492268790630112781">"Administrátor IT povolil aplikaci <xliff:g id="APP_NAME">%s</xliff:g> získat přístup k vaší poloze"</string>
+    <string name="fg_capabilities_sound_trigger" msgid="4937457992874270459">"Některé možnosti nejsou k dispozici, protože tato aplikace potřebuje detekovat zvuk"</string>
+    <string name="fg_capabilities_assistant" msgid="6285681832588297471">"Některé možnosti nejsou k dispozici, protože tato aplikace je váš výchozí digitální asistent"</string>
+    <string name="fg_capabilities_voice_interaction" msgid="5211466473396010463">"Některé možnosti nejsou k dispozici, protože tato aplikace slouží pro hlasový vstup"</string>
+    <string name="fg_capabilities_carrier" msgid="4063467791736574406">"Některé možnosti nejsou k dispozici, protože tato aplikace je spravována vaším operátorem"</string>
 </resources>

@@ -56,6 +56,10 @@ import com.android.permissioncontroller.permission.utils.KotlinUtils
 import com.android.permissioncontroller.permission.utils.LocationUtils
 import com.android.permissioncontroller.permission.utils.SafetyNetLogger
 import com.android.permissioncontroller.permission.utils.Utils
+import com.android.permissioncontroller.permission.utils.Utils.ForegroundCapableType.ASSISTANT
+import com.android.permissioncontroller.permission.utils.Utils.ForegroundCapableType.CARRIER_SERVICE
+import com.android.permissioncontroller.permission.utils.Utils.ForegroundCapableType.SOUND_TRIGGER
+import com.android.permissioncontroller.permission.utils.Utils.ForegroundCapableType.VOICE_INTERACTION
 import com.android.permissioncontroller.permission.utils.navigateSafe
 import com.android.settingslib.RestrictedLockUtils
 import java.util.Random
@@ -80,7 +84,7 @@ class AppPermissionViewModel(
     private val permGroupName: String,
     private val user: UserHandle,
     private val sessionId: Long,
-    private val couldPackageHaveFgCapabilities: Boolean
+    private val foregroundCapableType: Utils.ForegroundCapableType
 ) : ViewModel() {
 
     companion object {
@@ -205,6 +209,9 @@ class AppPermissionViewModel(
 
             val admin = RestrictedLockUtils.getProfileOrDeviceOwner(app, user)
 
+            val couldPackageHaveFgCapabilities =
+                    foregroundCapableType != Utils.ForegroundCapableType.NONE
+
             val allowedState = ButtonState()
             val allowedAlwaysState = ButtonState()
             val allowedForegroundState = ButtonState()
@@ -230,8 +237,9 @@ class AppPermissionViewModel(
                     !group.background.isGranted && !group.isOneTime
                 askState.isChecked = !group.foreground.isGranted && group.isOneTime
                 askOneTimeState.isChecked = group.foreground.isGranted && group.isOneTime
+                askOneTimeState.isShown = askOneTimeState.isChecked
                 deniedState.isChecked = !group.foreground.isGranted && !group.isOneTime
-
+                var detailId = 0
                 if (applyFixToForegroundBackground(group, group.foreground.isSystemFixed,
                         group.background.isSystemFixed, allowedAlwaysState,
                         allowedForegroundState, askState, deniedState,
@@ -241,14 +249,15 @@ class AppPermissionViewModel(
                         allowedForegroundState, askState, deniedState,
                         deniedForegroundState)) {
                     showAdminSupportLiveData.value = admin
-                    val detailId = getDetailResIdForFixedByPolicyPermissionGroup(group,
+                    detailId = getDetailResIdForFixedByPolicyPermissionGroup(group,
                         admin != null)
                     if (detailId != 0) {
                         detailResIdLiveData.value = detailId to null
                     }
                 } else if (Utils.areGroupPermissionsIndividuallyControlled(app, permGroupName)) {
-                    val detailId = getIndividualPermissionDetailResId(group)
-                    detailResIdLiveData.value = detailId.first to detailId.second
+                    val detailPair = getIndividualPermissionDetailResId(group)
+                    detailId = detailPair.first
+                    detailResIdLiveData.value = detailId to detailPair.second
                 }
                 if (couldPackageHaveFgCapabilities) {
                     // Correct the UI in case the app can access bg location with only fg perm
@@ -267,6 +276,11 @@ class AppPermissionViewModel(
                     deniedState.isChecked = deniedState.isChecked || askState.isChecked
                     deniedForegroundState.isChecked = deniedState.isChecked
                     askState.isEnabled = false
+
+                    if (detailId == 0) {
+                        detailId = getForegroundCapableDetailResId(foregroundCapableType)
+                        detailResIdLiveData.value = detailId to null
+                    }
                 }
             } else {
                 // Allow / Deny case
@@ -275,8 +289,10 @@ class AppPermissionViewModel(
                 allowedState.isChecked = group.foreground.isGranted
                 askState.isChecked = !group.foreground.isGranted && group.isOneTime
                 askOneTimeState.isChecked = group.foreground.isGranted && group.isOneTime
+                askOneTimeState.isShown = askOneTimeState.isChecked
                 deniedState.isChecked = !group.foreground.isGranted && !group.isOneTime
 
+                var detailId = 0
                 if (group.foreground.isPolicyFixed || group.foreground.isSystemFixed) {
                     allowedState.isEnabled = false
                     askState.isEnabled = false
@@ -301,6 +317,11 @@ class AppPermissionViewModel(
                         allowedForegroundState.isEnabled = false
                         deniedState.isChecked = deniedState.isChecked || askState.isChecked
                         askState.isEnabled = false
+
+                        if (detailId == 0) {
+                            detailId = getForegroundCapableDetailResId(foregroundCapableType)
+                            detailResIdLiveData.value = detailId to null
+                        }
                     }
                 }
             }
@@ -322,8 +343,6 @@ class AppPermissionViewModel(
                         allowedAllFilesState.isShown = true
                         if (storageState.isGranted) {
                             allowedAllFilesState.isChecked = true
-                        } else if (allowedState.isChecked) {
-                            allowedMediaOnlyState.isChecked = true
                         }
                 } else {
                     allowedAllFilesState.isEnabled = false
@@ -331,7 +350,8 @@ class AppPermissionViewModel(
                 }
                 allowedMediaOnlyState.isShown = true
                 allowedMediaOnlyState.isEnabled = allowedState.isEnabled
-                allowedMediaOnlyState.isChecked = allowedState.isChecked
+                allowedMediaOnlyState.isChecked = allowedState.isChecked &&
+                    storageState?.isGranted != true
                 allowedState.isChecked = false
                 allowedState.isShown = false
             }
@@ -516,7 +536,8 @@ class AppPermissionViewModel(
         val oldGroup = group
 
         if (shouldRevokeBackground && group.hasBackgroundGroup &&
-                (wasBackgroundGranted || group.background.isUserFixed)) {
+                (wasBackgroundGranted || group.background.isUserFixed ||
+                        group.isOneTime != setOneTime)) {
             newGroup = KotlinUtils
                     .revokeBackgroundRuntimePermissions(app, newGroup)
 
@@ -683,6 +704,16 @@ class AppPermissionViewModel(
         return 0
     }
 
+    private fun getForegroundCapableDetailResId(type: Utils.ForegroundCapableType): Int {
+        when (type) {
+            SOUND_TRIGGER -> return R.string.fg_capabilities_sound_trigger
+            ASSISTANT -> return R.string.fg_capabilities_assistant
+            VOICE_INTERACTION -> return R.string.fg_capabilities_voice_interaction
+            CARRIER_SERVICE -> return R.string.fg_capabilities_carrier
+        }
+        return 0
+    }
+
     private fun logPermissionChanges(
         oldGroup: LightAppPermGroup,
         newGroup: LightAppPermGroup,
@@ -743,11 +774,11 @@ class AppPermissionViewModelFactory(
     private val permGroupName: String,
     private val user: UserHandle,
     private val sessionId: Long,
-    private val couldPackageHaveFgCapabilities: Boolean
+    private val foregroundCapableType: Utils.ForegroundCapableType
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         @Suppress("UNCHECKED_CAST")
         return AppPermissionViewModel(app, packageName, permGroupName, user, sessionId,
-                couldPackageHaveFgCapabilities) as T
+                foregroundCapableType) as T
     }
 }

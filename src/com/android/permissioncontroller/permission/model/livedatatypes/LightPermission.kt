@@ -42,10 +42,10 @@ data class LightPermission(
 ) {
 
     constructor(
-            pkgInfo: LightPackageInfo,
-            permInfo: LightPermInfo,
-            permState: PermState,
-            foregroundPerms: List<String>?
+        pkgInfo: LightPackageInfo,
+        permInfo: LightPermInfo,
+        permState: PermState,
+        foregroundPerms: List<String>?
     ) :
         this(pkgInfo, permInfo, permState.granted, permState.permFlags, foregroundPerms)
 
@@ -96,10 +96,12 @@ data class LightPermission(
             false
         }
     }
+    /** Whether the permission is auto revoked */
+    val isAutoRevoked = flags and PackageManager.FLAG_PERMISSION_AUTO_REVOKED != 0
 
     override fun toString() = buildString {
         append(name)
-        if (isGrantedIncludingAppOp) append(", Granted")
+        if (isGrantedIncludingAppOp) append(", Granted") else append(", NotGranted")
         if (isPolicyFixed) append(", PolicyFixed")
         if (isSystemFixed) append(", SystemFixed")
         if (isUserFixed) append(", UserFixed")
@@ -109,5 +111,8 @@ data class LightPermission(
         if (isOneTime) append(", OneTime")
         if (isGrantedByDefault) append(", GrantedByDefault")
         if (isGrantedByRole) append(", GrantedByRole")
+        if (isUserSensitive) append(", UserSensitive")
+        if (isRestricted) append(", Restricted")
+        if (isAutoRevoked) append(", AutoRevoked")
     }
 }
