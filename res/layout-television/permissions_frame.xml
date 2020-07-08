@@ -27,6 +27,13 @@
             android:layout_gravity="end">
 
         <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone">
+            <include layout="@layout/progress_header" />
+        </FrameLayout>
+
+        <FrameLayout
                 android:id="@+id/prefs_container"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent">
@@ -37,6 +44,7 @@
                     android:layout_height="match_parent"
                     android:text="@string/no_permissions"
                     android:gravity="center"
+                    android:visibility="gone"
                     android:textAppearance="@android:style/TextAppearance.Large"
             />
 
