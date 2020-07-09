@@ -21,8 +21,6 @@ import android.app.AlertDialog
 import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.os.UserHandle
 import android.util.Log
 import android.view.MenuItem
@@ -39,7 +37,11 @@ import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModel
 import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModel.Months
 import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModel.RevokedPackageInfo
 import com.android.permissioncontroller.permission.ui.model.AutoRevokeViewModelFactory
+import com.android.permissioncontroller.permission.utils.IPC
 import com.android.permissioncontroller.permission.utils.KotlinUtils
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.Collator
 
 /**
@@ -55,7 +57,8 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
 
     companion object {
         private const val SHOW_LOAD_DELAY_MS = 200L
-        private const val NOTIFICATION_CLICKED = "notification_clicked"
+        private const val INFO_MSG_KEY = "info_msg"
+        private const val ELEVATION_HIGH = 8f
         private val LOG_TAG = AutoRevokeFragment::class.java.simpleName
 
         @JvmStatic
@@ -79,6 +82,7 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        mUseShadowController = false
         super.onCreate(savedInstanceState)
         isFirstLoad = true
 
@@ -98,17 +102,22 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
         activity?.getActionBar()?.setDisplayHomeAsUpEnabled(true)
 
         if (!viewModel.areAutoRevokedPackagesLoaded()) {
-            Handler(Looper.getMainLooper()).postDelayed(Runnable {
+            GlobalScope.launch(IPC) {
+                delay(SHOW_LOAD_DELAY_MS)
                 if (!viewModel.areAutoRevokedPackagesLoaded()) {
                     setLoading(true, false)
                 }
-            }, SHOW_LOAD_DELAY_MS)
+            }
         }
     }
 
     override fun onStart() {
         super.onStart()
-        activity!!.title = getString(R.string.unused_apps)
+        val ab = activity?.actionBar
+        if (ab != null) {
+            ab!!.setElevation(ELEVATION_HIGH)
+        }
+        activity!!.title = getString(R.string.permission_removed_page_title)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -122,6 +131,8 @@ class AutoRevokeFragment : PermissionsFrameFragment() {
     private fun updatePackages(categorizedPackages: Map<Months, List<RevokedPackageInfo>>) {
         if (preferenceScreen == null) {
             addPreferencesFromResource(R.xml.unused_app_categories)
+            val infoPref = preferenceScreen?.findPreference<FooterPreference>(INFO_MSG_KEY)
+            infoPref?.secondSummary = getString(R.string.auto_revoke_open_app_message)
         }
 
         val removedPrefs = mutableMapOf<String, AutoRevokePermissionPreference>()

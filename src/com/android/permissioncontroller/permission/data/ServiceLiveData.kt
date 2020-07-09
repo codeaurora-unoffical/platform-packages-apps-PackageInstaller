@@ -29,17 +29,18 @@ import kotlinx.coroutines.Job
  * A LiveData which tracks services for a certain type
  *
  * @param app The current application
- * @param serviceInterface The name of interface the service implements
+ * @param intentAction The name of interface the service implements
  * @param permission The permission required for the service
  * @param user The user the services should be determined for
  */
 class ServiceLiveData(
     private val app: Application,
-    val serviceInterface: String,
+    override val intentAction: String,
     private val permission: String,
     private val user: UserHandle
 ) : SmartAsyncMediatorLiveData<Set<String>>(),
-        PackageBroadcastReceiver.PackageBroadcastListener {
+        PackageBroadcastReceiver.PackageBroadcastListener,
+        HasIntentAction {
     private val DEBUG = false
 
     override fun onPackageUpdate(packageName: String) {
@@ -53,7 +54,7 @@ class ServiceLiveData(
 
         val packageNames = getUserContext(app, user).packageManager
                 .queryIntentServices(
-                        Intent(serviceInterface),
+                        Intent(intentAction),
                         PackageManager.GET_SERVICES or PackageManager.GET_META_DATA)
                 .mapNotNull { resolveInfo ->
                     if (resolveInfo?.serviceInfo?.permission != permission) {
@@ -63,7 +64,7 @@ class ServiceLiveData(
                 }.toSet()
         if (DEBUG) {
             DumpableLog.i(LOG_TAG,
-                    "Detected ${serviceInterface.substringAfterLast(".")}s: $packageNames")
+                    "Detected ${intentAction.substringAfterLast(".")}s: $packageNames")
         }
 
         postValue(packageNames)
@@ -80,13 +81,13 @@ class ServiceLiveData(
     override fun onInactive() {
         super.onInactive()
 
-        PackageBroadcastReceiver.addAllCallback(this)
+        PackageBroadcastReceiver.removeAllCallback(this)
     }
 
     /**
-     * Repository for ServiceLiveData
+     * Repository for [ServiceLiveData]
      *
-     * <p> Key value is a string service name, required permission user triple, value is its
+     * <p> Key value is a (string service name, required permission, user) triple, value is its
      * corresponding LiveData.
      */
     companion object : DataRepositoryForPackage<Triple<String, String, UserHandle>,
