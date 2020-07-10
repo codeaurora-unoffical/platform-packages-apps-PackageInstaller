@@ -56,6 +56,7 @@ import com.android.permissioncontroller.permission.ui.handheld.AutoRevokeFragmen
 import com.android.permissioncontroller.permission.ui.handheld.PermissionAppsFragment;
 import com.android.permissioncontroller.permission.ui.legacy.AppPermissionActivity;
 import com.android.permissioncontroller.permission.ui.wear.AppPermissionsFragmentWear;
+import com.android.permissioncontroller.permission.utils.KotlinUtils;
 import com.android.permissioncontroller.permission.utils.Utils;
 
 import java.util.Random;
@@ -119,7 +120,7 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                 if (DeviceUtils.isAuto(this)) {
                     androidXFragment = AutoManageStandardPermissionsFragment.newInstance();
                 } else if (DeviceUtils.isTelevision(this)) {
-                    fragment =
+                    androidXFragment =
                             com.android.permissioncontroller.permission.ui.television
                                     .ManagePermissionsFragment.newInstance();
                 } else {
@@ -181,12 +182,15 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                                 APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION, sessionId, uid,
                                 packageName, autoRevokeAction);
                     } else {
-                        Log.i(LOG_TAG, "sessionId: " + sessionId
-                                + " Reaching AppPermissionGroupsFragment from intent. packageName "
-                                + packageName + " uid " + uid);
-                        PermissionControllerStatsLog.write(
-                                APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION, sessionId, uid,
-                                packageName, openFromIntentAction);
+                        if (KotlinUtils.INSTANCE.isROrAutoRevokeEnabled(getApplication(),
+                                packageName, userHandle)) {
+                            Log.i(LOG_TAG, "sessionId: " + sessionId
+                                    + " Reaching AppPermissionGroupsFragment from intent. "
+                                    + "packageName " + packageName + " uid " + uid);
+                            PermissionControllerStatsLog.write(
+                                    APP_PERMISSION_GROUPS_FRAGMENT_AUTO_REVOKE_ACTION, sessionId,
+                                    uid, packageName, openFromIntentAction);
+                        }
                     }
                 } catch (PackageManager.NameNotFoundException e) {
                     // Do no logging
@@ -207,8 +211,8 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                 } else if (DeviceUtils.isWear(this)) {
                     androidXFragment = AppPermissionsFragmentWear.newInstance(packageName);
                 } else if (DeviceUtils.isTelevision(this)) {
-                    fragment = com.android.permissioncontroller.permission.ui.television
-                            .AppPermissionsFragment.newInstance(packageName);
+                    androidXFragment = com.android.permissioncontroller.permission.ui.television
+                            .AppPermissionsFragment.newInstance(packageName, userHandle);
                 } else {
                     Bundle args = AppPermissionGroupsFragment.createArgs(packageName, userHandle,
                             sessionId, true);
@@ -241,7 +245,7 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                 if (DeviceUtils.isAuto(this)) {
                     androidXFragment = AutoPermissionAppsFragment.newInstance(permissionName);
                 } else if (DeviceUtils.isTelevision(this)) {
-                    fragment = com.android.permissioncontroller.permission.ui.television
+                    androidXFragment = com.android.permissioncontroller.permission.ui.television
                             .PermissionAppsFragment.newInstance(permissionName);
                 } else {
 
@@ -261,6 +265,7 @@ public final class ManagePermissionsActivity extends FragmentActivity {
                         || DeviceUtils.isTelevision(this)) {
                     androidXFragment = com.android.permissioncontroller.permission.ui.handheld
                             .AutoRevokeFragment.newInstance();
+                    androidXFragment.setArguments(AutoRevokeFragment.createArgs(sessionId));
                 } else {
                     setNavGraph(AutoRevokeFragment.createArgs(sessionId), R.id.auto_revoke);
                     return;
