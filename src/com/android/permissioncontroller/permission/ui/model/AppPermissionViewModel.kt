@@ -19,7 +19,7 @@ package com.android.permissioncontroller.permission.ui.model
 import android.Manifest
 import android.app.AppOpsManager
 import android.app.AppOpsManager.MODE_ALLOWED
-import android.app.AppOpsManager.MODE_IGNORED
+import android.app.AppOpsManager.MODE_ERRORED
 import android.app.AppOpsManager.OPSTR_MANAGE_EXTERNAL_STORAGE
 import android.app.Application
 import android.content.Intent
@@ -33,7 +33,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.fragment.findNavController
-import com.android.permissioncontroller.PermissionControllerApplication
 import com.android.permissioncontroller.PermissionControllerStatsLog
 import com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSION_FRAGMENT_ACTION_REPORTED
 import com.android.permissioncontroller.PermissionControllerStatsLog.APP_PERMISSION_FRAGMENT_VIEWED
@@ -279,7 +278,9 @@ class AppPermissionViewModel(
 
                     if (detailId == 0) {
                         detailId = getForegroundCapableDetailResId(foregroundCapableType)
-                        detailResIdLiveData.value = detailId to null
+                        if (detailId != 0) {
+                            detailResIdLiveData.value = detailId to null
+                        }
                     }
                 }
             } else {
@@ -309,7 +310,8 @@ class AppPermissionViewModel(
                     allowedState.isShown = false
                     allowedForegroundState.isChecked = allowedState.isChecked
                     allowedForegroundState.isEnabled = allowedState.isEnabled
-                    if (couldPackageHaveFgCapabilities) {
+                    if (couldPackageHaveFgCapabilities || (Utils.isEmergencyApp(app, packageName) &&
+                                    isMicrophone(permGroupName))) {
                         allowedAlwaysState.isShown = true
                         allowedAlwaysState.isChecked = allowedForegroundState.isChecked
                         allowedAlwaysState.isEnabled = allowedForegroundState.isEnabled
@@ -320,7 +322,9 @@ class AppPermissionViewModel(
 
                         if (detailId == 0) {
                             detailId = getForegroundCapableDetailResId(foregroundCapableType)
-                            detailResIdLiveData.value = detailId to null
+                            if (detailId != 0) {
+                                detailResIdLiveData.value = detailId to null
+                            }
                         }
                     }
                 }
@@ -343,6 +347,7 @@ class AppPermissionViewModel(
                         allowedAllFilesState.isShown = true
                         if (storageState.isGranted) {
                             allowedAllFilesState.isChecked = true
+                            deniedState.isChecked = false
                         }
                 } else {
                     allowedAllFilesState.isEnabled = false
@@ -366,6 +371,9 @@ class AppPermissionViewModel(
     private fun isForegroundGroupSpecialCase(permissionGroupName: String): Boolean {
         return permissionGroupName.equals(Manifest.permission_group.CAMERA) ||
                 permissionGroupName.equals(Manifest.permission_group.MICROPHONE)
+    }
+    private fun isMicrophone(permissionGroupName: String): Boolean {
+        return permissionGroupName.equals(Manifest.permission_group.MICROPHONE)
     }
 
     /**
@@ -576,6 +584,10 @@ class AppPermissionViewModel(
         }
 
         logPermissionChanges(oldGroup, newGroup, buttonClicked)
+
+        fullStorageStateLiveData.value?.let {
+            FullStoragePermissionAppsLiveData.recalculate()
+        }
     }
 
     /**
@@ -620,18 +632,30 @@ class AppPermissionViewModel(
         if (hasDefaultPermissions || !group.supportsRuntimePerms) {
             hasConfirmedRevoke = true
         }
+
+        fullStorageStateLiveData.value?.let {
+            FullStoragePermissionAppsLiveData.recalculate()
+        }
     }
 
+    /**
+     * Set the All Files access for this app
+     *
+     * @param granted Whether to grant or revoke access
+     */
     fun setAllFilesAccess(granted: Boolean) {
-        val aom =
-            PermissionControllerApplication.get().getSystemService(AppOpsManager::class.java)!!
+        val aom = app.getSystemService(AppOpsManager::class.java)!!
         val uid = lightAppPermGroup?.packageInfo?.uid ?: return
         val mode = if (granted) {
             MODE_ALLOWED
         } else {
-            MODE_IGNORED
+            MODE_ERRORED
         }
-        aom.setUidMode(OPSTR_MANAGE_EXTERNAL_STORAGE, uid, mode)
+        val fullStorageGrant = fullStorageStateLiveData.value?.isGranted
+        if (fullStorageGrant != null && fullStorageGrant != granted) {
+            aom.setUidMode(OPSTR_MANAGE_EXTERNAL_STORAGE, uid, mode)
+            FullStoragePermissionAppsLiveData.recalculate()
+        }
     }
 
     /**
