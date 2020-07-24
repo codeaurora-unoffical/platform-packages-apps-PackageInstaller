@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <!--
   ~ Copyright (C) 2020 The Android Open Source Project
   ~
@@ -16,10 +15,15 @@
   ~ limitations under the License.
   -->
 
-<RadioButton xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@android:id/checkbox"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_gravity="center"
-    android:focusable="false"
-    android:clickable="false" />
+<!-- Layout used for PreferenceCategory in a PreferenceActivity. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+          android:id="@+android:id/title"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:textColor="@color/settings_category_text_color"
+          android:textSize="@dimen/settings_category_text_size"
+          android:textStyle="bold"
+          android:paddingStart="?android:attr/listPreferredItemPaddingStart"
+          android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
+          android:paddingTop="16dp"
+          android:paddingBottom="16dp" />
