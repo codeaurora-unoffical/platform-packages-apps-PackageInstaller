@@ -44,16 +44,10 @@ public final class ReviewPermissionsActivity extends FragmentActivity
             return;
         }
 
-        if (DeviceUtils.isWear(this)) {
-            Fragment fragment = ReviewPermissionsWearFragment.newInstance(packageInfo);
-            getSupportFragmentManager().beginTransaction()
-                    .replace(android.R.id.content, fragment).commit();
-        } else {
-            setContentView(R.layout.review_permissions);
-            if (getSupportFragmentManager().findFragmentById(R.id.preferences_frame) == null) {
-                getSupportFragmentManager().beginTransaction().add(R.id.preferences_frame,
-                        ReviewPermissionsFragment.newInstance(packageInfo)).commit();
-            }
+        setContentView(R.layout.review_permissions);
+        if (getSupportFragmentManager().findFragmentById(R.id.preferences_frame) == null) {
+            getSupportFragmentManager().beginTransaction().add(R.id.preferences_frame,
+                    ReviewPermissionsFragment.newInstance(packageInfo)).commit();
         }
     }
 
